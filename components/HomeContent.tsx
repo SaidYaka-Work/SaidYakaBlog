@@ -1,14 +1,13 @@
 'use client';
 
 import { SocialList } from './SocialList';
-import config from '../config.json';
 
 export default function HomeContent() {
   return (
     <div className="container">
       <div>
         <h1>
-          Hi, I'm Gum<span className="fancy">.</span>
+          Hi, I&apos;m Gum<span className="fancy">.</span>
         </h1>
         <h2>Welcome to my minimalist blog starter</h2>
         <p className="description">
