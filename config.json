@@ -1,0 +1,11 @@
+{
+  "base_url": "http://localhost:3000",
+  "site_title": "Gum's Blog",
+  "site_description": "A minimalist blog starter with Next.js, SEO optimization, and tag system.",
+  "site_keywords": ["Next.js", "Blog", "SEO", "TypeScript", "Minimalist"],
+  "posts_per_page": 5,
+  "github_account": "GanLiuuuu",
+  "author_name": "Gum",
+  "author_description": "Software developer passionate about minimalist design and clean code.",
+  "keywords": ["Next.js", "React", "TypeScript", "Web Development", "Minimalist Design"]
+} 

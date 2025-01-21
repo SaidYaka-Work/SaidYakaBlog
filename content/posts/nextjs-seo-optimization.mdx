@@ -1,0 +1,70 @@
+---
+slug: "nextjs-seo-optimization"
+title: "SEO Optimization in Next.js"
+date: 2024-01-20
+author: gum
+tags:
+  - nextjs
+  - seo
+  - performance
+---
+
+Next.js provides excellent built-in SEO capabilities. This post explores how to implement effective SEO strategies in your Next.js application.
+
+## Metadata API
+
+Next.js 13+ introduces a powerful Metadata API for managing SEO:
+
+```typescript
+export const metadata = {
+  title: 'My Blog',
+  description: 'A minimalist blog about web development',
+  openGraph: {
+    title: 'My Blog',
+    description: 'A minimalist blog about web development',
+    type: 'website',
+  },
+};
+```
+
+## Key Features
+
+### 1. Static Generation
+
+Static generation improves performance and SEO:
+
+- Pages are generated at build time
+- Faster load times
+- Better search engine indexing
+
+### 2. Image Optimization
+
+Next.js Image component provides:
+
+- Automatic optimization
+- Lazy loading
+- Proper sizing and formats
+
+### 3. Dynamic Routes
+
+Implement clean URLs for better SEO:
+
+```typescript
+// pages/posts/[slug].tsx
+export async function generateStaticParams() {
+  const posts = await getPosts();
+  return posts.map((post) => ({
+    slug: post.slug,
+  }));
+}
+```
+
+## Best Practices
+
+1. Use semantic HTML
+2. Implement proper meta tags
+3. Create a sitemap
+4. Configure robots.txt
+5. Monitor performance metrics
+
+These optimizations help improve your site's visibility and ranking in search results. 
