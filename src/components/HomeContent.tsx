@@ -7,10 +7,12 @@ export default function HomeContent() {
     <div className="container">
       <div>
         <h1>
-          Hi, I'm Gum<span className="fancy">.</span>
+          Hi, I&apos;m Gum<span className="fancy">.</span>
         </h1>
-        <span className="handle">@gumliu</span>
-        <h2>A blog template with Next.js and Netlify.</h2>
+        <h2>Welcome to my minimalist blog starter</h2>
+        <p className="description">
+          A clean and simple blog template with Next.js, SEO optimization, and tag system.
+        </p>
         <SocialList />
       </div>
       <style jsx>{`
@@ -30,15 +32,15 @@ export default function HomeContent() {
           font-size: 1.75rem;
           font-weight: 400;
           line-height: 1.25;
+          margin-top: 1rem;
+        }
+        .description {
+          color: #666;
+          font-size: 1.1rem;
+          margin-top: 1rem;
         }
         .fancy {
           color: #15847d;
-        }
-        .handle {
-          display: inline-block;
-          margin-top: 0.275em;
-          color: #9b9b9b;
-          letter-spacing: 0.05em;
         }
 
         @media (min-width: 769px) {

@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
-import config from '../config.json';
+import { Inter } from 'next/font/google';
 import './globals.css';
+import config from '@/config.json';
+
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(config.base_url),
   title: {
     default: config.site_title,
     template: `%s | ${config.site_title}`,
@@ -18,11 +20,6 @@ export const metadata: Metadata = {
     siteName: config.site_title,
     type: 'website',
   },
-  twitter: {
-    card: 'summary_large_image',
-    site: config.twitter_account,
-    creator: config.twitter_account,
-  },
 };
 
 export default function RootLayout({
@@ -31,8 +28,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="h-full">
-      <body className="h-full">{children}</body>
+    <html lang="en">
+      <body className={inter.className}>{children}</body>
     </html>
   )
 }

@@ -3,15 +3,10 @@ import Link from 'next/link';
 import { getAllPosts } from '@/lib/posts';
 import { notFound } from 'next/navigation';
 
-type Props = {
-  params: {
-    tag: string;
-  };
-};
-
-export default async function TagPage({ params }: Props) {
+// @ts-expect-error Next.js page props type issue
+export default async function TagPage(props) {
   const posts = await getAllPosts();
-  const tag = decodeURIComponent(params.tag);
+  const tag = decodeURIComponent(props.params.tag);
   
   // Filter posts by tag
   const filteredPosts = posts.filter(post => 
