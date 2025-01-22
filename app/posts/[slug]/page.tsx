@@ -1,4 +1,5 @@
 import Layout from '@/components/Layout';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getPostBySlug, getAllPosts, type PostData } from '@/lib/posts';
 import { markdownToHtml } from '@/lib/markdown';
@@ -38,12 +39,13 @@ export default async function Page({ params }: Props) {
             <div className="text-gray-600 mb-4">{post.date}</div>
             <div className="flex gap-2">
               {post.tags.map((tag: string) => (
-                <span
+                <Link
                   key={tag}
-                  className="text-sm bg-gray-100 text-gray-700 px-2 py-1 rounded"
+                  href={`/tags/${encodeURIComponent(tag)}`}
+                  className="text-sm bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200"
                 >
                   {tag}
-                </span>
+                </Link>
               ))}
             </div>
           </header>
