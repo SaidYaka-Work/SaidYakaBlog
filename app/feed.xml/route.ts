@@ -22,7 +22,7 @@ export async function GET() {
       <link>${baseUrl}/posts/${post.slug}</link>
       <guid>${baseUrl}/posts/${post.slug}</guid>
       <pubDate>${new Date(post.date).toUTCString()}</pubDate>
-      <description>${escapeXml(post.excerpt)}</description>
+      <description>${escapeXml(post.excerpt || '')}</description>
       <author>Said Yaka</author>
       ${post.tags.map(tag => `<category>${escapeXml(tag)}</category>`).join('\n      ')}
     </item>`

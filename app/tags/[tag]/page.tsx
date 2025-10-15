@@ -18,10 +18,10 @@ export async function generateStaticParams() {
   }));
 }
 
-// @ts-expect-error Next.js page props type issue
-export default async function TagPage(props) {
+export default async function TagPage({ params }: { params: Promise<{ tag: string }> }) {
+  const { tag: tagParam } = await params;
   const posts = await getAllPosts();
-  const tag = decodeURIComponent(props.params.tag);
+  const tag = decodeURIComponent(tagParam);
   
   // Filter posts by tag
   const filteredPosts = posts.filter(post => 
