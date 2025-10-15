@@ -32,7 +32,7 @@ export default async function Page(props) {
               {post.tags.map((tag: string) => (
                 <Link
                   key={tag}
-                  href={`/tags/${encodeURIComponent(tag)}`}
+                  href={`/tags/${encodeURIComponent(tag.toLowerCase())}`}
                   className="text-sm bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200"
                 >
                   {tag}
