@@ -10,7 +10,14 @@ export default function AboutPage() {
   return (
     <Layout>
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-4xl font-bold mb-6">About</h1>
+        <div className="flex flex-col items-center mb-8">
+          <img
+            src="/images/profile.jpg"
+            alt="Said Yaka - AI Engineer"
+            className="rounded-full w-48 h-48 object-cover mb-6 shadow-lg"
+          />
+          <h1 className="text-4xl font-bold">About</h1>
+        </div>
 
         <div className="prose lg:prose-lg">
           <p className="text-xl text-gray-700 mb-6">
