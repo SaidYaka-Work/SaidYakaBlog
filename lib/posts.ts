@@ -28,12 +28,18 @@ export async function getAllPosts(): Promise<PostData[]> {
         // Use gray-matter to parse the post metadata section
         const { data, content } = matter(fileContents);
 
-        // Create excerpt from content
-        const excerpt = content
+        // Create excerpt from content (strip markdown and get first real paragraph)
+        const cleanContent = content
           .trim()
-          .split('\n')[0] // Get first paragraph
-          .slice(0, 200) // Limit to 200 characters
-          + (content.length > 200 ? '...' : '');
+          .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
+          .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove links but keep text
+          .replace(/[#*_`]/g, '') // Remove markdown formatting
+          .replace(/\n\n+/g, '\n') // Normalize line breaks
+          .trim();
+
+        // Get first non-empty line
+        const firstParagraph = cleanContent.split('\n').find(line => line.trim().length > 0) || '';
+        const excerpt = firstParagraph.slice(0, 200) + (firstParagraph.length > 200 ? '...' : '');
 
         // Combine the data with the slug
         return {
