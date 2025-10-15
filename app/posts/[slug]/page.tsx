@@ -1,8 +1,15 @@
 import Layout from '@/components/Layout';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getPostBySlug } from '@/lib/posts';
+import { getPostBySlug, getAllPosts } from '@/lib/posts';
 import { markdownToHtml } from '@/lib/markdown';
+
+export async function generateStaticParams() {
+  const posts = await getAllPosts();
+  return posts.map(post => ({
+    slug: post.slug,
+  }));
+}
 
 // @ts-expect-error Next.js page props type issue
 export default async function Page(props) {

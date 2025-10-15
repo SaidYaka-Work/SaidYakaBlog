@@ -3,6 +3,21 @@ import Link from 'next/link';
 import { getAllPosts } from '@/lib/posts';
 import { notFound } from 'next/navigation';
 
+export async function generateStaticParams() {
+  const posts = await getAllPosts();
+  const tagsSet = new Set<string>();
+
+  posts.forEach(post => {
+    post.tags.forEach(tag => {
+      tagsSet.add(tag.toLowerCase());
+    });
+  });
+
+  return Array.from(tagsSet).map(tag => ({
+    tag: tag,
+  }));
+}
+
 // @ts-expect-error Next.js page props type issue
 export default async function TagPage(props) {
   const posts = await getAllPosts();
