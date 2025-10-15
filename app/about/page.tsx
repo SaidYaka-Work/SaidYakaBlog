@@ -1,5 +1,4 @@
 import Layout from '@/components/Layout';
-import Link from 'next/link';
 
 export const metadata = {
   title: 'About | Said Yaka',
@@ -11,6 +10,7 @@ export default function AboutPage() {
     <Layout>
       <div className="max-w-3xl mx-auto">
         <div className="flex flex-col items-center mb-8">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/images/profile.jpg"
             alt="Said Yaka - AI Engineer"
@@ -21,7 +21,7 @@ export default function AboutPage() {
 
         <div className="prose lg:prose-lg">
           <p className="text-xl text-gray-700 mb-6">
-            Hi, I'm Said Yaka — a software engineer at <a href="https://evertune.ai" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Evertune.ai</a>, where I design and build AI-driven systems that scale.
+            Hi, I&apos;m Said Yaka — a software engineer at <a href="https://evertune.ai" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Evertune.ai</a>, where I design and build AI-driven systems that scale.
           </p>
 
           <p className="text-gray-700 mb-6">
