@@ -13,9 +13,12 @@ export default function Layout({ children }: LayoutProps) {
         <nav className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
             <Link href="/" className="text-xl font-bold text-gray-800 hover:text-gray-600">
-              Blog
+              Said Yaka
             </Link>
             <div className="space-x-4">
+              <Link href="/about" className="text-gray-600 hover:text-gray-800">
+                About
+              </Link>
               <Link href="/posts" className="text-gray-600 hover:text-gray-800">
                 Posts
               </Link>
@@ -34,7 +37,7 @@ export default function Layout({ children }: LayoutProps) {
       <footer className="bg-gray-50">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center text-gray-600">
-            <p>© {new Date().getFullYear()} Blog. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} Said Yaka. All rights reserved.</p>
           </div>
         </div>
       </footer>
