@@ -1,11 +1,52 @@
 {
-  "base_url": "http://localhost:3000",
-  "site_title": "Gum's Blog",
-  "site_description": "A minimalist blog starter with Next.js, SEO optimization, and tag system.",
-  "site_keywords": ["Next.js", "Blog", "SEO", "TypeScript", "Minimalist"],
-  "posts_per_page": 5,
-  "github_account": "GumLau",
-  "author_name": "Gum",
-  "author_description": "Software developer passionate about minimalist design and clean code.",
-  "keywords": ["Next.js", "React", "TypeScript", "Web Development", "Minimalist Design"]
-} 
+  "base_url": "saidyaka.com",
+  "site_title": "Said Yaka — AI Engineering Notes",
+  "site_description": "Deep dives on practical AI engineering: retrieval, evals, production LLM patterns, and scalable infra from the Evertune.ai trenches.",
+  "site_keywords": [
+    "AI engineering",
+    "LLM",
+    "RAG",
+    "vector search",
+    "evaluation",
+    "prompt engineering",
+    "Next.js",
+    "TypeScript",
+    "MLOps",
+    "Evertune"
+  ],
+  "posts_per_page": 8,
+
+  "github_account": "saidyaka-work",
+  "author_name": "Said Yaka",
+  "author_description": "Software Engineer at Evertune.ai. I ship AI features, stress-test evals, and write about getting LLMs production-ready.",
+
+  "keywords": [
+    "AI engineering blog",
+    "LLM production",
+    "RAG architectures",
+    "observability for LLMs",
+    "evals and benchmarks",
+    "retrieval quality"
+  ],
+
+  "social": {
+    "twitter": "said_yaka",
+    "linkedin": "said-yaka",
+    "github": "saidyaka"
+  },
+
+  "seo": {
+    "canonical_trailing_slash": false,
+    "open_graph_default_image": "/og/default.png",
+    "twitter_card": "summary_large_image",
+    "organization": "Evertune.ai",
+    "locale": "en_US"
+  },
+
+  "integrations": {
+    "analytics_provider": "ga4",
+    "ga4_measurement_id": "G-XXXXXXX",
+    "rss": true,
+    "sitemap": true
+  }
+}
