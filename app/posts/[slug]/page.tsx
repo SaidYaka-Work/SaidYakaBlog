@@ -3,12 +3,43 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getPostBySlug, getAllPosts } from '@/lib/posts';
 import { markdownToHtml } from '@/lib/markdown';
+import type { Metadata } from 'next';
 
 export async function generateStaticParams() {
   const posts = await getAllPosts();
   return posts.map(post => ({
     slug: post.slug,
   }));
+}
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const post = await getPostBySlug(params.slug);
+  if (!post) return {};
+
+  return {
+    title: post.title,
+    description: post.excerpt,
+    authors: [{ name: post.author }],
+    openGraph: {
+      title: post.title,
+      description: post.excerpt,
+      type: 'article',
+      publishedTime: post.date,
+      authors: [post.author],
+      tags: post.tags,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.title,
+      description: post.excerpt,
+    },
+  };
+}
+
+function calculateReadingTime(content: string): number {
+  const wordsPerMinute = 200;
+  const wordCount = content.trim().split(/\s+/).length;
+  return Math.ceil(wordCount / wordsPerMinute);
 }
 
 // @ts-expect-error Next.js page props type issue
@@ -21,6 +52,7 @@ export default async function Page(props) {
     }
 
     const content = await markdownToHtml(post.content);
+    const readingTime = calculateReadingTime(post.content);
 
     // Get related posts based on first tag
     const allPosts = await getAllPosts();
@@ -34,12 +66,43 @@ export default async function Page(props) {
           .slice(0, 3)
       : [];
 
+    // JSON-LD Schema for BlogPosting
+    const schema = {
+      '@context': 'https://schema.org',
+      '@type': 'BlogPosting',
+      headline: post.title,
+      description: post.excerpt,
+      author: {
+        '@type': 'Person',
+        name: post.author,
+        url: 'https://saidyaka.com/about',
+      },
+      datePublished: post.date,
+      dateModified: post.date,
+      url: `https://saidyaka.com/posts/${post.slug}`,
+      keywords: post.tags.join(', '),
+      articleBody: post.content,
+      publisher: {
+        '@type': 'Organization',
+        name: 'Evertune.ai',
+        url: 'https://evertune.ai',
+      },
+    };
+
     return (
       <Layout>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
         <article className="max-w-3xl mx-auto">
           <header className="mb-8">
             <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
-            <div className="text-gray-600 mb-4">{post.date}</div>
+            <div className="flex items-center gap-4 text-gray-600 mb-4">
+              <span>{post.date}</span>
+              <span>•</span>
+              <span>{readingTime} min read</span>
+            </div>
             <div className="flex gap-2">
               {post.tags.map((tag: string) => (
                 <Link

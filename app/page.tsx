@@ -7,8 +7,33 @@ export default async function Home() {
   const posts = await getAllPosts();
   const latestPost = posts[0]; // Posts are sorted by date, most recent first
 
+  // JSON-LD Schema for Website/Person
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'ProfilePage',
+    mainEntity: {
+      '@type': 'Person',
+      name: 'Said Yaka',
+      jobTitle: 'AI Engineer',
+      worksFor: {
+        '@type': 'Organization',
+        name: 'Evertune.ai',
+        url: 'https://evertune.ai',
+      },
+      url: 'https://saidyaka.com',
+      sameAs: [
+        'https://github.com/SaidYaka-Work',
+        'https://www.linkedin.com/in/saidyaka/',
+      ],
+    },
+  };
+
   return (
     <Layout>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
       <HomeContent />
       {latestPost && (
         <div className="max-w-4xl mx-auto mt-16 px-4">

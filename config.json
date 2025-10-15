@@ -1,5 +1,5 @@
 {
-  "base_url": "saidyaka.com",
+  "base_url": "https://saidyaka.com",
   "site_title": "Said Yaka — AI Engineering Notes",
   "site_description": "Deep dives on practical AI engineering: retrieval, evals, production LLM patterns, and scalable infra from the Evertune.ai trenches.",
   "site_keywords": [

@@ -6,8 +6,39 @@ export const metadata = {
 };
 
 export default function AboutPage() {
+  // JSON-LD Schema for Person
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: 'Said Yaka',
+    jobTitle: 'AI Engineer',
+    worksFor: {
+      '@type': 'Organization',
+      name: 'Evertune.ai',
+      url: 'https://evertune.ai',
+    },
+    url: 'https://saidyaka.com',
+    sameAs: [
+      'https://github.com/SaidYaka-Work',
+      'https://www.linkedin.com/in/saidyaka/',
+      'https://x.com',
+    ],
+    knowsAbout: [
+      'Artificial Intelligence',
+      'Machine Learning',
+      'RAG Systems',
+      'LLM Engineering',
+      'Software Engineering',
+    ],
+    description: 'Software engineer at Evertune.ai building AI-driven systems that scale.',
+  };
+
   return (
     <Layout>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
       <div className="max-w-3xl mx-auto">
         <div className="flex flex-col items-center mb-8">
           {/* eslint-disable-next-line @next/next/no-img-element */}
