@@ -58,6 +58,15 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Verify out directory
+        run: |
+          ls -la
+          if [ ! -d "out" ]; then
+            echo "Error: out directory not found!"
+            exit 1
+          fi
+          ls -la out/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
