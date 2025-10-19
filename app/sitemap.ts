@@ -5,7 +5,8 @@ export const dynamic = 'force-static';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://saidyaka.com';
-  const posts = await getAllPosts();
+  // Only include published posts (not future-dated) in production sitemap
+  const posts = await getAllPosts({ includeFuture: false });
 
   // Get unique tags
   const tagsSet = new Set<string>();

@@ -14,7 +14,7 @@ export type PostData = {
   excerpt?: string;
 };
 
-export async function getAllPosts(): Promise<PostData[]> {
+export async function getAllPosts(options?: { includeFuture?: boolean }): Promise<PostData[]> {
   // Get file names under /content/posts
   const fileNames = await fs.readdir(postsDirectory);
   const allPostsData = await Promise.all(
@@ -54,13 +54,26 @@ export async function getAllPosts(): Promise<PostData[]> {
       })
   );
 
+  // Filter out future-dated posts unless explicitly included
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // Start of today
+
+  const includeFuture = options?.includeFuture ?? process.env.NODE_ENV === 'development';
+  const filteredPosts = includeFuture
+    ? allPostsData
+    : allPostsData.filter((post) => {
+        const postDate = new Date(post.date);
+        postDate.setHours(0, 0, 0, 0);
+        return postDate <= now;
+      });
+
   // Sort posts by date
-  return allPostsData.sort((a, b) => (a.date < b.date ? 1 : -1));
+  return filteredPosts.sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
-export async function getPostBySlug(slug: string): Promise<PostData | null> {
+export async function getPostBySlug(slug: string, options?: { includeFuture?: boolean }): Promise<PostData | null> {
   try {
-    const posts = await getAllPosts();
+    const posts = await getAllPosts(options);
     return posts.find((post) => post.slug === slug) || null;
   } catch (error) {
     console.error('Error getting post by slug:', error);

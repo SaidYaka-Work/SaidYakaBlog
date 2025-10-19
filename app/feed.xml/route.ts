@@ -3,7 +3,8 @@ import { getAllPosts } from '@/lib/posts';
 export const dynamic = 'force-static';
 
 export async function GET() {
-  const posts = await getAllPosts();
+  // Only include published posts (not future-dated) in RSS feed
+  const posts = await getAllPosts({ includeFuture: false });
   const baseUrl = 'https://saidyaka.com';
 
   const rss = `<?xml version="1.0" encoding="UTF-8"?>
