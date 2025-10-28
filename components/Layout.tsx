@@ -1,6 +1,5 @@
-'use client';
-
 import Link from 'next/link';
+import RecommendedPosts from './RecommendedPosts';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -31,7 +30,12 @@ export default function Layout({ children }: LayoutProps) {
       </header>
 
       <main className="flex-grow container mx-auto px-4 py-8">
-        {children}
+        <div className="flex gap-8">
+          <RecommendedPosts />
+          <div className="flex-1">
+            {children}
+          </div>
+        </div>
       </main>
 
       <footer className="bg-gray-50">
