@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import matter from 'gray-matter';
+import { Locale, defaultLocale } from './i18n/config';
 
 const postsDirectory = path.join(process.cwd(), 'content/posts');
 
@@ -12,14 +13,26 @@ export type PostData = {
   tags: string[];
   content: string;
   excerpt?: string;
+  locale?: Locale;
 };
 
-export async function getAllPosts(options?: { includeFuture?: boolean }): Promise<PostData[]> {
+export async function getAllPosts(options?: { includeFuture?: boolean; locale?: Locale }): Promise<PostData[]> {
+  const locale = options?.locale || defaultLocale;
+
   // Get file names under /content/posts
   const fileNames = await fs.readdir(postsDirectory);
   const allPostsData = await Promise.all(
     fileNames
-      .filter((fileName) => fileName.endsWith('.mdx'))
+      .filter((fileName) => {
+        // Match files like: slug.mdx (default/en) or slug.de.mdx, slug.fr.mdx, slug.tr.mdx, slug.ja.mdx
+        if (locale === defaultLocale) {
+          // For English, accept both .mdx and .en.mdx
+          return fileName.endsWith('.mdx') && !fileName.includes('.de.') && !fileName.includes('.fr.') && !fileName.includes('.tr.') && !fileName.includes('.ja.');
+        } else {
+          // For other locales, look for .{locale}.mdx
+          return fileName.endsWith(`.${locale}.mdx`);
+        }
+      })
       .map(async (fileName) => {
         // Read markdown file as string
         const fullPath = path.join(postsDirectory, fileName);
@@ -50,6 +63,7 @@ export async function getAllPosts(options?: { includeFuture?: boolean }): Promis
           tags: data.tags,
           content,
           excerpt,
+          locale,
         };
       })
   );
@@ -71,7 +85,7 @@ export async function getAllPosts(options?: { includeFuture?: boolean }): Promis
   return filteredPosts.sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
-export async function getPostBySlug(slug: string, options?: { includeFuture?: boolean }): Promise<PostData | null> {
+export async function getPostBySlug(slug: string, options?: { includeFuture?: boolean; locale?: Locale }): Promise<PostData | null> {
   try {
     const posts = await getAllPosts(options);
     return posts.find((post) => post.slug === slug) || null;
@@ -79,4 +93,13 @@ export async function getPostBySlug(slug: string, options?: { includeFuture?: bo
     console.error('Error getting post by slug:', error);
     return null;
   }
+}
+
+export async function getAllTags(locale?: Locale): Promise<string[]> {
+  const posts = await getAllPosts({ locale });
+  const tagSet = new Set<string>();
+  posts.forEach(post => {
+    post.tags.forEach(tag => tagSet.add(tag));
+  });
+  return Array.from(tagSet).sort();
 } 

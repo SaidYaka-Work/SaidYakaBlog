@@ -2,26 +2,30 @@
 
 import { SocialList } from './SocialList';
 import Link from 'next/link';
+import { type Locale } from '@/lib/i18n/config';
+import { getTranslation } from '@/lib/i18n/translations';
 
-export default function HomeContent() {
+export default function HomeContent({ locale }: { locale: Locale }) {
+  const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(locale, key);
+
   return (
     <div className="container">
       <div className="content">
         <h1 className="title">
-          Hi, I&apos;m <span className="fancy">Said Yaka</span>
+          {t('home.greeting')} <span className="fancy">Said Yaka</span>
         </h1>
         <p className="subtitle">
-          Welcome to my blog
+          {t('home.subtitle')}
         </p>
         <p className="description">
-          Thoughts on technology, development, and everything in between.
+          {t('site.description')}
         </p>
         <div className="cta-buttons">
-          <Link href="/posts" className="btn-primary">
-            Read Posts
+          <Link href={`/${locale}/posts`} className="btn-primary">
+            {t('nav.posts')}
           </Link>
-          <Link href="/tags" className="btn-secondary">
-            Browse Topics
+          <Link href={`/${locale}/tags`} className="btn-secondary">
+            {t('nav.tags')}
           </Link>
         </div>
         <SocialList />
@@ -36,84 +40,112 @@ export default function HomeContent() {
           min-height: 60vh;
         }
         .content {
-          max-width: 650px;
+          max-width: 700px;
           text-align: center;
         }
         .title {
-          font-size: 2.75rem;
-          margin: 0 0 1rem 0;
-          font-weight: 700;
-          line-height: 1.2;
-          color: #111;
+          font-size: 3rem;
+          margin: 0 0 1.25rem 0;
+          font-weight: 800;
+          line-height: 1.1;
+          color: #1e293b;
+          letter-spacing: -0.02em;
         }
         .fancy {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #d946ef 0%, #f97316 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
+          position: relative;
+          display: inline-block;
         }
         .subtitle {
-          font-size: 1.5rem;
-          font-weight: 400;
-          color: #444;
-          margin: 0 0 1rem 0;
+          font-size: 1.75rem;
+          font-weight: 500;
+          background: linear-gradient(135deg, #334155 0%, #64748b 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          margin: 0 0 1.5rem 0;
         }
         .description {
-          color: #666;
-          font-size: 1.125rem;
-          line-height: 1.6;
-          margin: 0 0 2rem 0;
+          color: #475569;
+          font-size: 1.25rem;
+          line-height: 1.7;
+          margin: 0 0 2.5rem 0;
         }
         .cta-buttons {
           display: flex;
           gap: 1rem;
           justify-content: center;
-          margin-bottom: 2rem;
+          margin-bottom: 2.5rem;
         }
         .btn-primary, .btn-secondary {
-          padding: 0.75rem 1.75rem;
-          border-radius: 8px;
-          font-size: 1rem;
-          font-weight: 500;
+          padding: 1rem 2.25rem;
+          border-radius: 12px;
+          font-size: 1.05rem;
+          font-weight: 600;
           text-decoration: none;
-          transition: all 0.2s ease;
+          transition: all 0.3s ease;
           display: inline-block;
+          position: relative;
+          overflow: hidden;
         }
         .btn-primary {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #d946ef 0%, #f97316 100%);
           color: white;
+          box-shadow: 0 4px 14px 0 rgba(217, 70, 239, 0.3);
         }
         .btn-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+          transform: translateY(-3px);
+          box-shadow: 0 8px 24px 0 rgba(217, 70, 239, 0.4);
+        }
+        .btn-primary:active {
+          transform: translateY(-1px);
         }
         .btn-secondary {
           background: white;
-          color: #667eea;
-          border: 2px solid #667eea;
+          color: #d946ef;
+          border: 2px solid #d946ef;
+          box-shadow: 0 2px 8px 0 rgba(217, 70, 239, 0.15);
         }
         .btn-secondary:hover {
-          background: #667eea;
+          background: linear-gradient(135deg, #e879f9 0%, #fb923c 100%);
           color: white;
+          border-color: transparent;
+          transform: translateY(-3px);
+          box-shadow: 0 8px 24px 0 rgba(217, 70, 239, 0.3);
+        }
+        .btn-secondary:active {
+          transform: translateY(-1px);
         }
 
         @media (min-width: 769px) {
           .title {
-            font-size: 3.5rem;
+            font-size: 4rem;
           }
           .subtitle {
-            font-size: 1.75rem;
+            font-size: 2rem;
           }
         }
 
         @media (max-width: 600px) {
+          .title {
+            font-size: 2.25rem;
+          }
+          .subtitle {
+            font-size: 1.35rem;
+          }
+          .description {
+            font-size: 1.1rem;
+          }
           .cta-buttons {
             flex-direction: column;
             align-items: center;
           }
           .btn-primary, .btn-secondary {
             width: 100%;
-            max-width: 250px;
+            max-width: 280px;
           }
         }
       `}</style>

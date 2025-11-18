@@ -1,21 +1,30 @@
-import Layout from '@/components/Layout';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getPostBySlug, getAllPosts } from '@/lib/posts';
 import { markdownToHtml } from '@/lib/markdown';
 import TableOfContents from '@/components/TableOfContents';
 import type { Metadata } from 'next';
+import { type Locale, locales } from '@/lib/i18n/config';
+import { getTranslation } from '@/lib/i18n/translations';
+import config from '@/config.json';
 
 export async function generateStaticParams() {
-  const posts = await getAllPosts();
-  return posts.map(post => ({
-    slug: post.slug,
-  }));
+  const params = [];
+
+  for (const locale of locales) {
+    const posts = await getAllPosts({ locale });
+    params.push(...posts.map(post => ({
+      locale,
+      slug: post.slug,
+    })));
+  }
+
+  return params;
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const { slug } = await params;
-  const post = await getPostBySlug(slug);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string; locale: Locale }> }): Promise<Metadata> {
+  const { slug, locale } = await params;
+  const post = await getPostBySlug(slug, { locale });
   if (!post) return {};
 
   return {
@@ -29,11 +38,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       publishedTime: post.date,
       authors: [post.author],
       tags: post.tags,
+      locale: locale,
+      alternateLocale: locales.filter(l => l !== locale),
     },
     twitter: {
       card: 'summary_large_image',
       title: post.title,
       description: post.excerpt,
+    },
+    alternates: {
+      canonical: `${config.base_url}/${locale}/posts/${slug}`,
+      languages: Object.fromEntries(
+        locales.map(l => [l, `${config.base_url}/${l}/posts/${slug}`])
+      ),
     },
   };
 }
@@ -44,10 +61,11 @@ function calculateReadingTime(content: string): number {
   return Math.ceil(wordCount / wordsPerMinute);
 }
 
-export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+export default async function Page({ params }: { params: Promise<{ slug: string; locale: Locale }> }) {
   try {
-    const { slug } = await params;
-    const post = await getPostBySlug(slug);
+    const { slug, locale } = await params;
+    const post = await getPostBySlug(slug, { locale });
+    const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(locale, key);
 
     if (!post) {
       return notFound();
@@ -57,7 +75,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     const readingTime = calculateReadingTime(post.content);
 
     // Get related posts based on first tag
-    const allPosts = await getAllPosts();
+    const allPosts = await getAllPosts({ locale });
     const firstTag = post.tags[0];
     const relatedPosts = firstTag
       ? allPosts
@@ -74,14 +92,15 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       '@type': 'BlogPosting',
       headline: post.title,
       description: post.excerpt,
+      inLanguage: locale,
       author: {
         '@type': 'Person',
         name: post.author,
-        url: 'https://saidyaka.com/about',
+        url: `${config.base_url}/${locale}/about`,
       },
       datePublished: post.date,
       dateModified: post.date,
-      url: `https://saidyaka.com/posts/${post.slug}`,
+      url: `${config.base_url}/${locale}/posts/${post.slug}`,
       keywords: post.tags.join(', '),
       articleBody: post.content,
       publisher: {
@@ -92,7 +111,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     };
 
     return (
-      <Layout>
+      <>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
@@ -106,13 +125,13 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
                 <div className="flex items-center gap-4 text-gray-600 mb-4">
                   <span>{post.date}</span>
                   <span>•</span>
-                  <span>{readingTime} min read</span>
+                  <span>{readingTime} {t('posts.minRead')}</span>
                 </div>
                 <div className="flex gap-2">
                   {post.tags.map((tag: string) => (
                     <Link
                       key={tag}
-                      href={`/tags/${encodeURIComponent(tag.toLowerCase())}`}
+                      href={`/${locale}/tags/${encodeURIComponent(tag.toLowerCase())}`}
                       className="text-sm bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200"
                     >
                       {tag}
@@ -128,13 +147,13 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
               {relatedPosts.length > 0 && (
                 <div className="mt-12 pt-8 border-t border-gray-200">
                   <h3 className="text-2xl font-bold mb-6">
-                    Read more about {firstTag}
+                    {t('posts.relatedPosts')} {firstTag}
                   </h3>
                   <div className="space-y-4">
                     {relatedPosts.map(relatedPost => (
                       <Link
                         key={relatedPost.slug}
-                        href={`/posts/${relatedPost.slug}`}
+                        href={`/${locale}/posts/${relatedPost.slug}`}
                         className="block p-4 border border-gray-200 rounded-lg hover:border-blue-600 hover:shadow-md transition-all group"
                       >
                         <h4 className="text-lg font-semibold mb-2 group-hover:text-blue-600">
@@ -155,7 +174,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
             </aside>
           </div>
         </div>
-      </Layout>
+      </>
     );
   } catch (error) {
     console.error('Error rendering post:', error);

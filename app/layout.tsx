@@ -1,39 +1,24 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { Analytics } from '@vercel/analytics/react';
 import './globals.css';
-import config from '@/config.json';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: {
-    default: config.site_title,
-    template: `%s | ${config.site_title}`,
-  },
-  description: config.site_description,
-  keywords: config.keywords,
-  authors: [{ name: config.author_name }],
-  openGraph: {
-    title: config.site_title,
-    description: config.site_description,
-    url: config.base_url,
-    siteName: config.site_title,
-    type: 'website',
-  },
+  title: 'Said Yaka',
+  description: 'Exploring technology, development, and innovation',
 };
 
+// Root layout - required by Next.js
+// Note: lang attribute is set dynamically by the [locale] layout via metadata
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        {children}
-        <Analytics />
-      </body>
+    <html suppressHydrationWarning className="bg-gradient-to-br from-purple-50 via-orange-50 to-purple-100">
+      <body className={`${inter.className} bg-transparent`}>{children}</body>
     </html>
-  )
+  );
 }
