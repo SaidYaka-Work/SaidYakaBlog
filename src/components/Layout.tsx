@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import LanguageSwitcher from './LanguageSwitcher';
+import RecommendedPosts from './RecommendedPosts';
 import { type Locale } from '@/lib/i18n/config';
 import { getTranslation } from '@/lib/i18n/translations';
 
@@ -44,7 +45,12 @@ export default function Layout({ children, locale }: LayoutProps) {
       </header>
 
       <main className="flex-grow container mx-auto px-4 py-12">
-        {children}
+        <div className="flex gap-8">
+          <RecommendedPosts locale={locale} />
+          <div className="flex-1">
+            {children}
+          </div>
+        </div>
       </main>
 
       <footer className="bg-gradient-to-r from-primary-900 via-primary-800 to-accent-900 text-white mt-auto">

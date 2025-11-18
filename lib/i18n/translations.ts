@@ -28,7 +28,8 @@ export type TranslationKey =
   | 'about.connectTitle'
   | 'about.github'
   | 'about.linkedin'
-  | 'about.twitter';
+  | 'about.twitter'
+  | 'sidebar.readThese';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -60,6 +61,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'about.github': 'GitHub',
     'about.linkedin': 'LinkedIn',
     'about.twitter': 'Twitter',
+    'sidebar.readThese': 'Read these',
   },
   de: {
     'site.title': 'Said Yaka',
@@ -90,6 +92,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'about.github': 'GitHub',
     'about.linkedin': 'LinkedIn',
     'about.twitter': 'Twitter',
+    'sidebar.readThese': 'Diese lesen',
   },
   fr: {
     'site.title': 'Said Yaka',
@@ -120,6 +123,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'about.github': 'GitHub',
     'about.linkedin': 'LinkedIn',
     'about.twitter': 'Twitter',
+    'sidebar.readThese': 'Lisez ceux-ci',
   },
   tr: {
     'site.title': 'Said Yaka',
@@ -150,6 +154,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'about.github': 'GitHub',
     'about.linkedin': 'LinkedIn',
     'about.twitter': 'Twitter',
+    'sidebar.readThese': 'Bunları okuyun',
   },
   ja: {
     'site.title': 'Said Yaka',
@@ -180,6 +185,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'about.github': 'GitHub',
     'about.linkedin': 'LinkedIn',
     'about.twitter': 'Twitter',
+    'sidebar.readThese': 'これらを読む',
   },
 };
 

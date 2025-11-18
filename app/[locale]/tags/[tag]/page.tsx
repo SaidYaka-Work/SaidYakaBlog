@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { getAllPosts } from '@/lib/posts';
 import { notFound } from 'next/navigation';
 import { type Locale, locales } from '@/lib/i18n/config';
-import { getTranslation } from '@/lib/i18n/translations';
 
 export async function generateStaticParams() {
   const params = [];
@@ -30,7 +29,6 @@ export default async function TagPage({ params }: { params: Promise<{ tag: strin
   const { tag: tagParam, locale } = await params;
   const posts = await getAllPosts({ locale });
   const tag = decodeURIComponent(tagParam);
-  const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(locale, key);
 
   // Filter posts by tag
   const filteredPosts = posts.filter(post =>

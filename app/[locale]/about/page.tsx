@@ -50,9 +50,9 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       />
       <div className="max-w-4xl mx-auto">
         <div className="flex flex-col items-center mb-12">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <div className="relative mb-8">
             <div className="absolute inset-0 bg-gradient-primary rounded-full blur-2xl opacity-30 animate-pulse"></div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/images/profile.jpg"
               alt="Said Yaka - AI Engineer"
