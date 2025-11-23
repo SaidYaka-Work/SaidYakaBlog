@@ -1,62 +1,85 @@
 import { MetadataRoute } from 'next';
 import { getAllPosts } from '@/lib/posts';
+import { locales } from '@/lib/i18n/config';
 
 export const dynamic = 'force-static';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://saidyaka.com';
-  // Only include published posts (not future-dated) in production sitemap
-  const posts = await getAllPosts({ includeFuture: false });
+  const routes: MetadataRoute.Sitemap = [];
 
-  // Get unique tags
-  const tagsSet = new Set<string>();
-  posts.forEach(post => {
-    post.tags.forEach(tag => {
-      tagsSet.add(tag.toLowerCase());
-    });
+  // Add homepage and locale-specific homepages
+  routes.push({
+    url: baseUrl,
+    lastModified: new Date(),
+    changeFrequency: 'weekly',
+    priority: 1,
   });
 
-  // Homepage
-  const routes: MetadataRoute.Sitemap = [
-    {
-      url: baseUrl,
+  for (const locale of locales) {
+    // Locale-specific homepage
+    routes.push({
+      url: `${baseUrl}/${locale}`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 1,
-    },
-    {
-      url: `${baseUrl}/posts`,
+    });
+
+    // Locale-specific posts listing
+    routes.push({
+      url: `${baseUrl}/${locale}/posts`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/tags`,
+    });
+
+    // Locale-specific tags listing
+    routes.push({
+      url: `${baseUrl}/${locale}/tags`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.5,
-    },
-  ];
+    });
 
-  // Add all posts
-  posts.forEach(post => {
+    // Locale-specific about page
     routes.push({
-      url: `${baseUrl}/posts/${post.slug}`,
-      lastModified: new Date(post.date),
+      url: `${baseUrl}/${locale}/about`,
+      lastModified: new Date(),
       changeFrequency: 'monthly',
-      priority: 0.7,
+      priority: 0.6,
     });
-  });
 
-  // Add all tag pages
-  Array.from(tagsSet).forEach(tag => {
-    routes.push({
-      url: `${baseUrl}/tags/${encodeURIComponent(tag)}`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.5,
+    // Get posts for this locale (only published posts)
+    const posts = await getAllPosts({ includeFuture: false, locale });
+
+    // Add all posts for this locale
+    posts.forEach(post => {
+      routes.push({
+        url: `${baseUrl}/${locale}/posts/${post.slug}`,
+        lastModified: new Date(post.date),
+        changeFrequency: 'monthly',
+        priority: 0.7,
+      });
     });
-  });
+
+    // Get unique tags for this locale
+    const tagsSet = new Set<string>();
+    posts.forEach(post => {
+      post.tags.forEach(tag => {
+        tagsSet.add(tag.toLowerCase());
+      });
+    });
+
+    // Add all tag pages for this locale
+    Array.from(tagsSet).forEach(tag => {
+      routes.push({
+        url: `${baseUrl}/${locale}/tags/${encodeURIComponent(tag)}`,
+        lastModified: new Date(),
+        changeFrequency: 'weekly',
+        priority: 0.5,
+      });
+    });
+  }
 
   return routes;
 }

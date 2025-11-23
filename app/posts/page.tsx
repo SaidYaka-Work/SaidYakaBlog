@@ -6,3 +6,4 @@ export default function OldPostsRedirect() {
   redirect(`/${defaultLocale}/posts`);
 }
 
+

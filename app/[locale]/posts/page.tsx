@@ -1,7 +1,34 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getAllPosts } from '@/lib/posts';
-import { type Locale } from '@/lib/i18n/config';
+import { type Locale, locales } from '@/lib/i18n/config';
 import { getTranslation } from '@/lib/i18n/translations';
+import config from '@/config.json';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(locale, key);
+
+  return {
+    title: t('posts.title'),
+    description: t('posts.subtitle'),
+    authors: [{ name: config.author_name }],
+    openGraph: {
+      title: t('posts.title'),
+      description: t('posts.subtitle'),
+      url: `${config.base_url}/${locale}/posts`,
+      type: 'website',
+      locale: locale,
+      alternateLocale: locales.filter(l => l !== locale),
+    },
+    alternates: {
+      canonical: `${config.base_url}/${locale}/posts`,
+      languages: Object.fromEntries(
+        locales.map(l => [l, `${config.base_url}/${l}/posts`])
+      ),
+    },
+  };
+}
 
 export default async function Posts({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;

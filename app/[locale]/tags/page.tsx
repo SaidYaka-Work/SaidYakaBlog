@@ -1,7 +1,34 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getAllPosts } from '@/lib/posts';
-import { type Locale } from '@/lib/i18n/config';
+import { type Locale, locales } from '@/lib/i18n/config';
 import { getTranslation } from '@/lib/i18n/translations';
+import config from '@/config.json';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(locale, key);
+
+  return {
+    title: t('tags.title'),
+    description: t('tags.subtitle'),
+    authors: [{ name: config.author_name }],
+    openGraph: {
+      title: t('tags.title'),
+      description: t('tags.subtitle'),
+      url: `${config.base_url}/${locale}/tags`,
+      type: 'website',
+      locale: locale,
+      alternateLocale: locales.filter(l => l !== locale),
+    },
+    alternates: {
+      canonical: `${config.base_url}/${locale}/tags`,
+      languages: Object.fromEntries(
+        locales.map(l => [l, `${config.base_url}/${l}/tags`])
+      ),
+    },
+  };
+}
 
 export default async function TagsPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;

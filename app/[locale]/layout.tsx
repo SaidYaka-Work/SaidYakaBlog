@@ -4,7 +4,6 @@ import config from '@/config.json';
 import { locales, type Locale } from '@/lib/i18n/config';
 import { getTranslation } from '@/lib/i18n/translations';
 import Layout from '@/src/components/Layout';
-import HtmlLangSetter from '@/src/components/HtmlLangSetter';
 
 export async function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -57,7 +56,12 @@ export default async function LocaleLayout({
 
   return (
     <>
-      <HtmlLangSetter locale={locale} />
+      {/* Set lang attribute immediately via blocking script for SEO */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `document.documentElement.lang = '${locale}';`,
+        }}
+      />
       <Layout locale={locale}>
         {children}
         <Analytics />
