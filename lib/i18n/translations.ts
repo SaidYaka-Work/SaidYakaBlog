@@ -105,7 +105,6 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'nav.tags': 'Sujets',
     'nav.about': 'À propos',
     'nav.games': 'Jeux',
-    'nav.games': 'Jeux',
     'home.greeting': 'Salut, je suis',
     'home.subtitle': 'Bienvenue sur mon blog',
     'posts.title': 'Articles de blog',
