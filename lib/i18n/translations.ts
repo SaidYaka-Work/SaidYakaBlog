@@ -6,6 +6,7 @@ export type TranslationKey =
   | 'nav.home'
   | 'nav.posts'
   | 'nav.tags'
+  | 'nav.games'
   | 'nav.about'
   | 'home.greeting'
   | 'home.subtitle'
@@ -39,6 +40,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'nav.posts': 'Posts',
     'nav.tags': 'Tags',
     'nav.about': 'About',
+    'nav.games': 'Games',
     'home.greeting': 'Hi, I\'m',
     'home.subtitle': 'Welcome to my blog',
     'posts.title': 'Blog Posts',
@@ -70,6 +72,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'nav.posts': 'Beiträge',
     'nav.tags': 'Themen',
     'nav.about': 'Über mich',
+    'nav.games': 'Spiele',
     'home.greeting': 'Hallo, ich bin',
     'home.subtitle': 'Willkommen auf meinem Blog',
     'posts.title': 'Blog-Beiträge',
@@ -101,6 +104,8 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'nav.posts': 'Articles',
     'nav.tags': 'Sujets',
     'nav.about': 'À propos',
+    'nav.games': 'Jeux',
+    'nav.games': 'Jeux',
     'home.greeting': 'Salut, je suis',
     'home.subtitle': 'Bienvenue sur mon blog',
     'posts.title': 'Articles de blog',
@@ -132,6 +137,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'nav.posts': 'Yazılar',
     'nav.tags': 'Konular',
     'nav.about': 'Hakkımda',
+    'nav.games': 'Oyunlar',
     'home.greeting': 'Merhaba, ben',
     'home.subtitle': 'Bloguma hoş geldiniz',
     'posts.title': 'Blog Yazıları',
@@ -163,6 +169,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'nav.posts': '投稿',
     'nav.tags': 'タグ',
     'nav.about': 'について',
+    'nav.games': 'ゲーム',
     'home.greeting': 'こんにちは、私は',
     'home.subtitle': '私のブログへようこそ',
     'posts.title': 'ブログ投稿',

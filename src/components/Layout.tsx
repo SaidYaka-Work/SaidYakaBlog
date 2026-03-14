@@ -31,6 +31,10 @@ export default function Layout({ children, locale }: LayoutProps) {
                   {t('nav.tags')}
                   <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-gradient-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-center"></span>
                 </Link>
+                <Link href={`/${locale}/games`} className="text-lg text-gray-700 hover:text-accent-600 font-semibold transition-colors duration-200 relative group px-4 py-2">
+                  {t('nav.games')}
+                  <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-gradient-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-center"></span>
+                </Link>
                 <Link href={`/${locale}/about`} className="text-lg text-gray-700 hover:text-primary-600 font-semibold transition-colors duration-200 relative group px-4 py-2">
                   {t('nav.about')}
                   <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-gradient-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-center"></span>
