@@ -27,7 +27,11 @@ export default function HomeContent({ locale }: { locale: Locale }) {
           <Link href={`/${locale}/tags`} className="btn-secondary">
             {t('nav.tags')}
           </Link>
+          <Link href={`/${locale}/play`} className="btn-tertiary">
+            Play Click Rush
+          </Link>
         </div>
+        <p className="microcopy">Tiny arcade energy, hidden in plain sight.</p>
         <SocialList />
       </div>
       <style jsx>{`
@@ -80,7 +84,7 @@ export default function HomeContent({ locale }: { locale: Locale }) {
           justify-content: center;
           margin-bottom: 2.5rem;
         }
-        .btn-primary, .btn-secondary {
+        .btn-primary, .btn-secondary, .btn-tertiary {
           padding: 1rem 2.25rem;
           border-radius: 12px;
           font-size: 1.05rem;
@@ -119,6 +123,26 @@ export default function HomeContent({ locale }: { locale: Locale }) {
         .btn-secondary:active {
           transform: translateY(-1px);
         }
+        .btn-tertiary {
+          background: #0f172a;
+          color: #f8fafc;
+          border: 2px solid #0f172a;
+          box-shadow: 0 2px 10px 0 rgba(15, 23, 42, 0.18);
+        }
+        .btn-tertiary:hover {
+          transform: translateY(-3px);
+          background: #111827;
+          box-shadow: 0 10px 24px 0 rgba(15, 23, 42, 0.24);
+        }
+        .btn-tertiary:active {
+          transform: translateY(-1px);
+        }
+        .microcopy {
+          margin: -1rem 0 2.25rem;
+          color: #64748b;
+          font-size: 0.95rem;
+          letter-spacing: 0.01em;
+        }
 
         @media (min-width: 769px) {
           .title {
@@ -143,7 +167,7 @@ export default function HomeContent({ locale }: { locale: Locale }) {
             flex-direction: column;
             align-items: center;
           }
-          .btn-primary, .btn-secondary {
+          .btn-primary, .btn-secondary, .btn-tertiary {
             width: 100%;
             max-width: 280px;
           }
