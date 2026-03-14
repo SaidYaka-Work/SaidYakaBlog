@@ -1,0 +1,126 @@
+---
+slug: "building-agent-observability"
+title: "What Agent Observability Should Actually Show You"
+date: 2026-03-12
+author: Said Yaka
+tags:
+  - Agents
+  - Observability
+  - AI Engineering
+  - Tool Use
+  - Reliability
+description: "A practical view of agent observability: what to log, what to surface, and what teams need to understand before agents become trustworthy in production."
+canonical_url: "https://saidyaka.com/posts/building-agent-observability"
+keywords:
+  - agent observability
+  - AI agents
+  - tool tracing
+  - LLM reliability
+  - agent monitoring
+og_title: "What Agent Observability Should Actually Show You"
+og_description: "Good agent observability is about understanding decisions, state, and failure modes — not just watching tokens move."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+A lot of agent dashboards are visually impressive and operationally shallow.
+
+You see token counts. Tool names. Maybe a nice waterfall chart. But when an agent fails in a way that matters, the dashboard often cannot answer the real questions:
+- Why did it choose that tool?
+- What state was it acting on?
+- Where did it lose the thread?
+- Was this a bad model decision, bad tool design, or bad context?
+
+That is the difference between telemetry and observability.
+
+## The minimum useful unit is a decision step
+
+For agent systems, the key unit is not just a model call. It is a decision step.
+
+A useful trace should capture:
+- the user goal at that moment
+- the visible context
+- the candidate actions available
+- the action selected
+- the result returned
+- the updated state after the result
+
+Without state transitions, tool logs are incomplete. The agent did not just call a tool. It changed its mental model of the task.
+
+## You need more than success/failure
+
+The common binary labels are too blunt.
+
+I want to know whether a step was:
+- unnecessary
+- redundant
+- based on stale state
+- blocked by missing permissions
+- correct but low confidence
+- successful but expensive
+
+That lets you distinguish between reliability issues and efficiency issues. An agent that succeeds after twelve wasteful calls is not “healthy.” It is just lucky.
+
+## Show the dependency chain
+
+When a later step fails, the root cause is often earlier.
+
+Maybe the agent summarized a page incorrectly, then used that summary to plan, then called the wrong tool, then hit an error that looks unrelated. If your observability view cannot connect those dependencies, debugging becomes guesswork.
+
+A useful system should make it easy to see:
+- which earlier outputs informed the current step
+- which tool results were trusted
+- where the system compressed or summarized context
+- whether the state was inherited from another session or run
+
+## Human-readable failure summaries matter
+
+Engineers need raw traces, but product teams need understandable summaries.
+
+Every failed run should produce a short explanation in plain language:
+- what the agent tried to do
+- where it got blocked
+- whether retrying is likely to help
+- what human action would unblock it
+
+That kind of summary dramatically shortens triage time. It also makes agents easier to operate across engineering, product, and support teams.
+
+## Tool observability needs semantics
+
+Logging “tool X called at timestamp Y” is not enough.
+
+You need semantic visibility:
+- what arguments were passed
+- whether they matched the user’s intent
+- whether the tool returned valid structure
+- whether the result actually answered the step’s need
+
+A tool can succeed technically and still fail functionally. That distinction needs to be visible.
+
+## Cost and trust should be first-class metrics
+
+For production agents, I care deeply about two non-functional dimensions:
+- **cost-to-completion**
+- **trust-to-completion**
+
+Cost tells you whether the workflow scales.
+Trust tells you whether users will come back.
+
+Trust is harder, but there are proxies:
+- unsupported claims
+- silent no-ops
+- repeated tool loops
+- user corrections after completion
+- escalation rates
+
+If your observability stack ignores trust, you are only monitoring infrastructure, not product quality.
+
+## The end goal
+
+Agent observability should help you answer one question clearly:
+
+**Did the system make good decisions with the information it had?**
+
+If the answer is no, the trace should help you see whether the fix belongs in prompts, memory, tool design, orchestration, or permissions.
+
+That is when observability stops being a pretty dashboard and becomes an engineering tool.

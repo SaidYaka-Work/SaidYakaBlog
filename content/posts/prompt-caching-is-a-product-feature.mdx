@@ -1,0 +1,107 @@
+---
+slug: "prompt-caching-is-a-product-feature"
+title: "Prompt Caching Is a Product Feature, Not Just an Infra Trick"
+date: 2026-03-13
+author: Said Yaka
+tags:
+  - Prompt Caching
+  - LLMs
+  - AI Engineering
+  - Performance
+  - Product Design
+description: "Why prompt caching changes latency, cost, and product design decisions — and why teams should treat it as a user-facing capability."
+canonical_url: "https://saidyaka.com/posts/prompt-caching-is-a-product-feature"
+keywords:
+  - prompt caching
+  - LLM latency
+  - AI cost optimization
+  - cached prompts
+  - model performance
+og_title: "Prompt Caching Is a Product Feature"
+og_description: "Prompt caching affects speed, reliability, and UX more than most teams realize."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+When people talk about prompt caching, they usually frame it as infrastructure optimization. Lower costs. Lower latency. Fewer repeated tokens. All true.
+
+But the more interesting part is this: prompt caching changes the kind of product you can build.
+
+Once you have a reliable way to reuse large, stable prompt prefixes, you stop thinking only about how to save money. You start thinking about how to create richer, more responsive experiences without paying the full cost every turn.
+
+## Why it matters in practice
+
+Many modern AI products have a large static context:
+- tool schemas
+- policy instructions
+- company knowledge
+- workspace context
+- conversation summaries
+- long system prompts
+
+Without caching, every request drags that full payload through the model again. That increases latency and cost, but it also shapes product behavior. Teams become conservative. They remove useful context to stay cheap. They shorten instructions. They avoid rich interactions.
+
+Caching changes that tradeoff.
+
+If the stable part of the prompt can be reused, suddenly you can afford to keep more of the product’s brain attached.
+
+## It affects user experience directly
+
+Here is the important shift: users feel prompt caching even if they never hear the term.
+
+They feel it when:
+- an agent responds faster on the second and third turn
+- a tool-rich workflow remains snappy
+- a long-lived session keeps context without becoming painfully expensive
+- a product can afford better guidance and more reliable behavior
+
+That is not just infrastructure. That is UX.
+
+## The best products design for cache boundaries
+
+The strongest AI products do not treat cache hits as luck. They design for them.
+
+That means separating prompts into layers:
+- **stable foundation**: policy, persona, tool definitions, domain rules
+- **session context**: summaries, thread memory, workspace state
+- **volatile request data**: the immediate task, new tool results, fresh user input
+
+This structure helps you preserve what should be reused while minimizing what invalidates the cache.
+
+It also makes the system easier to reason about. When latency spikes, you can inspect which layer changed.
+
+## Caching rewards discipline
+
+Prompt caching exposes messy prompt design. If your system prompt changes every request because you are injecting timestamps, random ordering, or unstable metadata, your cache hit rate collapses.
+
+That is not just a technical problem. It is a signal that your prompt architecture is too chaotic.
+
+Stable prompts tend to come from stable product thinking:
+- clear role definitions
+- predictable tool interfaces
+- deliberate state management
+- small volatile deltas per turn
+
+## There is also a trust angle
+
+Cheaper tokens are nice, but stable prompts also help with behavioral consistency. If the model sees the same core operating instructions every time, you reduce accidental drift.
+
+That matters in enterprise workflows, customer support, and agentic systems where slight changes in framing can produce very different outcomes.
+
+A product that feels consistent is often a product whose prompt structure is disciplined enough to cache well.
+
+## What teams should do now
+
+If you are building LLM products, I would treat caching as part of product strategy, not just infra tuning.
+
+Ask:
+- what part of our prompt is stable across turns?
+- what part really needs to change?
+- are we invalidating caches with avoidable noise?
+- could we afford better context if reuse were designed in from the start?
+
+The teams that do this well will not just have lower inference bills. They will build products that feel faster, smarter, and more coherent.
+
+That is why prompt caching is not just an optimization trick.
+
+It is a product feature hiding inside the architecture.

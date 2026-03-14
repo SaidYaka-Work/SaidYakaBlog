@@ -1,0 +1,128 @@
+---
+slug: "rag-evals-that-catch-regressions"
+title: "RAG Evaluations That Actually Catch Regressions"
+date: 2026-03-14
+author: Said Yaka
+tags:
+  - RAG
+  - AI Engineering
+  - Evaluation
+  - LLMs
+  - Product Quality
+description: "A practical framework for building retrieval and answer-quality evaluations that catch real regressions instead of producing vanity metrics."
+canonical_url: "https://saidyaka.com/posts/rag-evals-that-catch-regressions"
+keywords:
+  - RAG evaluation
+  - retrieval quality
+  - LLM regression testing
+  - AI evals
+  - answer grounding
+og_title: "RAG Evaluations That Actually Catch Regressions"
+og_description: "How to build evals for retrieval systems that reveal failure modes before users do."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+The hardest part of shipping a retrieval-augmented generation system is not getting the first version live. It is knowing when the next change quietly made it worse.
+
+That is why most RAG teams eventually run into the same problem: the system looks fine in demos, but quality drifts in production. Search ranking changes. Chunking shifts. A prompt update improves one use case and hurts another. If your evaluation setup is weak, you learn this from angry users instead of your pipeline.
+
+## What most teams measure first
+
+Most RAG stacks start with a handful of easy metrics:
+- top-k retrieval overlap
+- latency
+- token usage
+- thumbs-up rate
+- maybe a generic “answer correctness” score from another model
+
+These are useful, but they are not enough.
+
+A retrieval system can return the “right” document IDs while still surfacing the wrong passage. A model can produce fluent answers that are structurally wrong. And a thumbs-up metric is usually too slow and too noisy to guide iteration.
+
+## The evaluation stack I actually trust
+
+I think about RAG quality in four layers:
+
+### 1. Retrieval relevance
+Did the system fetch the passages that matter?
+
+This is not just document-level recall. It is passage-level usefulness. For a given question, I want to know whether the retrieved chunks contain the evidence required to answer correctly.
+
+A simple rubric helps:
+- **Fully supporting**: enough evidence to answer confidently
+- **Partially supporting**: related, but incomplete
+- **Distracting**: topically similar, not actually useful
+- **Wrong**: irrelevant or misleading
+
+That grading forces you to look at retrieval as support for generation, not as a leaderboard problem.
+
+### 2. Groundedness
+Did the answer stay inside the retrieved evidence?
+
+Groundedness matters because many bad RAG systems retrieve good evidence and then answer beyond it. That creates confident fiction. If a system makes an unsupported claim, I want the eval to catch it even if the final answer “sounds right.”
+
+A groundedness review should ask:
+- which claims are directly supported?
+- which claims are inferred but reasonable?
+- which claims are invented?
+
+### 3. Task completion
+Did the answer do the user’s job?
+
+This is the most overlooked layer. A response can be technically grounded and still unhelpful. If the user asked for a comparison, and the model returned a wall of notes, the task was not completed.
+
+Task completion rubrics vary by workflow:
+- support answers may need directness and resolution
+- internal search may need citation fidelity
+- analyst tools may need completeness and structure
+
+### 4. Failure severity
+How bad is the miss?
+
+Not every mistake matters equally. A formatting issue and a fabricated policy statement should not carry the same weight. Good evals score severity, not just pass/fail.
+
+I like a simple severity scheme:
+- **Low**: awkward or incomplete, but safe
+- **Medium**: meaningfully unhelpful
+- **High**: misleading or trust-damaging
+- **Critical**: unsafe, fabricated, or escalatory
+
+## Build benchmark sets around real user intents
+
+The strongest eval suites are built from real questions users ask, not synthetic prompts invented in a vacuum. Start by collecting production queries and cluster them by intent:
+- factual lookup
+- summarization
+- comparison
+- policy retrieval
+- edge-case ambiguity
+
+Then make sure your eval set contains:
+- easy wins
+- ambiguous cases
+- adversarial wording
+- outdated references
+- near-duplicate concepts that commonly confuse retrieval
+
+That mix gives you a benchmark that feels like product reality, not benchmark theater.
+
+## Use model judges carefully
+
+LLM judges are useful accelerators, but they should not be treated as truth machines. They are best for narrowing review queues, triaging failures, and scoring with well-defined rubrics.
+
+They are weakest when asked vague questions like “is this good?”
+
+The more precise the rubric, the more useful the judge:
+- identify unsupported claims
+- check whether cited passages answer the question
+- compare answer coverage against a reference
+
+Human review is still necessary for high-stakes categories.
+
+## What a good eval loop changes
+
+A good eval loop changes team behavior. It makes experiments cheaper. It gives product, engineering, and research a shared language. It reduces arguments based on vibes.
+
+The goal is not to build perfect metrics. The goal is to build a system that notices when trust is slipping.
+
+That is what catches regressions before your users do.

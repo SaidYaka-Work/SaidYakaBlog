@@ -1,0 +1,99 @@
+---
+slug: "synthetic-data-for-llm-evals"
+title: "Synthetic Data for LLM Evals: Useful, but Easy to Abuse"
+date: 2026-03-07
+author: Said Yaka
+tags:
+  - Synthetic Data
+  - Evaluation
+  - LLMs
+  - AI Engineering
+  - Testing
+description: "Synthetic data can speed up AI evaluation pipelines, but only if it is used with strong guardrails and real-world calibration."
+canonical_url: "https://saidyaka.com/posts/synthetic-data-for-llm-evals"
+keywords:
+  - synthetic data evals
+  - LLM testing
+  - AI evaluation datasets
+  - generated benchmarks
+  - model quality
+og_title: "Synthetic Data for LLM Evals"
+og_description: "Generated eval sets can be powerful accelerants, but they should never replace real production data."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+Synthetic data is one of the most useful accelerants in AI engineering, and one of the easiest ways to fool yourself.
+
+It helps teams scale evaluation coverage quickly. You can generate variants, edge cases, adversarial inputs, and structured labels much faster than doing everything by hand.
+
+But synthetic data only works when you remember what it is: a tool for expansion, not a substitute for reality.
+
+## Where it helps most
+
+Synthetic evaluation data is genuinely valuable for:
+- paraphrase expansion
+- formatting variants
+- edge-case generation
+- multilingual adaptation
+- stress-testing tool schemas
+- covering rare but plausible failure patterns
+
+These are all areas where human-authored sets tend to be too small.
+
+## Where teams go wrong
+
+The most common mistake is using synthetic data as the primary benchmark without calibrating it against real user behavior.
+
+That creates a dangerous loop:
+1. you use a model to generate examples
+2. you optimize against those examples
+3. the system gets better at the style of the generator
+4. you think quality improved more than it actually did
+
+You end up overfitting to model-shaped problems rather than user-shaped problems.
+
+## The fix is simple in theory
+
+Synthetic sets should be anchored to reality.
+
+That means they should be generated from:
+- real production queries
+- real document structures
+- real edge cases observed in logs
+- real policy conflicts or confusing examples
+
+In other words, start from reality and expand outward. Do not start from imagination and hope it maps back.
+
+## Use synthetic data to widen, not define
+
+I like to think of benchmark construction in two layers:
+- **core set**: real human-derived examples that define truth
+- **expansion set**: synthetic examples that widen coverage
+
+The core set keeps you honest.
+The expansion set helps you move faster.
+
+If the expansion set starts disagreeing with the core set too often, that is a sign the generator is drifting away from your product reality.
+
+## Judges matter too
+
+Another trap is using the same family of models to generate data, label it, and evaluate it. That creates correlated bias.
+
+Whenever possible, mix sources:
+- human-written seeds
+- model-generated variants
+- rubric-based checks
+- periodic human audits
+
+The more independent the signals, the harder it is for the system to game itself.
+
+## What good synthetic data looks like
+
+Good synthetic data should feel boringly plausible.
+
+It should look like something a real user could do, not like a benchmark engineer showing off. It should preserve ambiguity, inconsistency, and messiness where appropriate.
+
+The best synthetic datasets do not feel synthetic when you review them.
+
+That is the bar.

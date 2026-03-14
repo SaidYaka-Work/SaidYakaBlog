@@ -1,0 +1,121 @@
+---
+slug: "how-i-think-about-model-routing"
+title: "How I Think About Model Routing in Production"
+date: 2026-03-10
+author: Said Yaka
+tags:
+  - Model Routing
+  - LLMs
+  - AI Engineering
+  - Inference
+  - Cost Optimization
+description: "A practical way to think about model routing across cheap, fast, and strong models without turning your stack into a chaotic science project."
+canonical_url: "https://saidyaka.com/posts/how-i-think-about-model-routing"
+keywords:
+  - model routing
+  - LLM cost optimization
+  - inference strategy
+  - AI orchestration
+  - dynamic model selection
+og_title: "How I Think About Model Routing in Production"
+og_description: "Routing models well is not about using the fanciest model everywhere. It is about matching capability to task."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+If you are building serious AI products, the answer is almost never “use the biggest model for everything.”
+
+That is too expensive, too slow, and often unnecessary.
+
+But the opposite mistake is just as common: teams route aggressively for cost savings and create a brittle maze of heuristics that nobody fully understands.
+
+Good model routing lives somewhere in the middle.
+
+## Start with task classes, not models
+
+I do not start by asking which model is best. I start by asking what kinds of tasks exist in the product.
+
+Usually they break down into categories like:
+- simple extraction
+- classification
+- summarization
+- retrieval-grounded answering
+- structured transformation
+- reasoning-heavy planning
+- high-stakes final responses
+
+Once those task classes are clear, routing becomes much easier. You match capability to task instead of treating every request like an isolated puzzle.
+
+## Use confidence signals, but keep them boring
+
+Some routing systems become overly clever. They stack classifiers on top of judges on top of uncertainty estimators and end up harder to trust than the model calls themselves.
+
+I prefer a smaller set of confidence signals:
+- retrieval confidence
+- input complexity
+- presence of tools required
+- expected output format strictness
+- user importance tier
+- fallback history for the session
+
+That usually gives enough signal to route well without creating a black box.
+
+## Escalation is more important than initial routing
+
+Initial routing matters, but escalation design matters more.
+
+A strong routing system knows when to admit:
+- this answer is under-specified
+- the cheap model is drifting
+- the tool output is messy
+- the user is asking for something high-risk
+
+That is when you move up to a stronger model.
+
+The goal is not to perfectly predict the best model every time. The goal is to fail gracefully and escalate intelligently.
+
+## Latency is part of quality
+
+Teams often compare models only on benchmark quality, but users experience quality as a combination of:
+- usefulness
+- consistency
+- latency
+- cost-driven availability
+
+A model that is slightly smarter but consistently slower can be worse for many product surfaces. If the task is lightweight, the fastest model that reliably clears the bar often wins.
+
+## Keep the routing layer legible
+
+One of my strongest preferences is that routing logic should be explainable to a human reading the codebase. If no one can describe why model A was selected over model B, the system will decay.
+
+I like routing policies that read almost like prose:
+- use fast model for extraction and lightweight transforms
+- escalate to stronger model for planning or ambiguity
+- use strongest model for user-facing finalization in high-stakes workflows
+
+That kind of legibility makes incidents easier to debug and changes safer to ship.
+
+## Measure route quality, not just model quality
+
+A route can fail even when the underlying models are good.
+
+Track:
+- first-pass success rate by route
+- escalation rate by route
+- cost per completed task
+- latency by route
+- user correction rate after route selection
+
+Those metrics tell you whether the routing layer is doing useful work or just adding complexity.
+
+## My default principle
+
+I try to reserve the strongest models for moments where they create visible user value:
+- difficult reasoning
+- delicate writing
+- ambiguous planning
+- final outputs where trust matters most
+
+Everything else should be handled by the simplest model that can do the job well.
+
+That is how routing becomes a product advantage instead of just an inference spreadsheet trick.

@@ -1,0 +1,91 @@
+---
+slug: "mcp-is-the-missing-ui-for-agents"
+title: "MCP Feels Like the Missing UI Layer for Agents"
+date: 2026-03-09
+author: Said Yaka
+tags:
+  - MCP
+  - Agents
+  - Tool Use
+  - AI Engineering
+  - Developer Experience
+description: "Why the Model Context Protocol matters: it gives agents a cleaner way to discover tools, carry context, and interact with software systems."
+canonical_url: "https://saidyaka.com/posts/mcp-is-the-missing-ui-for-agents"
+keywords:
+  - MCP
+  - model context protocol
+  - agent tools
+  - AI developer tools
+  - agent interoperability
+og_title: "MCP Feels Like the Missing UI Layer for Agents"
+og_description: "MCP makes tools feel discoverable and composable in a way ad hoc integrations usually do not."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+A lot of the excitement around agents focuses on reasoning. I think a lot of the real progress is happening somewhere less glamorous: interface design.
+
+That is why MCP is interesting.
+
+The Model Context Protocol is not magic. It does not make models smarter by itself. What it does is give tools and context a more consistent shape. And for agent systems, that matters a lot.
+
+## The old way is messy
+
+Without a common protocol, tool integration tends to sprawl.
+
+Every platform invents its own conventions for:
+- listing tools
+- describing arguments
+- exposing results
+- handling state
+- passing files and references
+
+The model can still use those tools, but every integration becomes bespoke. That slows experimentation and makes debugging harder.
+
+## What MCP changes
+
+MCP makes tools feel more legible.
+
+A model or agent can discover:
+- what tools exist
+- what they do
+- what inputs they expect
+- what outputs they return
+
+That sounds obvious, but it is a huge improvement over hidden glue code and prompt-only conventions.
+
+In practice, it makes agent systems more composable. Tools start to feel like reusable capabilities instead of one-off hacks.
+
+## Why I think of it as a UI layer
+
+Traditional UIs exist to help humans understand what actions are available.
+
+MCP does something similar for models. It presents affordances in a structured way. It reduces ambiguity. It creates consistency in how actions are described and invoked.
+
+That is why I think it matters. Agents do not just need intelligence. They need well-shaped surfaces to act on.
+
+## This matters for reliability too
+
+When tool definitions are clearer, a few good things happen:
+- argument mistakes drop
+- tool selection becomes more predictable
+- orchestration layers become easier to inspect
+- product teams can reason about capability boundaries
+
+It also becomes easier to swap components without rewriting everything around them.
+
+## The bigger picture
+
+I do not think the long-term winners in agent systems will be the ones with the most elaborate demos. I think they will be the teams that make agency operationally boring.
+
+That means:
+- standard interfaces
+- understandable state
+- clean tool discovery
+- fewer invisible assumptions
+
+MCP helps move the ecosystem in that direction.
+
+It is not the whole answer. But it does feel like a missing layer that a lot of agent stacks have been quietly improvising around.
+
+And when a protocol removes improvisation from the stack, things usually get much easier to build.

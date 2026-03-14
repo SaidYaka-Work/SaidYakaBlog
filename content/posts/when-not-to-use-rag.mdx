@@ -1,0 +1,97 @@
+---
+slug: "when-not-to-use-rag"
+title: "When Not to Use RAG"
+date: 2026-03-08
+author: Said Yaka
+tags:
+  - RAG
+  - AI Engineering
+  - System Design
+  - LLMs
+  - Product Strategy
+description: "RAG is powerful, but it is not a default answer to every AI product problem. Here are the cases where I would avoid it or simplify it."
+canonical_url: "https://saidyaka.com/posts/when-not-to-use-rag"
+keywords:
+  - when not to use RAG
+  - retrieval augmented generation
+  - LLM architecture
+  - AI system design
+  - search vs fine-tuning
+og_title: "When Not to Use RAG"
+og_description: "RAG is great for many workflows, but using it everywhere creates unnecessary complexity."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+RAG became the default answer to a lot of AI product questions because it solves a real problem: models do not know your data by default.
+
+But like most useful patterns, it became over-applied.
+
+I have seen teams add retrieval pipelines where a static prompt would have worked, where structured APIs would have worked better, or where the product problem was not actually about knowledge access at all.
+
+## Do not use RAG when the source of truth is structured
+
+If your data already lives in a structured system — a database, an API, a form backend — retrieval over text might be the wrong abstraction.
+
+In those cases, it is often better to:
+- query the source directly
+- transform the result into a model-friendly format
+- ask the model to explain or summarize it
+
+You do not need semantic search to look up a user balance or order status.
+
+## Do not use RAG when the domain is tiny and stable
+
+If the information set is small, stable, and easy to embed directly in prompts, RAG may add more complexity than value.
+
+A retrieval layer introduces:
+- indexing
+- chunking
+- ranking
+- caching
+- eval complexity
+- grounding checks
+
+If the knowledge base is basically a short manual, a static context block may be enough.
+
+## Do not use RAG to hide unclear product design
+
+Sometimes teams say they need RAG when what they really need is to define the task more clearly.
+
+If the product cannot answer:
+- what users are trying to do
+- what “good” looks like
+- what source should win when data conflicts
+
+then retrieval will not save it. It will just make the failure mode more expensive.
+
+## Do not use RAG when precision requirements are database-level
+
+There are workflows where fuzzy retrieval is the wrong tool. If the answer must be exact and deterministic, semantic similarity can become a liability.
+
+Examples:
+- compliance lookups with exact clause requirements
+- pricing calculations
+- critical operational actions
+- anything where approximate context is dangerous
+
+Those systems should rely on exact logic first and natural language second.
+
+## Use RAG where context discovery is the real problem
+
+RAG shines when users need help finding the right context inside a large corpus:
+- policies
+- documentation
+- research archives
+- support knowledge bases
+- internal company knowledge
+
+That is where retrieval creates leverage.
+
+The point is not that RAG is overhyped. It is that architecture should match the shape of the problem.
+
+If the real problem is lookup, use lookup.
+If the real problem is reasoning over large messy text, use retrieval.
+If the real problem is workflow design, fix the workflow.
+
+That distinction saves a lot of wasted engineering.
