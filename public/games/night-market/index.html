@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Night Market Scramble — Mini Game</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="wrap">
+    <h1>Night Market Scramble</h1>
+    <div class="hud">
+      <div>Score: <span id="score">0</span></div>
+      <div>Time: <span id="time">30</span>s</div>
+      <button id="start">Start</button>
+    </div>
+    <canvas id="game" width="640" height="360"></canvas>
+    <p class="hint">Collect lanterns (click/tap or press Space). Surprise: every 10 points the market changes color.</p>
+    <p class="credit">Built for SaidYakaBlog — enjoy.</p>
+  </div>
+<script src="./game.js"></script>
+</body>
+</html>
