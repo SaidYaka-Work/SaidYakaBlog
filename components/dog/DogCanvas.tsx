@@ -2,12 +2,28 @@
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Suspense, useEffect, useRef, useState, type RefObject } from 'react';
-import { PerspectiveCamera, Vector3, type Group } from 'three';
+import { PerspectiveCamera, Vector3, type Group, type Mesh } from 'three';
 import type { DogGenome, LifeStage } from '@/lib/dog';
 import type { PortraitReaction } from './look';
 import { CAMERA_YAW, frameCamera, followYardCamera, projectMeshBounds } from './frame';
 import DogRig, { type DriveControl } from './DogRig';
 import PorchWorld from './PorchWorld';
+
+function FootShadow({ target }: { target: RefObject<Group | null> }) {
+  const ref = useRef<Mesh>(null);
+  useFrame(() => {
+    const dog = target.current;
+    const shadow = ref.current;
+    if (!dog || !shadow) return;
+    shadow.position.set(dog.position.x, 0.012, dog.position.z);
+  });
+  return (
+    <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2}>
+      <circleGeometry args={[0.3, 24]} />
+      <meshBasicMaterial color="#1c120c" transparent opacity={0.52} depthWrite={false} />
+    </mesh>
+  );
+}
 
 function EmptyReady({ onReady }: { onReady?: () => void }) {
   const notified = useRef(false);
@@ -56,7 +72,7 @@ function FramedCamera({
       if (!info) return;
       look.current.set(info.center.x, info.lookY, info.center.z);
       if (ready.current) {
-        camera.position.lerpVectors(from.current, info.desired, 1 - Math.exp(-dt * 3.4));
+        camera.position.lerpVectors(from.current, info.desired, 1 - Math.exp(-dt * 1.8));
         camera.up.set(0, 1, 0);
         camera.lookAt(look.current);
         camera.updateProjectionMatrix();
@@ -78,7 +94,7 @@ function FramedCamera({
       camera.lookAt(info.center.x, info.center.y, info.center.z);
       camera.updateProjectionMatrix();
       if (ready.current) {
-        camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 4));
+        camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 2.2));
         camera.up.set(0, 1, 0);
         camera.lookAt(info.center.x, info.center.y, info.center.z);
         camera.updateProjectionMatrix();
@@ -221,6 +237,7 @@ export default function DogCanvas({
               roomy={fill}
             />
           )}
+          {!empty && fill && <FootShadow target={dogRef} />}
           {!empty && (
             <FramedCamera
               target={dogRef}

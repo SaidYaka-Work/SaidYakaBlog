@@ -6,7 +6,8 @@ export const WALK_SPEED = 1.35;
 export const RUN_SPEED = 2.6;
 export const ACCEL = 7.2;
 export const DECEL = 9.5;
-export const YAW_TURN = 9;
+export const YAW_TURN = 4.6;
+export const TURN_ALIGN = 0.18;
 export const MOVE_MIN_MS = 70;
 export const MOVE_DT_MAX = 0.18;
 export const LEASH_IDLE_MS = 5_000;
@@ -174,9 +175,19 @@ export function nearBed(x: number, z: number) {
   return Math.hypot(x - BED.x, z - BED.z) <= BED.radius + 0.12;
 }
 
-export function gaitFromSpeed(speed: number, run: boolean): Gait {
+export function wrapAngle(value: number) {
+  let next = value;
+  while (next > Math.PI) next -= Math.PI * 2;
+  while (next < -Math.PI) next += Math.PI * 2;
+  return next;
+}
+
+export function gaitFromSpeed(speed: number, run: boolean, prev: Gait = 'idle'): Gait {
+  if (speed < 0.08) return 'idle';
+  if (prev === 'idle' && speed < 0.2) return 'idle';
+  if (prev === 'walk' && speed < 0.14) return 'walk';
+  if (run && (speed > WALK_SPEED * 0.92 || (prev === 'run' && speed > WALK_SPEED * 0.64))) return 'run';
   if (speed < 0.12) return 'idle';
-  if (run && speed > WALK_SPEED * 0.85) return 'run';
   return 'walk';
 }
 
@@ -188,24 +199,26 @@ export function integratePose(
   dt: number,
 ): { pose: Pose; meters: number } {
   const input = normalizeInput(ax, az);
-  const top = run ? RUN_SPEED : WALK_SPEED;
-  const tx = input.ax * top;
-  const tz = input.az * top;
   const moving = input.mag > 0.08;
-  const rate = moving ? ACCEL : DECEL;
-  const vx = pose.vx + (tx - pose.vx) * Math.min(1, rate * dt);
-  const vz = pose.vz + (tz - pose.vz) * Math.min(1, rate * dt);
-  const next = slide(pose.x, pose.z, pose.x + vx * dt, pose.z + vz * dt);
-  const meters = Math.hypot(next.x - pose.x, next.z - pose.z);
   let yaw = pose.yaw;
+  let aligned = 1;
   if (moving) {
     const want = headingYaw(input.ax, input.az);
-    let diff = want - yaw;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    while (diff < -Math.PI) diff += Math.PI * 2;
-    yaw += diff * Math.min(1, YAW_TURN * dt);
+    const diff = wrapAngle(want - yaw);
+    const step = clamp(diff, -YAW_TURN * dt, YAW_TURN * dt);
+    yaw += step;
+    aligned = Math.cos(wrapAngle(want - yaw));
   }
-  const speed = Math.hypot(vx, vz);
+  const turnInPlace = moving && aligned < TURN_ALIGN;
+  const top = (run ? RUN_SPEED : WALK_SPEED) * input.mag;
+  const target = !moving || turnInPlace ? 0 : top * Math.max(0.28, aligned);
+  const current = Math.hypot(pose.vx, pose.vz);
+  const rate = target > current ? ACCEL : DECEL;
+  const speed = current + (target - current) * Math.min(1, rate * dt);
+  const vx = Math.sin(yaw) * speed;
+  const vz = Math.cos(yaw) * speed;
+  const next = slide(pose.x, pose.z, pose.x + vx * dt, pose.z + vz * dt);
+  const meters = Math.hypot(next.x - pose.x, next.z - pose.z);
   return {
     meters,
     pose: {
@@ -214,9 +227,40 @@ export function integratePose(
       yaw,
       vx,
       vz,
-      gait: gaitFromSpeed(speed, run),
+      gait: gaitFromSpeed(speed, run, pose.gait),
     },
   };
+}
+
+/** Steer around circular props instead of walking into them. */
+export function steerToward(x: number, z: number, tx: number, tz: number) {
+  let ax = tx - x;
+  let az = tz - z;
+  const dist = Math.hypot(ax, az);
+  if (dist < 1e-4) return { ax: 0, az: 0 };
+  ax /= dist;
+  az /= dist;
+  const look = 0.62;
+  const aheadX = x + ax * look;
+  const aheadZ = z + az * look;
+  const hit = collide(aheadX, aheadZ);
+  if (Math.hypot(hit.x - aheadX, hit.z - aheadZ) < 0.05) return { ax, az };
+  const left = { ax: -az, az: ax };
+  const right = { ax: az, az: -ax };
+  const probe = (dir: { ax: number; az: number }) => {
+    const px = x + dir.ax * look;
+    const pz = z + dir.az * look;
+    const placed = collide(px, pz);
+    const free = Math.hypot(placed.x - px, placed.z - pz) < 0.05;
+    const closer = Math.hypot(tx - (x + dir.ax), tz - (z + dir.az));
+    return { free, closer, dir };
+  };
+  const l = probe(left);
+  const r = probe(right);
+  if (l.free && r.free) return l.closer <= r.closer ? l.dir : r.dir;
+  if (l.free) return l.dir;
+  if (r.free) return r.dir;
+  return { ax, az };
 }
 
 export function pruneCooldowns(map: Record<string, number>, now: number) {
@@ -466,8 +510,9 @@ export function tickYardAi(
   let feeder = current.feeder;
 
   if ((mode === 'wander' || mode === 'feeder' || mode === 'bed') && !arrive) {
-    const steer = dist > 0 ? { ax: dx / dist, az: dz / dist } : { ax: 0, az: 0 };
-    const stepped = integratePose(pose, steer.ax, steer.az, false, clamp(dt, 0, 0.25));
+    const steer = steerToward(pose.x, pose.z, tx, tz);
+    const sprint = mode === 'wander' && dist > 1.6 && Math.floor(until / 1800) % 9 === 0;
+    const stepped = integratePose(pose, steer.ax, steer.az, sprint, clamp(dt, 0, 0.25));
     pose = stepped.pose;
   } else if (mode === 'feeder' && (arrive || nearFeeder(pose.x, pose.z))) {
     current = startEating(current, now);

@@ -41,8 +41,8 @@ export const CLIPS: Record<string, string[]> = {
   eat: ['Eating', 'Eat'],
   walk: ['Walk', 'Walking'],
   trot: ['Gallop'],
-  pet: ['Gallop_Jump', 'Jump'],
-  recover: ['Jump_ToIdle'],
+  pet: ['Idle_2', 'Idle'],
+  recover: ['Idle'],
 };
 
 export function clipForReaction(reaction: PortraitReaction, sad: boolean, asleep: boolean) {
