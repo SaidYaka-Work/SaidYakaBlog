@@ -4,13 +4,13 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import { SkeletonUtils } from 'three-stdlib';
-import { AnimationMixer, LoopOnce, LoopRepeat, Mesh, MeshStandardMaterial, TorusGeometry } from 'three';
+import { AnimationMixer, LoopOnce, LoopRepeat, Mesh, MeshStandardMaterial, TorusGeometry, Vector3 } from 'three';
 import type { AnimationAction, Group, Object3D } from 'three';
 import { generateGenome, type DogGenome, type LifeStage } from '@/lib/dog';
 import { wagMs, type PortraitReaction } from './look';
 import type { DogGait, DogPose } from '@/lib/dog';
 import { applyDrive as stepDrive, createYard } from '../../workers/dog/src/room';
-import { EAT_STAND, EAT_YAW, SLEEP_ROLL, SLEEP_YAW, THREE_QUARTER_YAW, groundToFloor } from './frame';
+import { EAT_STAND, EAT_YAW, SLEEP_ROLL, SLEEP_YAW, THREE_QUARTER_YAW, YARD_BODY, groundToFloor } from './frame';
 import {
   applyDogLook,
   applyMoodBones,
@@ -57,6 +57,7 @@ const DogRig = forwardRef<Group, {
   reduced?: boolean;
   interactive?: boolean;
   drive?: DriveControl | null;
+  roomy?: boolean;
 }>(function DogRig(
   {
     genome,
@@ -69,6 +70,7 @@ const DogRig = forwardRef<Group, {
     reduced = false,
     interactive = false,
     drive = null,
+    roomy = false,
   },
   ref,
 ) {
@@ -93,11 +95,16 @@ const DogRig = forwardRef<Group, {
   useEffect(() => {
     const colors = applyDogLook(scene, genes, stage, { asleep }).colors;
     const neck = findBone(scene, 'Neck1');
-    if (neck && !neck.getObjectByName('Collar')) {
+    if (neck && !roomy && !neck.getObjectByName('Collar')) {
       const collar = new Mesh(new TorusGeometry(0.16, 0.03, 8, 18), new MeshStandardMaterial({ color: colors.accessory, roughness: 0.45 }));
       collar.name = 'Collar';
       collar.rotation.x = Math.PI / 2;
       collar.position.y = 0.02;
+      neck.updateWorldMatrix(true, false);
+      const boneScale = new Vector3();
+      neck.getWorldScale(boneScale);
+      const compensate = 1 / Math.max(0.08, (boneScale.x + boneScale.y + boneScale.z) / 3);
+      if (Number.isFinite(compensate) && compensate < 8) collar.scale.setScalar(compensate);
       neck.add(collar);
     }
     const mixer = new AnimationMixer(scene);
@@ -114,7 +121,7 @@ const DogRig = forwardRef<Group, {
       mixer.stopAllAction();
       mixerRef.current = null;
     };
-  }, [asleep, genes, gltf.animations, scene, stage]);
+  }, [asleep, genes, gltf.animations, roomy, scene, stage]);
 
   const play = useCallback((key: string, once = false) => {
     const mixer = mixerRef.current;
@@ -274,7 +281,8 @@ const DogRig = forwardRef<Group, {
     const breathe = lieDown && !reduced ? Math.sin((performance.now() / 1000) * 1.7) * 0.03 : 0;
     node.position.set(w.x, 0, w.z);
     node.rotation.set(0, w.yaw, lieDown ? SLEEP_ROLL : 0);
-    node.scale.set(figure.body * (1 + breathe), figure.body, figure.body * figure.length);
+    const yard = roomy ? YARD_BODY[stage] ?? 1 : 1;
+    node.scale.set(figure.body * yard * (1 + breathe), figure.body * yard, figure.body * yard * figure.length);
 
     const wag = asleep || sad || lieDown ? 0 : (performance.now() / 1000) * (1000 / Math.max(180, wagMs(happiness, asleep, sad))) * Math.PI * 2;
     applyMoodBones(scene, {

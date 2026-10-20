@@ -1,5 +1,17 @@
 import { Bone, BoxGeometry, Group, Mesh, PerspectiveCamera } from 'three';
-import { BOWL, EAT_STAND, EAT_YAW, frameCamera, groundToFloor, meshBounds, projectMeshBounds, SLEEP_ROLL } from '../components/dog/frame.ts';
+import {
+  BOWL,
+  EAT_STAND,
+  EAT_YAW,
+  followYardCamera,
+  frameCamera,
+  groundToFloor,
+  meshBounds,
+  projectMeshBounds,
+  SLEEP_ROLL,
+  YARD_FRAC,
+  YARD_SAFE,
+} from '../components/dog/frame.ts';
 
 function assert(cond: unknown, message: string) {
   if (!cond) throw new Error(message);
@@ -56,5 +68,19 @@ const headingDot =
   Math.sin(EAT_YAW) * (BOWL.x - EAT_STAND.x) + Math.cos(EAT_YAW) * (BOWL.z - EAT_STAND.z);
 assert(headingDot > 0.3, `eat heading should point toward the bowl, got ${headingDot}`);
 assert(BOWL.x < 0 && BOWL.z > 0, 'bowl stays front-left of the room, camera-side');
+
+dog.rotation.set(0, 0.32, 0);
+dog.position.set(-1.4, 0, 1.1);
+groundToFloor(dog, 0);
+const yardCam = new PerspectiveCamera(36, 16 / 9, 0.1, 80);
+const yard = followYardCamera(yardCam, dog, { stage: 'puppy', aspect: 16 / 9 });
+const yardProj = projectMeshBounds(dog, yardCam);
+assert(yard && yard.dist >= 6.4 && yard.dist <= 9.2, `yard camera should pull back, dist ${yard?.dist}`);
+assert(yardProj, 'yard projection exists');
+assert(yardProj && yardProj.minY > YARD_SAFE.minY - 0.02 && yardProj.maxY < YARD_SAFE.maxY + 0.02, `yard camera keeps the dog in the HUD-safe box ${JSON.stringify(yardProj)}`);
+assert(yardProj && yardProj.minX > YARD_SAFE.minX - 0.02 && yardProj.maxX < YARD_SAFE.maxX + 0.02, `yard camera keeps the dog off the side HUD ${JSON.stringify(yardProj)}`);
+assert(yardProj && yardProj.height >= 1 / 6 && yardProj.height <= 0.7, `puppy should stay about a fifth of the view, height ${yardProj?.height}`);
+assert(YARD_FRAC.puppy >= 1 / 6 && YARD_FRAC.puppy <= 1 / 4, 'puppy target is between 1/6 and 1/4');
+assert(YARD_FRAC.adult > YARD_FRAC.puppy, 'adults occupy more of the frame than puppies');
 
 console.log('dog-frame-check ok');

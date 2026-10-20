@@ -31,7 +31,7 @@ export function meshBounds(object: Object3D) {
   object.traverse((node) => {
     const mesh = node as Mesh & SkinnedMesh;
     if (!mesh.isMesh || !mesh.geometry) return;
-    if (isBoneParent(mesh)) return;
+    if (mesh.name === 'Collar' || isBoneParent(mesh)) return;
     if (mesh.isSkinnedMesh) {
       mesh.computeBoundingBox();
       if (!mesh.boundingBox || mesh.boundingBox.isEmpty()) return;
@@ -45,13 +45,13 @@ export function meshBounds(object: Object3D) {
     const sizeX = _meshBox.max.x - _meshBox.min.x;
     const sizeY = _meshBox.max.y - _meshBox.min.y;
     const sizeZ = _meshBox.max.z - _meshBox.min.z;
-    if (sizeX > 14 || sizeY > 14 || sizeZ > 14) return;
+    if (sizeX > 4 || sizeY > 4 || sizeZ > 4) return;
     _box.union(_meshBox);
   });
   if (_box.isEmpty()) {
     _box.setFromObject(object, true);
     _box.getSize(_size);
-    if (_box.isEmpty() || _size.x > 14 || _size.y > 14 || _size.z > 14) {
+    if (_box.isEmpty() || _size.x > 4 || _size.y > 4 || _size.z > 4) {
       object.getWorldPosition(_center);
       _box.setFromCenterAndSize(_center, _size.set(1.2, 1.5, 2.1));
     }
@@ -62,6 +62,11 @@ export function meshBounds(object: Object3D) {
 export function groundToFloor(object: Object3D, floorY = 0) {
   if (!meshBounds(object)) return null;
   const lift = floorY - _box.min.y;
+  if (!Number.isFinite(lift) || Math.abs(lift) > 1.6) {
+    object.position.y = floorY;
+    object.updateWorldMatrix(true, true);
+    return { lift: 0, minY: floorY, maxY: floorY + 1.2, center: object.position.clone() };
+  }
   object.position.y += lift;
   object.updateWorldMatrix(true, true);
   meshBounds(object);
@@ -88,6 +93,86 @@ function placeCamera(
   camera.aspect = aspect;
   camera.lookAt(_center.x, _center.y - lift, _center.z);
   camera.updateProjectionMatrix();
+}
+
+/** Puppy occupies ~1/6–1/4 of the viewport; later stages grow a little. */
+export const YARD_FRAC: Record<string, number> = {
+  puppy: 0.21,
+  young: 0.26,
+  adult: 0.31,
+  senior: 0.29,
+};
+
+/** Keep the dog out of name, chips, meters, and the Pet/Feed bar. */
+export const YARD_SAFE = {
+  minX: -0.48,
+  maxX: 0.78,
+  minY: -0.42,
+  maxY: 0.5,
+};
+
+export const YARD_PITCH = 0.52;
+
+/** Room-only body scale so the yard reads roomy next to furniture. */
+export const YARD_BODY: Record<string, number> = {
+  puppy: 0.62,
+  young: 0.76,
+  adult: 0.88,
+  senior: 0.86,
+};
+
+const YARD_HEIGHT: Record<string, number> = {
+  puppy: 1.18,
+  young: 1.08,
+  adult: 1.16,
+  senior: 1.1,
+};
+
+export function followYardCamera(
+  camera: PerspectiveCamera,
+  object: Object3D,
+  opts: { stage?: string; asleep?: boolean; aspect?: number } = {},
+) {
+  const stage = opts.stage ?? 'adult';
+  const frac = YARD_FRAC[stage] ?? YARD_FRAC.adult;
+  const aspect = opts.aspect ?? camera.aspect ?? 1;
+  const fov = (camera.fov * Math.PI) / 180;
+  const visualH = YARD_HEIGHT[stage] ?? YARD_HEIGHT.adult;
+  object.getWorldPosition(_center);
+  const lookY = visualH * 0.34;
+  _box.min.set(_center.x - 0.3, 0, _center.z - 0.38);
+  _box.max.set(_center.x + 0.3, visualH, _center.z + 0.38);
+  const pitch = opts.asleep ? 0.48 : YARD_PITCH;
+  const yaw = CAMERA_YAW;
+  let dist = visualH / (Math.max(0.14, frac * 2) * Math.tan(fov / 2));
+  dist = Math.min(9.2, Math.max(opts.asleep ? 5.8 : 6.4, dist));
+
+  for (let i = 0; i < 8; i += 1) {
+    _desired.set(
+      _center.x + dist * Math.sin(yaw) * Math.cos(pitch),
+      lookY + dist * Math.sin(pitch),
+      _center.z + dist * Math.cos(yaw) * Math.cos(pitch),
+    );
+    camera.up.set(0, 1, 0);
+    camera.position.copy(_desired);
+    camera.near = Math.max(0.08, dist / 40);
+    camera.far = Math.max(80, dist * 8);
+    camera.aspect = aspect;
+    camera.lookAt(_center.x, lookY, _center.z);
+    camera.updateProjectionMatrix();
+    const projected = projectCorners(camera);
+    const height = projected.maxY - projected.minY;
+    const overflow =
+      projected.minX < YARD_SAFE.minX ||
+      projected.maxX > YARD_SAFE.maxX ||
+      projected.minY < YARD_SAFE.minY ||
+      projected.maxY > YARD_SAFE.maxY ||
+      height > frac * 2 * 1.22;
+    if (!overflow) break;
+    dist = Math.min(9.2, dist * 1.06);
+  }
+
+  return { center: _center.clone(), dist, desired: _desired.clone(), lookY };
 }
 
 export function frameCamera(
