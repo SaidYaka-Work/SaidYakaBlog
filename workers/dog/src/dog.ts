@@ -5,12 +5,14 @@ import {
   applyCare,
   applyCatch,
   applyDecay,
+  applyName,
   applyPet,
   canStartCare,
   canStartCatch,
   createRoom,
   fanout,
   listHistory,
+  migrateRoom,
   originAllowed,
   parseClientMessage,
   pruneBuckets,
@@ -38,6 +40,7 @@ type SocketMeta = {
   ip: string;
   lastAt: number;
   play: PlaySession | null;
+  nameToken: string | null;
 };
 
 function corsHeaders(origin: string | null, env: Env): HeadersInit {
@@ -60,6 +63,8 @@ export class DogRoom {
       const existing = await this.ctx.storage.get<RoomState>('room');
       if (!existing) {
         await this.ctx.storage.put('room', createRoom(Date.now()));
+      } else {
+        await this.ctx.storage.put('room', migrateRoom(existing));
       }
       const alarm = await this.ctx.storage.getAlarm();
       if (!alarm) {
@@ -124,7 +129,7 @@ export class DogRoom {
         '0.0.0.0';
 
       this.ctx.acceptWebSocket(server);
-      server.serializeAttachment({ ip, lastAt: 0, play: null } satisfies SocketMeta);
+      server.serializeAttachment({ ip, lastAt: 0, play: null, nameToken: null } satisfies SocketMeta);
 
       const now = Date.now();
       const room = await this.load(now);
@@ -160,7 +165,35 @@ export class DogRoom {
       ip: '0.0.0.0',
       lastAt: 0,
       play: null,
+      nameToken: null,
     };
+
+    if (parsed.kind === 'name') {
+      const result = applyName(await this.load(now), parsed.nameId, meta.nameToken, now);
+      await this.commit(result.room);
+      if (!result.ok) {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            code: result.code,
+            text:
+              result.code === 'invalid'
+                ? 'Pick a name from the list.'
+                : result.code === 'not_catcher'
+                  ? 'Only the catcher can pick the name.'
+                  : result.code === 'too_late'
+                    ? 'The naming window closed.'
+                    : 'That dog already has a name.',
+          }),
+        );
+        this.sendSnapshot(ws, result.room, now);
+        return;
+      }
+      ws.serializeAttachment({ ...meta, nameToken: null } satisfies SocketMeta);
+      this.broadcast(snapshot(result.room, now, this.ctx.getWebSockets().length));
+      this.broadcast({ type: 'event', text: result.event.text, at: result.event.at });
+      return;
+    }
 
     if (parsed.kind === 'start') {
       const room = await this.load(now);
@@ -221,7 +254,8 @@ export class DogRoom {
         ? applyCatch(room, parsed.score, now)
         : applyCare(room, meta.play.game, parsed.score, now);
 
-    ws.serializeAttachment({ ...gated, play: null } satisfies SocketMeta);
+    const nameToken = result.ok && result.kind === 'catch' ? result.nameToken : null;
+    ws.serializeAttachment({ ...gated, play: null, nameToken: nameToken ?? meta.nameToken } satisfies SocketMeta);
     await this.commit(result.room);
 
     if (!result.ok) {
@@ -232,6 +266,14 @@ export class DogRoom {
 
     this.broadcast(snapshot(result.room, now, this.ctx.getWebSockets().length));
     this.broadcast({ type: 'event', text: result.event.text, at: result.event.at });
+    if (result.kind === 'catch' && result.room.pendingName) {
+      ws.send(
+        JSON.stringify({
+          type: 'name-please',
+          until: result.room.pendingName.until,
+        }),
+      );
+    }
   }
 
   async webSocketClose() {
@@ -270,7 +312,7 @@ export class DogRoom {
   }
 
   private async load(now: number) {
-    const stored = (await this.ctx.storage.get<RoomState>('room')) ?? createRoom(now);
+    const stored = migrateRoom((await this.ctx.storage.get<RoomState>('room')) ?? createRoom(now));
     const next = applyDecay(stored, now);
     if (next !== stored) await this.commit(next);
     return next;

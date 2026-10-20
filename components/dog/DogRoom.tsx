@@ -6,6 +6,7 @@ import {
   dogWorkerUrl,
   dogWsUrl,
   formatCountdown,
+  generateGenome,
   stageWord,
   type DogSnapshot,
   type Memorial,
@@ -14,6 +15,7 @@ import { englishPath } from '@/lib/site';
 import CatchGame from './CatchGame';
 import DogPortrait from './DogPortrait';
 import FeedGame from './FeedGame';
+import NamePicker from './NamePicker';
 import WalkGame from './WalkGame';
 import './dog.css';
 
@@ -29,8 +31,11 @@ const ERRORS: Record<string, string> = {
   gone: 'Nobody is on the rug right now.',
   home: 'A dog is already home.',
   missed: 'The stray slipped past. Try again.',
-  invalid: 'That did not count.',
+  invalid: 'Pick a name from the list.',
   busy: 'Too many neighbors on the porch.',
+  not_catcher: 'Only the catcher can pick the name.',
+  too_late: 'The naming window closed.',
+  named: 'This dog already has a name.',
 };
 
 export default function DogRoom() {
@@ -41,6 +46,8 @@ export default function DogRoom() {
   const [play, setPlay] = useState<PlayKind>(null);
   const [playId, setPlayId] = useState<string | null>(null);
   const [reaction, setReaction] = useState<Reaction>('idle');
+  const [canName, setCanName] = useState(false);
+  const [nameStatus, setNameStatus] = useState('');
   const socket = useRef<WebSocket | null>(null);
 
   const apply = useCallback((data: DogSnapshot) => {
@@ -68,14 +75,29 @@ export default function DogRoom() {
         const message = JSON.parse(event.data) as
           | DogSnapshot
           | { type: 'play'; playId: string; game: PlayKind }
-          | { type: 'error'; code: string }
-          | { type: 'event'; text: string };
-        if (message.type === 'state') apply(message);
+          | { type: 'error'; code: string; text?: string }
+          | { type: 'event'; text: string }
+          | { type: 'name-please'; until: number };
+        if (message.type === 'state') {
+          apply(message);
+          if (!message.awaitingName) {
+            setCanName(false);
+            setNameStatus('');
+          }
+        }
         if (message.type === 'play') {
           setPlayId(message.playId);
           setPlay(message.game);
         }
-        if (message.type === 'error') setStatus(ERRORS[message.code] || 'Not just now.');
+        if (message.type === 'name-please') {
+          setCanName(true);
+          setNameStatus('');
+        }
+        if (message.type === 'error') {
+          const text = message.text || ERRORS[message.code] || 'Not just now.';
+          setStatus(text);
+          if (message.code === 'invalid' || message.code === 'not_catcher') setNameStatus(text);
+        }
         if (message.type === 'event') setStatus(message.text);
       };
       ws.onclose = () => {
@@ -111,15 +133,21 @@ export default function DogRoom() {
     window.setTimeout(() => setReaction('idle'), 1200);
   }
 
+  function pickName(nameId: string) {
+    send({ type: 'name', nameId });
+  }
+
   const napping = !worker || !connected;
   const dog = snapshot?.dog ?? null;
   const memorial = snapshot?.memorial ?? null;
+  const awaitingName = Boolean(snapshot?.awaitingName);
+  const shownName = dog?.profile.name || (awaitingName ? 'A new dog' : memorial ? `${memorial.profile.name} left` : 'Biscuit');
 
   return (
     <section className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
       <p className="hero-kicker text-xs uppercase tracking-[0.18em] text-[var(--accent)]">The porch</p>
       <h1 className="hero-title mt-2 font-serif text-4xl tracking-tight sm:text-5xl">
-        {dog ? dog.profile.name : memorial ? `${memorial.profile.name} left` : 'Biscuit'}
+        {shownName}
       </h1>
       <p className="hero-copy mt-4 max-w-xl text-[var(--muted)] leading-relaxed">
         One dog for the whole internet. Anyone can pet him, feed him, or take him around the block.
@@ -136,7 +164,7 @@ export default function DogRoom() {
       <div className="mt-6 overflow-hidden rounded-[1.6rem] border border-[var(--line)] bg-[var(--bg-elevated)]">
         {napping && !dog ? (
           <div className="px-6 py-16 text-center">
-            <DogPortrait coat="cream" asleep reaction="sleep" night={false} stage="puppy" />
+            <DogPortrait genome={generateGenome('napping-biscuit')} asleep reaction="sleep" night={false} stage="puppy" />
             <p className="mt-6 font-serif text-2xl">The dog is napping</p>
             <p className="mx-auto mt-3 max-w-md text-[var(--muted)]">
               The shared kennel is not connected yet. The rug stays warm until the Worker wakes up.
@@ -161,9 +189,27 @@ export default function DogRoom() {
           <div className="p-4">
             <CatchGame onDone={(score) => finish(score)} />
           </div>
+        ) : awaitingName && canName ? (
+          <div>
+            {dog && (
+              <DogPortrait
+                genome={dog.genome}
+                asleep={dog.asleep}
+                reaction="idle"
+                night={dog.night}
+                stage={dog.stage}
+              />
+            )}
+            <NamePicker
+              until={snapshot?.nameUntil ?? null}
+              onPick={pickName}
+              status={nameStatus}
+              avoidIds={snapshot?.usedNameIds ?? []}
+            />
+          </div>
         ) : dog ? (
           <DogPortrait
-            coat={dog.profile.coat}
+            genome={dog.genome}
             asleep={dog.asleep}
             reaction={dog.asleep ? 'sleep' : reaction}
             night={dog.night}
@@ -177,7 +223,13 @@ export default function DogRoom() {
         )}
       </div>
 
-      {dog && (
+      {awaitingName && !canName && (
+        <p className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--accent-soft)] px-4 py-3 text-sm">
+          A new dog was caught, waiting for a name.
+        </p>
+      )}
+
+      {dog && !awaitingName && (
         <>
           <div className="mt-5 flex flex-wrap gap-2 text-sm">
             <Pill>
@@ -272,9 +324,10 @@ function Pill({ children }: { children: React.ReactNode }) {
 export function MemorialCard({ record }: { record: Memorial }) {
   return (
     <div className="mx-auto mt-6 max-w-md text-left">
-      <DogPortrait coat={record.profile.coat} asleep={false} reaction="idle" night={false} stage={record.furthestStage} />
+      <DogPortrait genome={record.genome} asleep={false} reaction="idle" night={false} stage={record.furthestStage} />
       <p className="mt-4 text-sm text-[var(--muted)]">
         {record.profile.name} made it to {stageWord(record.furthestStage)} · {record.daysSurvived} days · {record.totals.walks} walks · peak happiness {record.peakHappiness}
+        {record.namedByCatcher ? ' · named by the catcher' : ''}
       </p>
     </div>
   );

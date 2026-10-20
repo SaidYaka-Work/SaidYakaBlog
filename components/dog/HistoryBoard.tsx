@@ -50,7 +50,7 @@ export default function HistoryBoard() {
           {page.dogs.map((dog) => (
             <li key={dog.id} className="overflow-hidden rounded-[1.4rem] border border-[var(--line)] bg-[var(--bg-elevated)]">
               <DogPortrait
-                coat={dog.profile.coat}
+                genome={dog.genome}
                 asleep={false}
                 reaction="idle"
                 night={false}
@@ -59,6 +59,7 @@ export default function HistoryBoard() {
               <div className="p-5">
                 <p className="text-xs uppercase tracking-[0.16em] text-[var(--accent)]">{dog.furthestStage}</p>
                 <h2 className="mt-2 font-serif text-3xl">{dog.profile.name}</h2>
+                {dog.namedByCatcher && <p className="mt-1 text-xs text-[var(--faint)]">Named by the catcher</p>}
                 <p className="mt-2 text-sm text-[var(--muted)]">{dog.profile.personality}</p>
                 <p className="mt-3 text-sm">
                   Reached {stageWord(dog.furthestStage)} · {dog.daysSurvived} days · {dog.departed === 'ran_away' ? 'ran away' : 'still remembered'}

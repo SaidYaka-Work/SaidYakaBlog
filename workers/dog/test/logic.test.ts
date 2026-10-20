@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  BISCUIT_PERSONALITY,
+  BISCUIT_SEED,
   CATCH_MIN_SCORE,
+  DOG_NAMES,
   FEED_EVERY_MS,
   FEED_MIN_GAP_MS,
   LOW_HAPPINESS,
+  NAME_WINDOW_MS,
   PROFILES,
   RUNAWAY_AFTER_MS,
   STAGE_AT_MS,
@@ -14,6 +18,7 @@ import {
   applyCare,
   applyCatch,
   applyDecay,
+  applyName,
   applyPet,
   canStartCare,
   canStartCatch,
@@ -25,10 +30,13 @@ import {
   dailyWalkGameMs,
   dogStage,
   fanout,
+  generateGenome,
   listHistory,
+  migrateRoom,
+  nameById,
   originAllowed,
   parseClientMessage,
-  pickProfile,
+  snapshot,
   takeConnectionGap,
   takeRate,
   toRecord,
@@ -110,6 +118,7 @@ test('catching requires a plausible score and births a new dog', () => {
     memorial: toRecord(room.dog, T0 + RUNAWAY_AFTER_MS, 'ran_away'),
     history: [toRecord(room.dog, T0 + RUNAWAY_AFTER_MS, 'ran_away')],
     lastCatchAt: 0,
+    pendingName: null,
   };
   const miss = applyCatch(room, CATCH_MIN_SCORE - 1, T0 + 1_000);
   assert.equal(miss.ok, false);
@@ -120,7 +129,9 @@ test('catching requires a plausible score and births a new dog', () => {
   assert.equal(caught.ok, true);
   if (!caught.ok) throw new Error('expected catch');
   assert.ok(caught.room.dog);
-  assert.notEqual(caught.room.dog.profile.id, 'biscuit');
+  assert.equal(caught.room.dog.profile.name, '');
+  assert.ok(caught.room.dog.genome);
+  assert.ok(caught.room.pendingName);
   assert.equal(caught.room.memorial, null);
 });
 
@@ -214,9 +225,10 @@ test('CORS allowlist is limited to the site and localhost', () => {
   assert.equal(originAllowed(null), false);
 });
 
-test('pickProfile can avoid the previous dog', () => {
-  const next = pickProfile('biscuit', () => 0);
-  assert.notEqual(next.id, 'biscuit');
+test('messages allow a list name id and reject free-text names', () => {
+  assert.equal(parseClientMessage('{"type":"name","nameId":"biscuit"}').ok, true);
+  assert.equal(parseClientMessage('{"type":"name","name":"Biscuit"}').ok, false);
+  assert.equal(parseClientMessage('{"type":"name","nameId":"biscuit","note":"hi"}').ok, false);
 });
 
 function keepCared(room: ReturnType<typeof createRoom>, now: number) {
@@ -412,5 +424,102 @@ test('history records persist stage, peaks, and how they left', () => {
   assert.equal(page.total, 1);
   assert.equal(page.leaders.mostWalked?.profile.name, 'Biscuit');
   assert.equal(page.leaders.longestLived?.daysSurvived, 3);
+  assert.ok(record.genome);
+  assert.equal(record.namedByCatcher, false);
 });
+
+test('Biscuit migration keeps name and personality and adds a stable genome', () => {
+  const room = createRoom(T0);
+  assert.ok(room.dog);
+  const stripped = {
+    ...room,
+    dog: { ...room.dog, genome: undefined as never, namedByCatcher: undefined as never },
+  };
+  const first = migrateRoom(stripped);
+  const second = migrateRoom(first);
+  assert.ok(first.dog);
+  assert.equal(first.dog.profile.name, 'Biscuit');
+  assert.equal(first.dog.profile.personality, BISCUIT_PERSONALITY);
+  assert.deepEqual(first.dog.genome, generateGenome(BISCUIT_SEED));
+  assert.deepEqual(second.dog?.genome, first.dog.genome);
+  assert.equal(first.dog.namedByCatcher, false);
+});
+
+test('catcher can name from the list; others and unknown ids are rejected', () => {
+  let room = createRoom(T0);
+  assert.ok(room.dog);
+  room = {
+    dog: null,
+    memorial: toRecord(room.dog, T0, 'ran_away'),
+    history: [toRecord(room.dog, T0, 'ran_away')],
+    lastCatchAt: 0,
+    pendingName: null,
+  };
+  const caught = applyCatch(room, 90, T0 + 20_000, () => 0.2);
+  assert.equal(caught.ok, true);
+  if (!caught.ok) throw new Error('expected catch');
+  const token = caught.nameToken;
+  const publicState = snapshot(caught.room, T0 + 20_000, 2);
+  assert.equal(publicState.awaitingName, true);
+  assert.equal(JSON.stringify(publicState).includes(token), false);
+  assert.ok(publicState.usedNameIds.includes('biscuit'));
+
+  const stranger = applyName(caught.room, 'maple', 'wrong-token', T0 + 21_000);
+  assert.equal(stranger.ok, false);
+  if (stranger.ok) throw new Error('expected not_catcher');
+  assert.equal(stranger.code, 'not_catcher');
+
+  const missing = applyName(caught.room, 'not-a-real-dog-name-xx', token, T0 + 21_000);
+  assert.equal(missing.ok, false);
+  if (missing.ok) throw new Error('expected invalid');
+  assert.equal(missing.code, 'invalid');
+  assert.ok(missing.room.pendingName);
+
+  const reused = applyName(caught.room, 'biscuit', token, T0 + 21_000);
+  assert.equal(reused.ok, false);
+  if (reused.ok) throw new Error('expected invalid reused name');
+  assert.equal(reused.code, 'invalid');
+  assert.ok(reused.room.pendingName);
+
+  const named = applyName(caught.room, 'maple', token, T0 + 21_000);
+  assert.equal(named.ok, true);
+  if (!named.ok || !named.room.dog) throw new Error('expected name');
+  assert.equal(named.room.dog.profile.name, nameById('maple')?.label);
+  assert.equal(named.room.dog.namedByCatcher, true);
+  assert.equal(named.room.pendingName, null);
+  assert.match(named.event.text, /named him Maple/i);
+
+  const again = applyName(named.room, 'pebble', token, T0 + 22_000);
+  assert.equal(again.ok, false);
+  if (again.ok) throw new Error('expected named');
+  assert.equal(again.code, 'named');
+});
+
+test('naming timeout falls back to a random list name', () => {
+  let room = createRoom(T0);
+  assert.ok(room.dog);
+  room = {
+    dog: null,
+    memorial: toRecord(room.dog, T0, 'ran_away'),
+    history: [toRecord(room.dog, T0, 'ran_away')],
+    lastCatchAt: 0,
+    pendingName: null,
+  };
+  const caught = applyCatch(room, 90, T0 + 20_000, () => 0.4);
+  assert.equal(caught.ok, true);
+  if (!caught.ok) throw new Error('expected catch');
+  const later = applyDecay(caught.room, T0 + 20_000 + NAME_WINDOW_MS);
+  assert.ok(later.dog);
+  assert.ok(later.dog.profile.name);
+  assert.ok(DOG_NAMES.some((name) => name.label === later.dog?.profile.name));
+  assert.notEqual(later.dog.profile.id, 'biscuit');
+  assert.equal(later.dog.namedByCatcher, false);
+  assert.equal(later.pendingName, null);
+  const late = applyName(caught.room, 'maple', caught.nameToken, T0 + 20_000 + NAME_WINDOW_MS);
+  assert.equal(late.ok, false);
+  if (late.ok) throw new Error('expected too_late');
+  assert.equal(late.code, 'too_late');
+  assert.ok(late.room.dog?.profile.name);
+});
+
 

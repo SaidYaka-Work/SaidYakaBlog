@@ -1,3 +1,10 @@
+import type { DogGenome } from '../workers/dog/src/genome';
+
+export type { DogGenome } from '../workers/dog/src/genome';
+export { BISCUIT_SEED, generateGenome, lookFromGenome } from '../workers/dog/src/genome';
+export { DOG_NAMES, nameById, suggestNames, recentNameIds } from '../workers/dog/src/names';
+export type { DogName } from '../workers/dog/src/names';
+
 /**
  * Live Cloudflare Worker origin for the shared dog.
  *
@@ -20,12 +27,9 @@ export function dogWsUrl() {
   return url.toString();
 }
 
-export type DogCoat = 'cream' | 'ink' | 'copper' | 'smoke' | 'tan' | 'chestnut';
-
 export type DogProfile = {
   id: string;
   name: string;
-  coat: DogCoat;
   personality: string;
 };
 
@@ -82,6 +86,8 @@ export type PublicDog = {
   stageLabel: string;
   biologicalDays: number;
   care: CareView;
+  genome: DogGenome;
+  namedByCatcher: boolean;
 };
 
 export type Memorial = {
@@ -94,6 +100,8 @@ export type Memorial = {
   totals: Totals;
   peakHappiness: number;
   departed: 'home' | 'ran_away';
+  genome: DogGenome;
+  namedByCatcher: boolean;
 };
 
 export type HistoryPage = {
@@ -113,6 +121,9 @@ export type DogSnapshot = {
   dog: PublicDog | null;
   presence: number;
   awaitingCatch: boolean;
+  awaitingName: boolean;
+  nameUntil: number | null;
+  usedNameIds: string[];
   memorial: Memorial | null;
   history: Memorial[];
 };

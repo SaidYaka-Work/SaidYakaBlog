@@ -1,4 +1,12 @@
 import {
+  BISCUIT_PERSONALITY,
+  BISCUIT_SEED,
+  generateGenome,
+  generatePersonality,
+  type DogGenome,
+} from './genome';
+import { nameById, pickName, recentNameIds } from './names';
+import {
   CARE_BY_STAGE,
   careFor,
   furthestStage,
@@ -18,6 +26,15 @@ export {
   type LifeStage,
   type StageCare,
 } from './stages';
+export {
+  BISCUIT_PERSONALITY,
+  BISCUIT_SEED,
+  generateGenome,
+  generatePersonality,
+  lookFromGenome,
+  type DogGenome,
+} from './genome';
+export { DOG_NAMES, nameById, pickName, suggestNames, type DogName } from './names';
 
 export const ACTIONS = ['pet', 'feed', 'walk', 'catch'] as const;
 
@@ -33,7 +50,10 @@ export type ErrorCode =
   | 'gone'
   | 'home'
   | 'too_soon'
-  | 'missed';
+  | 'missed'
+  | 'not_catcher'
+  | 'too_late'
+  | 'named';
 
 export type CareGame = 'feed' | 'walk' | 'catch';
 
@@ -46,48 +66,16 @@ export type Activity = {
 export type DogProfile = {
   id: string;
   name: string;
-  coat: 'cream' | 'ink' | 'copper' | 'smoke' | 'tan' | 'chestnut';
   personality: string;
 };
 
-export const PROFILES: DogProfile[] = [
-  {
-    id: 'biscuit',
-    name: 'Biscuit',
-    coat: 'cream',
-    personality: 'Thinks the whole internet is a front porch, and every visitor is a neighbor.',
-  },
-  {
-    id: 'soot',
-    name: 'Soot',
-    coat: 'ink',
-    personality: 'Quiet collector of shadows. Judges your posture, then forgives you.',
-  },
-  {
-    id: 'marmalade',
-    name: 'Marmalade',
-    coat: 'copper',
-    personality: 'Dramatic about meals and vain about her ears. Worth it.',
-  },
-  {
-    id: 'pebble',
-    name: 'Pebble',
-    coat: 'smoke',
-    personality: 'Low to the ground, high on opinions, always ready for a block-long expedition.',
-  },
-  {
-    id: 'dumpling',
-    name: 'Dumpling',
-    coat: 'tan',
-    personality: 'Believes every stranger is a cousin who owes him a snack.',
-  },
-  {
-    id: 'fig',
-    name: 'Fig',
-    coat: 'chestnut',
-    personality: 'Sleeps in commas and wakes in exclamation points.',
-  },
-];
+export const BISCUIT_PROFILE: DogProfile = {
+  id: 'biscuit',
+  name: 'Biscuit',
+  personality: BISCUIT_PERSONALITY,
+};
+
+export const PROFILES: DogProfile[] = [BISCUIT_PROFILE];
 
 export const FEED_EVERY_MS = CARE_BY_STAGE.puppy.feedEveryMs;
 export const WALK_EVERY_MS = CARE_BY_STAGE.puppy.walkEveryMs;
@@ -110,6 +98,8 @@ export const FEED_GAME = { minMs: 4_000, maxMs: 40_000 };
 export const WALK_GAME = { minMs: 4_000, maxMs: 60_000 };
 export const CATCH_GAME = { minMs: 6_000, maxMs: 45_000 };
 export const CATCH_MIN_SCORE = 35;
+export const NAME_WINDOW_MS = 60_000;
+export const RECENT_NAME_AVOID = 24;
 
 export type Totals = {
   pets: number;
@@ -136,6 +126,8 @@ export type LivingDog = {
   peakHappiness: number;
   furthestStage: LifeStage;
   activity: Activity[];
+  genome: DogGenome;
+  namedByCatcher: boolean;
 };
 
 export type DogRecord = {
@@ -148,15 +140,23 @@ export type DogRecord = {
   totals: Totals;
   peakHappiness: number;
   departed: 'home' | 'ran_away';
+  genome: DogGenome;
+  namedByCatcher: boolean;
 };
 
 export type Memorial = DogRecord;
+
+export type PendingName = {
+  token: string;
+  until: number;
+};
 
 export type RoomState = {
   dog: LivingDog | null;
   memorial: Memorial | null;
   history: Memorial[];
   lastCatchAt: number;
+  pendingName: PendingName | null;
 };
 
 export type CareView = {
@@ -197,6 +197,8 @@ export type PublicDog = {
   stageLabel: string;
   biologicalDays: number;
   care: CareView;
+  genome: DogGenome;
+  namedByCatcher: boolean;
 };
 
 export type PublicSnapshot = {
@@ -204,6 +206,9 @@ export type PublicSnapshot = {
   dog: PublicDog | null;
   presence: number;
   awaitingCatch: boolean;
+  awaitingName: boolean;
+  nameUntil: number | null;
+  usedNameIds: string[];
   memorial: Memorial | null;
   history: Memorial[];
 };
@@ -217,10 +222,21 @@ export function isNight(now: number) {
   return hour >= 2 && hour < 10;
 }
 
+export function isBiscuitProfile(profile: Pick<DogProfile, 'id' | 'name'>) {
+  return profile.id === 'biscuit' || profile.name === 'Biscuit';
+}
+
+export function displayName(dog: Pick<LivingDog, 'profile'>) {
+  return dog.profile.name || 'the new dog';
+}
+
 export function createDog(profile: DogProfile, now: number, id = `dog-${now}`): LivingDog {
+  const biscuit = isBiscuitProfile(profile);
+  const genome = generateGenome(biscuit ? BISCUIT_SEED : id);
+  const personality = biscuit ? BISCUIT_PERSONALITY : profile.personality || generatePersonality(id);
   return {
     id,
-    profile,
+    profile: { ...profile, personality },
     happiness: 76,
     energy: 70,
     affection: 48,
@@ -235,11 +251,17 @@ export function createDog(profile: DogProfile, now: number, id = `dog-${now}`): 
     biologicalAgeMs: 0,
     peakHappiness: 76,
     furthestStage: 'puppy',
+    genome,
+    namedByCatcher: false,
     activity: [
       {
         at: now,
         action: 'system',
-        text: `${profile.name} claimed the cream rug as a puppy. The internet is a porch now.`,
+        text: biscuit
+          ? `${profile.name} claimed the cream rug as a puppy. The internet is a porch now.`
+          : profile.name
+            ? `${profile.name} claimed the cream rug as a puppy.`
+            : 'A new dog was caught. Waiting for a name.',
       },
     ],
   };
@@ -247,17 +269,110 @@ export function createDog(profile: DogProfile, now: number, id = `dog-${now}`): 
 
 export function createRoom(now: number): RoomState {
   return {
-    dog: createDog(PROFILES[0], now),
+    dog: createDog(BISCUIT_PROFILE, now, 'biscuit'),
     memorial: null,
     history: [],
     lastCatchAt: 0,
+    pendingName: null,
   };
 }
 
-export function pickProfile(excludeId: string | undefined, rng: () => number = Math.random): DogProfile {
-  const pool = excludeId ? PROFILES.filter((profile) => profile.id !== excludeId) : PROFILES.slice();
-  const pick = pool[Math.floor(rng() * pool.length)];
-  return pick ?? PROFILES[0];
+function withGenome<T extends { id: string; profile: DogProfile; genome?: DogGenome; namedByCatcher?: boolean }>(
+  record: T,
+): T & { genome: DogGenome; namedByCatcher: boolean } {
+  if (record.genome) {
+    return { ...record, namedByCatcher: record.namedByCatcher ?? false };
+  }
+  const seed = isBiscuitProfile(record.profile) ? BISCUIT_SEED : record.id;
+  return {
+    ...record,
+    genome: generateGenome(seed),
+    namedByCatcher: record.namedByCatcher ?? false,
+    profile: {
+      id: record.profile.id,
+      name: record.profile.name,
+      personality: isBiscuitProfile(record.profile)
+        ? BISCUIT_PERSONALITY
+        : record.profile.personality || generatePersonality(seed),
+    },
+  };
+}
+
+export function migrateRoom(room: RoomState): RoomState {
+  return {
+    ...room,
+    pendingName: room.pendingName ?? null,
+    dog: room.dog ? withGenome(room.dog) : null,
+    memorial: room.memorial ? withGenome(room.memorial) : null,
+    history: room.history.map((record) => withGenome(record)),
+  };
+}
+
+export function usedNameIds(room: RoomState) {
+  const current = room.dog ? [{ id: room.dog.profile.id, name: room.dog.profile.name }] : [];
+  return recentNameIds(
+    [...current, ...room.history.map((record) => ({ id: record.profile.id, name: record.profile.name }))],
+    RECENT_NAME_AVOID,
+  );
+}
+
+function finishNaming(
+  room: RoomState,
+  name: { id: string; label: string },
+  now: number,
+  byCatcher: boolean,
+): RoomState {
+  if (!room.dog) return { ...room, pendingName: null };
+  const dog = room.dog;
+  const next: LivingDog = {
+    ...dog,
+    profile: { ...dog.profile, id: name.id, name: name.label },
+    namedByCatcher: byCatcher,
+  };
+  const event: Activity = {
+    at: now,
+    action: 'system',
+    text: byCatcher
+      ? `The catcher named him ${name.label}. ${name.label} claimed the cream rug as a puppy.`
+      : `The porch settled on ${name.label}. ${name.label} claimed the cream rug as a puppy.`,
+  };
+  next.activity = pushActivity(dog.activity, event);
+  return { ...room, dog: next, pendingName: null };
+}
+
+export function resolvePendingName(room: RoomState, now: number, rng: () => number = Math.random): RoomState {
+  if (!room.pendingName || !room.dog) return room;
+  if (now < room.pendingName.until) return room;
+  return finishNaming(room, pickName(rng, usedNameIds(room)), now, false);
+}
+
+export function applyName(
+  room: RoomState,
+  nameId: string,
+  token: string | null | undefined,
+  now: number,
+  rng: () => number = Math.random,
+): { ok: true; room: RoomState; event: Activity } | ActionFail {
+  const pending = migrateRoom(room).pendingName;
+  const current = resolvePendingName(migrateRoom(room), now, rng);
+  if (!current.dog) return { ok: false, code: 'gone', room: current };
+  if (!current.pendingName) {
+    if (pending && now >= pending.until) return { ok: false, code: 'too_late', room: current };
+    return { ok: false, code: current.dog.profile.name ? 'named' : 'too_late', room: current };
+  }
+  if (!token || token !== current.pendingName.token) {
+    return { ok: false, code: 'not_catcher', room: current };
+  }
+  if (now >= current.pendingName.until) {
+    const named = resolvePendingName(current, now, rng);
+    return { ok: false, code: 'too_late', room: named };
+  }
+  const picked = nameById(nameId);
+  if (!picked) return { ok: false, code: 'invalid', room: current };
+  if (usedNameIds(current).includes(picked.id)) return { ok: false, code: 'invalid', room: current };
+  const next = finishNaming(current, picked, now, true);
+  const event = next.dog?.activity[0] ?? { at: now, action: 'system' as const, text: `${picked.label} is home.` };
+  return { ok: true, room: next, event };
 }
 
 export function hungerFrom(dog: LivingDog, now: number) {
@@ -289,16 +404,16 @@ export function careView(dog: LivingDog, now: number): CareView {
     const hours = Math.ceil(runawayInMs / 3_600_000);
     warning =
       hours <= 12
-        ? `${dog.profile.name} is packing a sad little bag. A meal and a walk might still keep him.`
-        : `${dog.profile.name} has been unhappy for a while. If this lasts about ${Math.max(1, Math.ceil(runawayInMs / 86_400_000))} more day(s), he may run away.`;
+        ? `${displayName(dog)} is packing a sad little bag. A meal and a walk might still keep him.`
+        : `${displayName(dog)} has been unhappy for a while. If this lasts about ${Math.max(1, Math.ceil(runawayInMs / 86_400_000))} more day(s), he may run away.`;
   } else if (feedOverdue && walkOverdue) {
-    warning = `${dog.profile.name} needs dinner and a walk. The porch is getting gloomy.`;
+    warning = `${displayName(dog)} needs dinner and a walk. The porch is getting gloomy.`;
   } else if (feedOverdue) {
-    warning = `${dog.profile.name} is overdue for a meal.`;
+    warning = `${displayName(dog)} is overdue for a meal.`;
   } else if (walkOverdue) {
-    warning = `${dog.profile.name} is overdue for a walk.`;
+    warning = `${displayName(dog)} is overdue for a walk.`;
   } else if (dog.happiness < 40) {
-    warning = `${dog.profile.name} is getting gloomy. A little care would help.`;
+    warning = `${displayName(dog)} is getting gloomy. A little care would help.`;
   }
 
   return {
@@ -327,9 +442,10 @@ function pushActivity(list: Activity[], event: Activity) {
 }
 
 export function applyDecay(room: RoomState, now: number): RoomState {
-  const dog = room.dog;
-  if (!dog) return room;
-  if (now <= dog.lastDecayAt) return room;
+  const current = resolvePendingName(migrateRoom(room), now);
+  const dog = current.dog;
+  if (!dog) return current;
+  if (now <= dog.lastDecayAt) return current;
 
   const hours = (now - dog.lastDecayAt) / 3_600_000;
   if (hours <= 0) return room;
@@ -360,15 +476,15 @@ export function applyDecay(room: RoomState, now: number): RoomState {
       at: now,
       action: 'sleep',
       text: night
-        ? `${dog.profile.name} curled up for the night.`
-        : `${dog.profile.name} flopped over for a mid-porch nap.`,
+        ? `${displayName(dog)} curled up for the night.`
+        : `${displayName(dog)} flopped over for a mid-porch nap.`,
     });
   } else if (asleep && !night && energy > 74) {
     asleep = false;
     activity = pushActivity(activity, {
       at: now,
       action: 'wake',
-      text: `${dog.profile.name} stretched, yawned, and reclaimed the rug.`,
+      text: `${displayName(dog)} stretched, yawned, and reclaimed the rug.`,
     });
   }
 
@@ -387,7 +503,7 @@ export function applyDecay(room: RoomState, now: number): RoomState {
 
   if (lowSince !== null && now - lowSince >= RUNAWAY_AFTER_MS) {
     return runaway(
-      room,
+      current,
       {
         ...dog,
         happiness,
@@ -409,12 +525,12 @@ export function applyDecay(room: RoomState, now: number): RoomState {
     activity = pushActivity(activity, {
       at: now,
       action: 'system',
-      text: `${dog.profile.name} grew into a ${careFor(nextStage).label.toLowerCase()}.`,
+      text: `${displayName(dog)} grew into a ${careFor(nextStage).label.toLowerCase()}.`,
     });
   }
 
   return {
-    ...room,
+    ...current,
     dog: {
       ...dog,
       happiness,
@@ -442,6 +558,8 @@ export function toRecord(dog: LivingDog, now: number, departed: DogRecord['depar
     totals: dog.totals,
     peakHappiness: Math.round(Math.max(dog.peakHappiness, dog.happiness)),
     departed,
+    genome: dog.genome,
+    namedByCatcher: dog.namedByCatcher,
   };
 }
 
@@ -452,6 +570,7 @@ export function runaway(room: RoomState, dog: LivingDog, now: number): RoomState
     memorial,
     history: [memorial, ...room.history].slice(0, MAX_HISTORY),
     lastCatchAt: room.lastCatchAt,
+    pendingName: null,
   };
 }
 
@@ -504,6 +623,8 @@ export function toPublic(dog: LivingDog, now: number): PublicDog {
     stageLabel: careFor(dogStage(dog)).label,
     biologicalDays: Math.max(0, Math.round((dog.biologicalAgeMs / 86_400_000) * 10) / 10),
     care,
+    genome: dog.genome,
+    namedByCatcher: dog.namedByCatcher,
   };
 }
 
@@ -514,6 +635,9 @@ export function snapshot(room: RoomState, now: number, presence: number): Public
     dog: current.dog ? toPublic(current.dog, now) : null,
     presence,
     awaitingCatch: !current.dog,
+    awaitingName: Boolean(current.pendingName),
+    nameUntil: current.pendingName?.until ?? null,
+    usedNameIds: usedNameIds(current),
     memorial: current.memorial,
     history: current.history.slice(0, 4),
   };
@@ -522,7 +646,7 @@ export function snapshot(room: RoomState, now: number, presence: number): Public
 export type ActionFail = { ok: false; code: ErrorCode; room: RoomState; retryAfterMs?: number };
 export type PetOk = { ok: true; kind: 'pet'; room: RoomState; event: Activity };
 export type CareOk = { ok: true; kind: 'feed' | 'walk'; room: RoomState; event: Activity };
-export type CatchOk = { ok: true; kind: 'catch'; room: RoomState; event: Activity };
+export type CatchOk = { ok: true; kind: 'catch'; room: RoomState; event: Activity; nameToken: string };
 export type ActionResult = PetOk | CareOk | CatchOk | ActionFail;
 
 export function applyPet(room: RoomState, now: number): ActionResult {
@@ -544,8 +668,8 @@ export function applyPet(room: RoomState, now: number): ActionResult {
     at: now,
     action: 'pet',
     text: next.asleep
-      ? `Someone scratched ${dog.profile.name} behind the ear. A tail answered.`
-      : `Someone just petted ${dog.profile.name}.`,
+        ? `Someone scratched ${displayName(dog)} behind the ear. A tail answered.`
+      : `Someone just petted ${displayName(dog)}.`,
   };
   next.activity = pushActivity(dog.activity, event);
   if (next.happiness >= LOW_HAPPINESS) next.lowSince = null;
@@ -615,8 +739,8 @@ export function applyCare(
       action: 'feed',
       text:
         score >= 70
-          ? `Someone fed ${dog.profile.name} a heroic dinner.`
-          : `Someone fed ${dog.profile.name}.`,
+          ? `Someone fed ${displayName(dog)} a heroic dinner.`
+          : `Someone fed ${displayName(dog)}.`,
     };
     next.activity = pushActivity(dog.activity, event);
     if (next.happiness >= LOW_HAPPINESS) next.lowSince = null;
@@ -649,10 +773,10 @@ export function applyCare(
     at: now,
     action: 'walk',
     text: overwalked
-      ? `${dog.profile.name} came home tired. That walk was a bit much for a ${care.label.toLowerCase()}.`
+      ? `${displayName(dog)} came home tired. That walk was a bit much for a ${care.label.toLowerCase()}.`
       : score >= 70
-        ? `${dog.profile.name} came home from a legendary sniff tour.`
-        : `${dog.profile.name} went for a walk.`,
+        ? `${displayName(dog)} came home from a legendary sniff tour.`
+        : `${displayName(dog)} went for a walk.`,
   };
   next.activity = pushActivity(dog.activity, event);
   if (next.happiness >= LOW_HAPPINESS) next.lowSince = null;
@@ -670,23 +794,29 @@ export function applyCatch(
   if (score < CATCH_MIN_SCORE) {
     return { ok: false, code: 'missed', room: { ...allowed.room, lastCatchAt: now } };
   }
-  const exclude = allowed.room.memorial?.profile.id;
-  const profile = pickProfile(exclude, rng);
-  const dog = createDog(profile, now, `dog-${now}`);
+  const seed = `dog-${now}-${Math.floor(rng() * 1e9)}`;
+  const token = `name-${Math.floor(rng() * 1e9).toString(36)}${Math.floor(rng() * 1e9).toString(36)}`;
+  const dog = createDog(
+    { id: seed, name: '', personality: generatePersonality(seed) },
+    now,
+    seed,
+  );
   const event: Activity = {
     at: now,
     action: 'catch',
-    text: `The porch has a new resident. ${profile.name} is home.`,
+    text: 'A new dog was caught. Waiting for a name.',
   };
   dog.activity = [event];
   return {
     ok: true,
     kind: 'catch',
+    nameToken: token,
     room: {
       dog,
       memorial: null,
       history: allowed.room.history,
       lastCatchAt: now,
+      pendingName: { token, until: now + NAME_WINDOW_MS },
     },
     event,
   };
@@ -734,6 +864,7 @@ export type ClientMessage =
   | { ok: true; kind: 'pet' }
   | { ok: true; kind: 'start'; game: CareGame }
   | { ok: true; kind: 'finish'; playId: string; score: number }
+  | { ok: true; kind: 'name'; nameId: string }
   | { ok: false; code: ErrorCode };
 
 export function parseClientMessage(raw: string): ClientMessage {
@@ -746,7 +877,7 @@ export function parseClientMessage(raw: string): ClientMessage {
   if (!parsed || typeof parsed !== 'object') return { ok: false, code: 'invalid' };
   const message = parsed as Record<string, unknown>;
   const keys = Object.keys(message);
-  if (keys.some((key) => !['type', 'action', 'kind', 'game', 'playId', 'score'].includes(key))) {
+  if (keys.some((key) => !['type', 'action', 'kind', 'game', 'playId', 'score', 'nameId'].includes(key))) {
     return { ok: false, code: 'invalid' };
   }
   if (message.type === 'hello') return { ok: true, kind: 'hello' };
@@ -757,6 +888,10 @@ export function parseClientMessage(raw: string): ClientMessage {
   if (message.type === 'finish' && typeof message.playId === 'string' && typeof message.score === 'number') {
     if (!/^[a-z0-9-]{8,40}$/i.test(message.playId)) return { ok: false, code: 'invalid' };
     return { ok: true, kind: 'finish', playId: message.playId, score: message.score };
+  }
+  if (message.type === 'name' && typeof message.nameId === 'string') {
+    if (!/^[a-z0-9-]{1,40}$/.test(message.nameId)) return { ok: false, code: 'invalid' };
+    return { ok: true, kind: 'name', nameId: message.nameId };
   }
   return { ok: false, code: 'invalid' };
 }
