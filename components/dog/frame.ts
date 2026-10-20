@@ -134,28 +134,18 @@ export function followYardCamera(
   const fov = (camera.fov * Math.PI) / 180;
   const visualH = YARD_HEIGHT[stage] ?? YARD_HEIGHT.adult;
   object.getWorldPosition(_center);
-  const hasBounds = meshBounds(object);
-  if (hasBounds) {
-    const mid = _box.getCenter(new Vector3());
-    _center.x = object.position.x;
-    _center.z = object.position.z;
-    _center.y = Math.min(mid.y, visualH * 0.55);
-    _box.getSize(_size);
-  } else {
-    _center.y = visualH * 0.42;
-    _size.set(0.45, visualH, 0.8);
-  }
-  const dogH = Math.min(Math.max(hasBounds ? _size.y : visualH, visualH * 0.7), visualH * 1.35);
-  const pitch = opts.asleep ? 0.58 : YARD_PITCH;
+  const lookY = visualH * 0.34;
+  _box.min.set(_center.x - 0.3, 0, _center.z - 0.38);
+  _box.max.set(_center.x + 0.3, visualH, _center.z + 0.38);
+  const pitch = opts.asleep ? 0.48 : YARD_PITCH;
   const yaw = CAMERA_YAW;
-  const lookY = Math.max(0.22, Math.min(dogH * 0.38, 0.48));
-  let dist = dogH / (Math.max(0.14, frac * 2) * Math.tan(fov / 2));
-  dist = Math.max(opts.asleep ? 5.4 : 5.8, dist);
+  let dist = visualH / (Math.max(0.14, frac * 2) * Math.tan(fov / 2));
+  dist = Math.min(8.6, Math.max(opts.asleep ? 5.2 : 5.6, dist));
 
-  for (let i = 0; i < 14; i += 1) {
+  for (let i = 0; i < 8; i += 1) {
     _desired.set(
       _center.x + dist * Math.sin(yaw) * Math.cos(pitch),
-      Math.max(2.15, lookY + dist * Math.sin(pitch)),
+      lookY + dist * Math.sin(pitch),
       _center.z + dist * Math.cos(yaw) * Math.cos(pitch),
     );
     camera.up.set(0, 1, 0);
@@ -165,7 +155,6 @@ export function followYardCamera(
     camera.aspect = aspect;
     camera.lookAt(_center.x, lookY, _center.z);
     camera.updateProjectionMatrix();
-    if (!hasBounds) break;
     const projected = projectCorners(camera);
     const height = projected.maxY - projected.minY;
     const overflow =
@@ -173,10 +162,9 @@ export function followYardCamera(
       projected.maxX > YARD_SAFE.maxX ||
       projected.minY < YARD_SAFE.minY ||
       projected.maxY > YARD_SAFE.maxY ||
-      height > frac * 2 * 1.2 ||
-      projected.behind >= 8;
+      height > frac * 2 * 1.22;
     if (!overflow) break;
-    dist = Math.min(13.6, dist * 1.07);
+    dist = Math.min(8.6, dist * 1.06);
   }
 
   return { center: _center.clone(), dist, desired: _desired.clone(), lookY };
