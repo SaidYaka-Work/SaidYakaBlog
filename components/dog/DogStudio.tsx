@@ -4,7 +4,16 @@ import { generateGenome, type LifeStage } from '@/lib/dog';
 import DogPortrait from './DogPortrait';
 import './dog.css';
 
-const SEEDS = ['biscuit-porch-1', 'porch-seed-1', 'porch-seed-2', 'maple-lane', 'rain-rug'];
+const SEEDS = [
+  'biscuit-porch-1',
+  'porch-seed-1',
+  'porch-seed-2',
+  'maple-lane',
+  'rain-rug',
+  'cream-gate',
+  'brindle-stoop',
+  'merle-yard',
+];
 const STAGES: LifeStage[] = ['puppy', 'young', 'adult', 'senior'];
 
 export default function DogStudio() {
@@ -40,6 +49,14 @@ export default function DogStudio() {
         <figure className="overflow-hidden rounded-[1.4rem] border border-[var(--line)]">
           <DogPortrait genome={generateGenome('biscuit-porch-1')} asleep={false} reaction="idle" night={false} stage="adult" sad happiness={18} />
           <figcaption className="px-3 py-2 text-sm">Sad</figcaption>
+        </figure>
+        <figure className="overflow-hidden rounded-[1.4rem] border border-[var(--line)]">
+          <DogPortrait genome={generateGenome('biscuit-porch-1')} asleep={false} reaction="walk" night={false} stage="adult" happiness={80} />
+          <figcaption className="px-3 py-2 text-sm">Walking</figcaption>
+        </figure>
+        <figure className="overflow-hidden rounded-[1.4rem] border border-[var(--line)]">
+          <DogPortrait genome={generateGenome('biscuit-porch-1')} asleep={false} reaction="feed" night={false} stage="adult" hungry />
+          <figcaption className="px-3 py-2 text-sm">Eating</figcaption>
         </figure>
       </div>
     </section>

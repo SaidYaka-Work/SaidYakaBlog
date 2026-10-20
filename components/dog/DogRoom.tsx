@@ -5,13 +5,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   dogWorkerUrl,
   dogWsUrl,
-  formatCountdown,
   generateGenome,
   stageWord,
   type DogSnapshot,
   type Memorial,
 } from '@/lib/dog';
-import { reactionFromEvent } from './look';
+import { formatNeed, reactionFromEvent } from './look';
 import { englishPath } from '@/lib/site';
 import CatchGame from './CatchGame';
 import DogPortrait from './DogPortrait';
@@ -271,13 +270,13 @@ export default function DogRoom() {
             <Need
               label="Dinner"
               hint={dog.care.mealHint}
-              value={dog.care.feedOverdue ? `Overdue ${formatCountdown(dog.care.nextFeedInMs)}` : `In ${formatCountdown(dog.care.nextFeedInMs)}`}
+              value={formatNeed(dog.care.nextFeedInMs, dog.care.feedOverdue)}
               hot={dog.care.feedOverdue}
             />
             <Need
               label="Walk"
               hint={dog.care.walkHint}
-              value={dog.care.walkOverdue ? `Overdue ${formatCountdown(dog.care.nextWalkInMs)}` : `In ${formatCountdown(dog.care.nextWalkInMs)}`}
+              value={formatNeed(dog.care.nextWalkInMs, dog.care.walkOverdue)}
               hot={dog.care.walkOverdue}
             />
           </div>
