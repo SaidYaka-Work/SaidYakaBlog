@@ -79,11 +79,11 @@ export default function PorchWorld({
         shadow-camera-far={18}
         shadow-bias={-0.0004}
       />
-      <directionalLight position={[-3.5, 2.2, 1.5]} intensity={night ? 0.1 : 0.28} color="#e08a5a" />
+      <directionalLight position={[-3.5, 2.2, 1.5]} intensity={night ? 0.08 : 0.16} color="#f0d0b0" />
       {!compact && <pointLight position={[1.4, 1.6, 1.2]} intensity={night ? 1.2 : 0.3} color="#fbe8c8" distance={7} />}
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-        <planeGeometry args={[28, 28]} />
+        <circleGeometry args={[22, 64]} />
         <meshStandardMaterial color={night ? '#1c1a18' : '#efe2d0'} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.02, 0.012, 0.08]} receiveShadow>
