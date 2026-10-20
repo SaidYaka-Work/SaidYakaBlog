@@ -107,7 +107,7 @@ function addStillPorch(scene: Scene, night: boolean, showBowl: boolean) {
   scene.add(ground);
   const rugMap = makeRugTexture(night ? '#8a3a18' : '#c46a3a');
   if (rugMap) {
-    const mat = new Mesh(new PlaneGeometry(2.24, 2.24), new MeshBasicMaterial({ map: rugMap, transparent: true }));
+    const mat = new Mesh(new PlaneGeometry(1.7, 1.7), new MeshBasicMaterial({ map: rugMap, transparent: true }));
     mat.rotation.x = -Math.PI / 2;
     mat.position.set(0.02, 0.012, 0.08);
     scene.add(mat);

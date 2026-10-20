@@ -47,19 +47,22 @@ function FramedCamera({
     const info = frameCamera(camera, object, {
       pad: fill ? 1.38 : compact ? 1.4 : 1.42,
       yaw: CAMERA_YAW,
-      pitch: asleep ? 0.26 : 0.2,
+      pitch: 0.2,
       aspect: camera.aspect,
-      lift: asleep ? 0.04 : 0,
-      minDist: asleep ? 5 : fill ? 4.1 : 3.8,
+      lift: 0,
+      minDist: asleep ? 4.6 : fill ? 4.1 : 3.8,
     });
     if (!info) return;
+    const lookX = info.center.x * 0.3;
+    const lookY = info.center.y;
+    const lookZ = info.center.z * 0.3;
     camera.up.set(0, 1, 0);
-    camera.lookAt(info.center.x, asleep ? info.center.y * 0.45 : info.center.y, info.center.z);
+    camera.lookAt(lookX, lookY, lookZ);
     camera.updateProjectionMatrix();
     if (ready.current) {
       camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 4));
       camera.up.set(0, 1, 0);
-      camera.lookAt(info.center.x, asleep ? info.center.y * 0.45 : info.center.y, info.center.z);
+      camera.lookAt(lookX, lookY, lookZ);
       camera.updateProjectionMatrix();
     } else {
       ready.current = true;

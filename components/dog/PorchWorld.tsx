@@ -105,7 +105,7 @@ export default function PorchWorld({
       </mesh>
       {rug && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.02, 0.012, 0.08]} receiveShadow>
-          <planeGeometry args={[2.24, 2.24]} />
+          <planeGeometry args={[1.7, 1.7]} />
           <meshBasicMaterial map={rug} transparent />
         </mesh>
       )}
