@@ -6,11 +6,13 @@ const _sphere = new Sphere();
 const _center = new Vector3();
 const _desired = new Vector3();
 const _corner = new Vector3();
+const _size = new Vector3();
 
 export const THREE_QUARTER_YAW = 0.55;
-export const CAMERA_YAW = 0.1;
-export const SLEEP_ROLL = -Math.PI / 2;
-export const BOWL = { x: -0.58, y: 0.07, z: 0.7 };
+export const CAMERA_YAW = 0.22;
+export const SLEEP_ROLL = 1.22;
+export const SLEEP_YAW = 1.05;
+export const BOWL = { x: -0.62, y: 0.07, z: 0.55 };
 export const EAT_YAW = Math.atan2(BOWL.x, BOWL.z);
 
 function isBoneParent(node: Object3D) {
@@ -42,9 +44,17 @@ export function meshBounds(object: Object3D) {
     const sizeX = _meshBox.max.x - _meshBox.min.x;
     const sizeY = _meshBox.max.y - _meshBox.min.y;
     const sizeZ = _meshBox.max.z - _meshBox.min.z;
-    if (sizeX > 8 || sizeY > 8 || sizeZ > 8) return;
+    if (sizeX > 14 || sizeY > 14 || sizeZ > 14) return;
     _box.union(_meshBox);
   });
+  if (_box.isEmpty()) {
+    _box.setFromObject(object, true);
+    _box.getSize(_size);
+    if (_box.isEmpty() || _size.x > 14 || _size.y > 14 || _size.z > 14) {
+      object.getWorldPosition(_center);
+      _box.setFromCenterAndSize(_center, _size.set(1.2, 1.5, 2.1));
+    }
+  }
   return !_box.isEmpty();
 }
 

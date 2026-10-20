@@ -47,10 +47,10 @@ function FramedCamera({
     const info = frameCamera(camera, object, {
       pad: fill ? 1.38 : compact ? 1.4 : 1.42,
       yaw: CAMERA_YAW,
-      pitch: asleep ? 0.4 : fill ? 0.18 : 0.2,
+      pitch: asleep ? 0.2 : fill ? 0.18 : 0.2,
       aspect: camera.aspect,
       lift: fill ? 0.08 : 0,
-      minDist: asleep ? 3.7 : fill ? 3.2 : 3.05,
+      minDist: asleep ? 4.4 : fill ? 3.25 : 3.1,
     });
     if (!info) return;
     if (ready.current) {

@@ -8,7 +8,7 @@ import { AnimationMixer, LoopOnce, LoopRepeat, Mesh, MeshStandardMaterial, Torus
 import type { AnimationAction, Group, Object3D } from 'three';
 import { generateGenome, type DogGenome, type LifeStage } from '@/lib/dog';
 import { wagMs, type PortraitReaction } from './look';
-import { EAT_YAW, SLEEP_ROLL, THREE_QUARTER_YAW, groundToFloor } from './frame';
+import { EAT_YAW, SLEEP_ROLL, SLEEP_YAW, THREE_QUARTER_YAW, groundToFloor } from './frame';
 import {
   applyDogLook,
   applyMoodBones,
@@ -133,17 +133,23 @@ const DogRig = forwardRef<Group, {
     const walking = reaction === 'walk';
     const eating = reaction === 'feed';
     const w = wander.current;
-    const homeYaw = eating ? EAT_YAW : THREE_QUARTER_YAW;
+    const homeYaw = asleep ? SLEEP_YAW : eating ? EAT_YAW : THREE_QUARTER_YAW;
 
     if (walking) {
       const t = performance.now() / 1000;
       w.x = Math.sin(t * 0.7) * 0.32;
       w.z = Math.cos(t * 0.7) * 0.22;
       w.yaw = THREE_QUARTER_YAW + t * 0.7 + Math.PI / 2;
-    } else if (asleep || sad || reaction !== 'idle') {
+    } else if (eating || asleep) {
+      w.x += (0 - w.x) * 0.18;
+      w.z += (0 - w.z) * 0.18;
+      w.yaw = homeYaw;
+      w.look = 0;
+      w.mode = 'idle';
+    } else if (sad || reaction !== 'idle') {
       w.x += (0 - w.x) * 0.1;
       w.z += (0 - w.z) * 0.1;
-      w.yaw += (homeYaw - w.yaw) * 0.12;
+      w.yaw += (THREE_QUARTER_YAW - w.yaw) * 0.12;
       w.look = 0;
       w.mode = 'idle';
     } else if (idle && interactive) {

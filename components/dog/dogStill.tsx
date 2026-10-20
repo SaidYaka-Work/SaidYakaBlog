@@ -24,7 +24,7 @@ import { SkeletonUtils } from 'three-stdlib';
 import type { DogGenome, LifeStage } from '@/lib/dog';
 import { generateGenome } from '@/lib/dog';
 import type { PortraitReaction } from './look';
-import { BOWL, CAMERA_YAW, EAT_YAW, SLEEP_ROLL, THREE_QUARTER_YAW, clipPreviewTime, frameCamera, groundToFloor } from './frame';
+import { BOWL, CAMERA_YAW, EAT_YAW, SLEEP_ROLL, SLEEP_YAW, THREE_QUARTER_YAW, clipPreviewTime, frameCamera, groundToFloor } from './frame';
 import { applyDogLook, applyMoodBones, breedFromGenome, clipForReaction, clipName, CLIPS, figureFromGenome, modelUrl } from './model';
 
 type StillKey = {
@@ -130,7 +130,7 @@ async function renderDogStillNow(opts: StillKey, key: string) {
   const figure = figureFromGenome(genes, opts.stage);
   const asleep = opts.asleep || opts.reaction === 'sleep';
   dog.scale.set(figure.body, figure.body, figure.body * figure.length);
-  dog.rotation.set(0, opts.reaction === 'feed' ? EAT_YAW : THREE_QUARTER_YAW, asleep ? SLEEP_ROLL : 0);
+  dog.rotation.set(0, asleep ? SLEEP_YAW : opts.reaction === 'feed' ? EAT_YAW : THREE_QUARTER_YAW, asleep ? SLEEP_ROLL : 0);
   if (opts.reaction === 'walk') dog.position.set(0.2, 0, 0.08);
   scene.add(dog);
   const mixer = new AnimationMixer(dog);
@@ -142,6 +142,13 @@ async function renderDogStillNow(opts: StillKey, key: string) {
     action.play();
     mixer.update(clipPreviewTime(want, clip.duration));
   }
+  dog.traverse((node) => {
+    const skinned = node as { isSkinnedMesh?: boolean; skeleton?: { update: () => void }; computeBoundingBox?: () => void };
+    if (skinned.isSkinnedMesh) {
+      skinned.skeleton?.update();
+      skinned.computeBoundingBox?.();
+    }
+  });
   applyMoodBones(dog, {
     sad: Boolean(opts.sad),
     asleep,
@@ -153,9 +160,9 @@ async function renderDogStillNow(opts: StillKey, key: string) {
   frameCamera(camera, dog, {
     pad: 1.4,
     yaw: CAMERA_YAW,
-    pitch: asleep ? 0.4 : 0.2,
+    pitch: asleep ? 0.2 : 0.2,
     aspect: 640 / 500,
-    minDist: asleep ? 3.7 : 3.15,
+    minDist: asleep ? 4.4 : 3.2,
   });
   const gl = getRenderer();
   gl.render(scene, camera);

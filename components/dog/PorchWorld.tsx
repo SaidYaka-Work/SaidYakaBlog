@@ -3,12 +3,10 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei';
 import { useEffect, useMemo, useRef } from 'react';
-import { Color, ShaderMaterial, Vector3 } from 'three';
-import type { Group, Mesh } from 'three';
+import { Color, ShaderMaterial } from 'three';
+import type { Group } from 'three';
 import { localSky, type SkyMood } from './look';
 import { BOWL } from './frame';
-
-const _skyDir = new Vector3();
 
 const SKY: Record<SkyMood, { top: string; bot: string }> = {
   dawn: { top: '#f6e6d6', bot: '#f0c8a8' },
@@ -18,8 +16,6 @@ const SKY: Record<SkyMood, { top: string; bot: string }> = {
 };
 
 function SkyBackdrop({ mood }: { mood: SkyMood }) {
-  const camera = useThree((state) => state.camera);
-  const mesh = useRef<Mesh>(null);
   const material = useMemo(() => {
     const colors = SKY[mood];
     return new ShaderMaterial({
@@ -32,7 +28,7 @@ function SkyBackdrop({ mood }: { mood: SkyMood }) {
         varying vec2 vUv;
         void main() {
           vUv = uv;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          gl_Position = vec4(position.xy, 1.0, 1.0);
         }
       `,
       fragmentShader: `
@@ -41,10 +37,10 @@ function SkyBackdrop({ mood }: { mood: SkyMood }) {
         uniform vec3 uLine;
         varying vec2 vUv;
         void main() {
-          float h = smoothstep(0.0, 0.7, vUv.y);
+          float h = smoothstep(0.0, 0.74, vUv.y);
           vec3 col = mix(uBot, uTop, h);
-          float horizon = smoothstep(0.28, 0.32, vUv.y) * (1.0 - smoothstep(0.32, 0.36, vUv.y));
-          col = mix(col, uLine, horizon * 0.45);
+          float horizon = smoothstep(0.26, 0.3, vUv.y) * (1.0 - smoothstep(0.3, 0.34, vUv.y));
+          col = mix(col, uLine, horizon * 0.4);
           float star = 0.0;
           if (uTop.b > 0.12 && uTop.r < 0.2) {
             vec2 g = floor(vUv * vec2(42.0, 24.0));
@@ -60,17 +56,9 @@ function SkyBackdrop({ mood }: { mood: SkyMood }) {
     });
   }, [mood]);
 
-  useFrame(() => {
-    const node = mesh.current;
-    if (!node) return;
-    camera.getWorldDirection(_skyDir);
-    node.position.copy(camera.position).addScaledVector(_skyDir, 42);
-    node.quaternion.copy(camera.quaternion);
-  });
-
   return (
-    <mesh ref={mesh} material={material} frustumCulled={false} renderOrder={-10}>
-      <planeGeometry args={[90, 56]} />
+    <mesh material={material} frustumCulled={false} renderOrder={-10}>
+      <planeGeometry args={[2, 2]} />
     </mesh>
   );
 }
