@@ -82,8 +82,8 @@ export default function PorchWorld({
       <directionalLight position={[-3.5, 2.2, 1.5]} intensity={night ? 0.08 : 0.16} color="#f0d0b0" />
       {!compact && <pointLight position={[1.4, 1.6, 1.2]} intensity={night ? 1.2 : 0.3} color="#fbe8c8" distance={7} />}
 
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-        <circleGeometry args={[22, 64]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
+        <circleGeometry args={[80, 96]} />
         <meshStandardMaterial color={night ? '#1c1a18' : '#efe2d0'} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.02, 0.012, 0.08]} receiveShadow>
