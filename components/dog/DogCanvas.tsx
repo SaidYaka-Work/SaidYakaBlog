@@ -50,7 +50,7 @@ function FramedCamera({
       pitch: asleep ? 0.2 : fill ? 0.18 : 0.2,
       aspect: camera.aspect,
       lift: fill ? 0.08 : 0,
-      minDist: asleep ? 4.4 : fill ? 3.25 : 3.1,
+      minDist: asleep ? 4.8 : fill ? 3.4 : 3.2,
     });
     if (!info) return;
     if (ready.current) {

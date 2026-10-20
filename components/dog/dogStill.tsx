@@ -162,7 +162,7 @@ async function renderDogStillNow(opts: StillKey, key: string) {
     yaw: CAMERA_YAW,
     pitch: asleep ? 0.2 : 0.2,
     aspect: 640 / 500,
-    minDist: asleep ? 4.4 : 3.2,
+    minDist: asleep ? 4.8 : 3.8,
   });
   const gl = getRenderer();
   gl.render(scene, camera);

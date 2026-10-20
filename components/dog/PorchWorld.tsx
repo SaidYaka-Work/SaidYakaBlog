@@ -5,7 +5,7 @@ import { ContactShadows } from '@react-three/drei';
 import { useEffect, useMemo, useRef } from 'react';
 import { Color, ShaderMaterial } from 'three';
 import type { Group } from 'three';
-import { localSky, type SkyMood } from './look';
+import type { SkyMood } from './look';
 import { BOWL } from './frame';
 
 const SKY: Record<SkyMood, { top: string; bot: string }> = {
@@ -28,7 +28,7 @@ function SkyBackdrop({ mood }: { mood: SkyMood }) {
         varying vec2 vUv;
         void main() {
           vUv = uv;
-          gl_Position = vec4(position.xy, 1.0, 1.0);
+          gl_Position = vec4(position.xy, 0.999, 1.0);
         }
       `,
       fragmentShader: `
@@ -97,7 +97,7 @@ export default function PorchWorld({
   compact?: boolean;
   walking?: boolean;
 }) {
-  const mood = night ? 'night' : localSky();
+  const mood = night ? 'night' : 'day';
   const hills = useRef<Group>(null);
   const { scene, gl } = useThree();
   const sky = SKY[mood];

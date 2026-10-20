@@ -9,9 +9,9 @@ const _corner = new Vector3();
 const _size = new Vector3();
 
 export const THREE_QUARTER_YAW = 0.55;
-export const CAMERA_YAW = 0.22;
-export const SLEEP_ROLL = 1.22;
-export const SLEEP_YAW = 1.05;
+export const CAMERA_YAW = 0.32;
+export const SLEEP_ROLL = Math.PI / 2;
+export const SLEEP_YAW = Math.PI / 2;
 export const BOWL = { x: -0.62, y: 0.07, z: 0.55 };
 export const EAT_YAW = Math.atan2(BOWL.x, BOWL.z);
 
@@ -117,7 +117,7 @@ export function frameCamera(
     ) {
       break;
     }
-    dist = Math.min(6.4, dist * 1.1);
+    dist = Math.min(7.4, dist * 1.12);
   }
   return { center: _center.clone(), radius, dist, desired: _desired.clone() };
 }
