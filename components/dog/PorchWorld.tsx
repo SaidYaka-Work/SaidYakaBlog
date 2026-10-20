@@ -1,9 +1,31 @@
 'use client';
 
 import { useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import { CanvasTexture, SRGBColorSpace } from 'three';
 import type { Group } from 'three';
 import { BOWL } from './frame';
+
+function makeRugTexture(fill: string, ring: string) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.clearRect(0, 0, 256, 256);
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.arc(128, 128, 120, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = ring;
+  ctx.lineWidth = 12;
+  ctx.beginPath();
+  ctx.arc(128, 128, 108, 0, Math.PI * 2);
+  ctx.stroke();
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  return texture;
+}
 
 function HorizonFence({ night }: { night: boolean }) {
   const wood = night ? '#3a2a20' : '#8a6a48';
@@ -41,6 +63,10 @@ export default function PorchWorld({
 }) {
   const hills = useRef<Group>(null);
   const { scene, gl } = useThree();
+  const rug = useMemo(
+    () => makeRugTexture(night ? '#8a3a18' : '#c46a3a', '#e08a5a'),
+    [night],
+  );
 
   useEffect(() => {
     scene.background = null;
@@ -75,16 +101,14 @@ export default function PorchWorld({
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
         <planeGeometry args={[90, 90]} />
-        <meshStandardMaterial color={night ? '#141820' : '#f0d4b4'} />
+        <meshStandardMaterial color={night ? '#141820' : '#e2b892'} />
       </mesh>
-      <mesh position={[0.02, 0.01, 0.08]} receiveShadow>
-        <cylinderGeometry args={[1.12, 1.12, 0.02, 48]} />
-        <meshStandardMaterial color={night ? '#8a3a18' : '#c46a3a'} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.02, 0.021, 0.08]}>
-        <ringGeometry args={[0.92, 1.04, 48]} />
-        <meshStandardMaterial color="#e08a5a" />
-      </mesh>
+      {rug && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.02, 0.012, 0.08]} receiveShadow>
+          <planeGeometry args={[2.24, 2.24]} />
+          <meshBasicMaterial map={rug} transparent />
+        </mesh>
+      )}
 
       {!compact && <HorizonFence night={night} />}
 

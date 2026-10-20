@@ -95,6 +95,7 @@ export function frameCamera(
   opts: { pad?: number; yaw?: number; pitch?: number; aspect?: number; lift?: number; minDist?: number } = {},
 ) {
   if (!meshBounds(object)) return null;
+  _box.min.y = Math.min(_box.min.y, 0);
   _box.getBoundingSphere(_sphere);
   _box.getCenter(_center);
   const pad = opts.pad ?? 1.42;

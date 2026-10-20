@@ -8,13 +8,15 @@ import {
   CylinderGeometry,
   DirectionalLight,
   HemisphereLight,
+  CanvasTexture,
   Mesh,
+  MeshBasicMaterial,
   MeshStandardMaterial,
   PerspectiveCamera,
   PlaneGeometry,
-  RingGeometry,
   Scene,
   SphereGeometry,
+  SRGBColorSpace,
   WebGLRenderer,
 } from 'three';
 import type { AnimationClip } from 'three';
@@ -77,18 +79,39 @@ function getRenderer() {
   return renderer;
 }
 
+function makeRugTexture(fill: string) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.clearRect(0, 0, 256, 256);
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.arc(128, 128, 120, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#e08a5a';
+  ctx.lineWidth = 12;
+  ctx.beginPath();
+  ctx.arc(128, 128, 108, 0, Math.PI * 2);
+  ctx.stroke();
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  return texture;
+}
+
 function addStillPorch(scene: Scene, night: boolean, showBowl: boolean) {
-  const ground = new Mesh(new PlaneGeometry(90, 90), new MeshStandardMaterial({ color: night ? '#141820' : '#f0d4b4' }));
+  const ground = new Mesh(new PlaneGeometry(90, 90), new MeshStandardMaterial({ color: night ? '#141820' : '#e2b892' }));
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.02;
   scene.add(ground);
-  const mat = new Mesh(new CylinderGeometry(1.12, 1.12, 0.02, 48), new MeshStandardMaterial({ color: night ? '#8a3a18' : '#c46a3a' }));
-  mat.position.set(0.02, 0.01, 0.08);
-  scene.add(mat);
-  const ring = new Mesh(new RingGeometry(0.92, 1.04, 48), new MeshStandardMaterial({ color: '#e08a5a' }));
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.set(0.02, 0.021, 0.08);
-  scene.add(ring);
+  const rugMap = makeRugTexture(night ? '#8a3a18' : '#c46a3a');
+  if (rugMap) {
+    const mat = new Mesh(new PlaneGeometry(2.24, 2.24), new MeshBasicMaterial({ map: rugMap, transparent: true }));
+    mat.rotation.x = -Math.PI / 2;
+    mat.position.set(0.02, 0.012, 0.08);
+    scene.add(mat);
+  }
   const pot = new Mesh(new CylinderGeometry(0.14, 0.18, 0.28, 10), new MeshStandardMaterial({ color: '#c46a3a' }));
   pot.position.set(1.5, 0.28, -0.8);
   scene.add(pot);
@@ -160,7 +183,7 @@ async function renderDogStillNow(opts: StillKey, key: string) {
     yaw: CAMERA_YAW,
     pitch: asleep ? 0.2 : 0.2,
     aspect: 640 / 500,
-    minDist: asleep ? 4.1 : 3.6,
+    minDist: asleep ? 4.2 : 4,
   });
   const gl = getRenderer();
   gl.render(scene, camera);
