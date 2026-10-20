@@ -122,10 +122,10 @@ export const YARD_BODY: Record<string, number> = {
 };
 
 const YARD_HEIGHT: Record<string, number> = {
-  puppy: 0.78,
-  young: 0.96,
-  adult: 1.12,
-  senior: 1.06,
+  puppy: 1.18,
+  young: 1.08,
+  adult: 1.16,
+  senior: 1.1,
 };
 
 export function followYardCamera(
@@ -145,7 +145,7 @@ export function followYardCamera(
   const pitch = opts.asleep ? 0.48 : YARD_PITCH;
   const yaw = CAMERA_YAW;
   let dist = visualH / (Math.max(0.14, frac * 2) * Math.tan(fov / 2));
-  dist = Math.min(8.6, Math.max(opts.asleep ? 5.2 : 5.6, dist));
+  dist = Math.min(9.2, Math.max(opts.asleep ? 5.8 : 6.4, dist));
 
   for (let i = 0; i < 8; i += 1) {
     _desired.set(
@@ -169,7 +169,7 @@ export function followYardCamera(
       projected.maxY > YARD_SAFE.maxY ||
       height > frac * 2 * 1.22;
     if (!overflow) break;
-    dist = Math.min(8.6, dist * 1.06);
+    dist = Math.min(9.2, dist * 1.06);
   }
 
   return { center: _center.clone(), dist, desired: _desired.clone(), lookY };
