@@ -163,6 +163,20 @@ test('two clients: holder drives, the other sees the same position, then idle ha
   assert.equal(afterIdle.room.yard?.leash.holderId, 'bob');
 });
 
+test('drive faces the input and stays inside the fence without heading snaps', () => {
+  let pose = createYard(T0).pose;
+  let lastYaw = pose.yaw;
+  for (let i = 0; i < 30; i += 1) {
+    const next = integratePose(pose, 0, -1, false, 0.05);
+    const turn = Math.abs(((next.pose.yaw - lastYaw + Math.PI) % (Math.PI * 2)) - Math.PI);
+    assert.ok(turn <= 4.6 * 0.05 + 0.01, `heading snap ${turn}`);
+    assert.ok(Math.abs(next.pose.x) < ROOM_HALF && Math.abs(next.pose.z) < ROOM_HALF);
+    lastYaw = next.pose.yaw;
+    pose = next.pose;
+  }
+  assert.ok(Math.abs(pose.yaw) > 2.2 || Math.abs(pose.yaw) < 0.6);
+});
+
 test('unleashed dog wanders toward the bed when tired and the feeder when hungry food is waiting', () => {
   const tired = tickYardAi(createYard(T0), T0 + 3_000, 0.2, { tired: true });
   assert.equal(tired.ai.mode, 'bed');

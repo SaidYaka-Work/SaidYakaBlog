@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --experimental-strip-types scripts/dog-frame-check.ts"
+    "test": "node --experimental-strip-types scripts/dog-frame-check.ts && node --experimental-strip-types scripts/dog-motion-check.ts"
   },
   "dependencies": {
     "@mdx-js/loader": "^3.1.0",
