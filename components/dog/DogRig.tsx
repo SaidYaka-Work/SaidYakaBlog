@@ -95,7 +95,7 @@ const DogRig = forwardRef<Group, {
   useEffect(() => {
     const colors = applyDogLook(scene, genes, stage, { asleep }).colors;
     const neck = findBone(scene, 'Neck1');
-    if (neck && !neck.getObjectByName('Collar')) {
+    if (neck && !roomy && !neck.getObjectByName('Collar')) {
       const collar = new Mesh(new TorusGeometry(0.16, 0.03, 8, 18), new MeshStandardMaterial({ color: colors.accessory, roughness: 0.45 }));
       collar.name = 'Collar';
       collar.rotation.x = Math.PI / 2;
