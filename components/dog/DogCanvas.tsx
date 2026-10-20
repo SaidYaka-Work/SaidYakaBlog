@@ -42,8 +42,19 @@ function FramedCamera({
     if (!object) return;
     camera.aspect = size.width / Math.max(1, size.height);
     from.current.copy(camera.position);
+    if (walking) {
+      const dist = fill ? 4.8 : 4.1;
+      camera.position.set(Math.sin(CAMERA_YAW) * dist * 0.85, 1.55, Math.cos(CAMERA_YAW) * dist);
+      camera.lookAt(0, 0.5, 0);
+      camera.updateProjectionMatrix();
+      if (!ready.current) {
+        ready.current = true;
+        onReady?.();
+      }
+      return;
+    }
     const info = frameCamera(camera, object, {
-      pad: walking ? 1.95 : fill ? 1.7 : compact ? 1.5 : 1.48,
+      pad: fill ? 1.7 : compact ? 1.5 : 1.48,
       yaw: CAMERA_YAW,
       pitch: fill ? 0.13 : 0.18,
       aspect: camera.aspect,

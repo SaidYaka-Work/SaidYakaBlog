@@ -157,10 +157,14 @@ export function applyMoodBones(
     return;
   }
   if (opts.sad) {
-    if (head) head.rotation.x += 0.42;
-    if (neck) neck.rotation.x += 0.18;
+    if (head) head.rotation.x += 0.62;
+    if (neck) neck.rotation.x += 0.34;
+    if (neck1) neck1.rotation.x += 0.22;
     tail.forEach((bone, i) => {
-      if (bone) bone.rotation.x -= 0.35 - i * 0.04;
+      if (bone) {
+        bone.rotation.x -= 0.48 - i * 0.05;
+        bone.rotation.z -= 0.12;
+      }
     });
   }
   if (head && opts.lookX) head.rotation.y += opts.lookX * 0.45;

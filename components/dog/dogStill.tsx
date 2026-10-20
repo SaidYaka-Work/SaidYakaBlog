@@ -152,7 +152,12 @@ async function renderDogStillNow(opts: StillKey, key: string) {
     dog.position.set(0.35, 0, 0.12);
   }
   const camera = new PerspectiveCamera(36, 640 / 500, 0.1, 50);
-  frameCamera(camera, dog, { pad: 1.5, yaw: CAMERA_YAW, pitch: 0.2, aspect: 640 / 500 });
+  if (opts.reaction === 'walk') {
+    camera.position.set(Math.sin(CAMERA_YAW) * 3.5, 1.5, Math.cos(CAMERA_YAW) * 4.1);
+    camera.lookAt(0, 0.5, 0);
+  } else {
+    frameCamera(camera, dog, { pad: 1.5, yaw: CAMERA_YAW, pitch: 0.2, aspect: 640 / 500 });
+  }
   const gl = getRenderer();
   gl.render(scene, camera);
   const url = gl.domElement.toDataURL('image/jpeg', 0.82);
