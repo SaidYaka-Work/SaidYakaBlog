@@ -23,11 +23,13 @@ function FramedCamera({
   target,
   compact,
   fill,
+  walking,
   onReady,
 }: {
   target: RefObject<Group | null>;
   compact?: boolean;
   fill?: boolean;
+  walking?: boolean;
   onReady?: () => void;
 }) {
   const camera = useThree((state) => state.camera) as PerspectiveCamera;
@@ -41,10 +43,11 @@ function FramedCamera({
     camera.aspect = size.width / Math.max(1, size.height);
     from.current.copy(camera.position);
     const info = frameCamera(camera, object, {
-      pad: fill ? 1.52 : compact ? 1.48 : 1.46,
+      pad: walking ? 1.95 : fill ? 1.7 : compact ? 1.5 : 1.48,
       yaw: CAMERA_YAW,
-      pitch: fill ? 0.18 : 0.2,
+      pitch: fill ? 0.13 : 0.18,
       aspect: camera.aspect,
+      lift: fill ? 0.42 : 0.08,
     });
     if (!info) return;
     if (ready.current) {
@@ -172,7 +175,15 @@ export default function DogCanvas({
               interactive={interactive}
             />
           )}
-          {!empty && <FramedCamera target={dogRef} compact={compact} fill={fill} onReady={onReady} />}
+          {!empty && (
+            <FramedCamera
+              target={dogRef}
+              compact={compact}
+              fill={fill}
+              walking={reaction === 'walk'}
+              onReady={onReady}
+            />
+          )}
           {empty && <EmptyReady onReady={onReady} />}
         </Suspense>
       </Canvas>

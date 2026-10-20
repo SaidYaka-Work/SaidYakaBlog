@@ -99,7 +99,7 @@ const DogRig = forwardRef<Group, {
     prev?.fadeOut(0.24);
     next.reset();
     next.setEffectiveTimeScale(figure.timeScale * (sad ? 0.7 : key === 'walk' ? 1.05 : 1));
-    if (once || key === 'pet' || key === 'sleep' || key === 'lie') {
+    if (once || key === 'pet' || key === 'lie') {
       next.setLoop(LoopOnce, 1);
       next.clampWhenFinished = true;
     } else {
@@ -111,7 +111,7 @@ const DogRig = forwardRef<Group, {
 
   useEffect(() => {
     const key = clipForReaction(reaction, sad, asleep);
-    play(key, key === 'pet' || key === 'sleep');
+    play(key, key === 'pet');
     if (key === 'pet') {
       const mixer = mixerRef.current;
       if (!mixer) return;
@@ -126,7 +126,7 @@ const DogRig = forwardRef<Group, {
 
   useFrame((_, dt) => {
     const mixer = mixerRef.current;
-    if (mixer && !reduced) mixer.update(dt);
+    if (mixer && !reduced && !asleep) mixer.update(dt);
     const node = group.current;
     if (!node) return;
     const idle = reaction === 'idle' && !asleep && !sad && !reduced;
@@ -185,7 +185,8 @@ const DogRig = forwardRef<Group, {
       }
     }
 
-    node.position.set(w.x, asleep ? 0.02 : 0, w.z);
+    node.position.set(w.x, asleep ? 0.42 : 0, w.z);
+    node.rotation.x = asleep ? 1.2 : 0;
     node.rotation.y = w.yaw;
     node.scale.set(figure.body, figure.body, figure.body * figure.length);
 

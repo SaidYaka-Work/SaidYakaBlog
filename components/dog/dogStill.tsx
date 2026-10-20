@@ -128,6 +128,10 @@ async function renderDogStillNow(opts: StillKey, key: string) {
   const figure = figureFromGenome(genes, opts.stage);
   dog.scale.set(figure.body, figure.body, figure.body * figure.length);
   dog.rotation.y = THREE_QUARTER_YAW;
+  if (opts.asleep || opts.reaction === 'sleep') {
+    dog.rotation.x = 1.2;
+    dog.position.y = 0.42;
+  }
   scene.add(dog);
   const mixer = new AnimationMixer(dog);
   const names = gltf.animations.map((clip: { name: string }) => clip.name);

@@ -9,7 +9,7 @@ import { localSky, type SkyMood } from './look';
 
 const SKY: Record<SkyMood, { top: string; bot: string }> = {
   dawn: { top: '#f3d8c6', bot: '#edd0b8' },
-  day: { top: '#e8eef6', bot: '#f3d6bc' },
+  day: { top: '#c8d6e8', bot: '#f0d8c4' },
   dusk: { top: '#e8c4a8', bot: '#dca888' },
   night: { top: '#1e1c22', bot: '#141210' },
 };
@@ -113,11 +113,11 @@ export default function PorchWorld({
       <group ref={hills}>
         <mesh position={[-1.8, 0.12, -2.4]} rotation={[-0.1, 0.2, 0]}>
           <sphereGeometry args={[0.95, 16, 12]} />
-          <meshStandardMaterial color={night ? '#3d2c22' : '#e2c4a8'} />
+          <meshStandardMaterial color={night ? '#3d2c22' : '#c8d2b8'} />
         </mesh>
         <mesh position={[1.6, 0.1, -2.6]}>
           <sphereGeometry args={[1.15, 16, 12]} />
-          <meshStandardMaterial color={night ? '#32261e' : '#d8b496'} />
+          <meshStandardMaterial color={night ? '#32261e' : '#b8c4a6'} />
         </mesh>
       </group>
 

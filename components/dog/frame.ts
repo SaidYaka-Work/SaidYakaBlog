@@ -6,8 +6,8 @@ const _sphere = new Sphere();
 const _center = new Vector3();
 const _desired = new Vector3();
 
-export const THREE_QUARTER_YAW = 0.52;
-export const CAMERA_YAW = 0.18;
+export const THREE_QUARTER_YAW = 0.62;
+export const CAMERA_YAW = 0.04;
 
 function meshBounds(object: Object3D) {
   object.updateWorldMatrix(true, true);
@@ -27,7 +27,7 @@ function meshBounds(object: Object3D) {
 export function frameCamera(
   camera: PerspectiveCamera,
   object: Object3D,
-  opts: { pad?: number; yaw?: number; pitch?: number; aspect?: number } = {},
+  opts: { pad?: number; yaw?: number; pitch?: number; aspect?: number; lift?: number } = {},
 ) {
   if (!meshBounds(object)) return null;
   _box.getBoundingSphere(_sphere);
@@ -47,7 +47,7 @@ export function frameCamera(
   camera.position.copy(_desired);
   camera.near = Math.max(0.05, dist / 40);
   camera.far = Math.max(40, dist * 8);
-  camera.lookAt(_center.x, _center.y + radius * 0.06, _center.z);
+  camera.lookAt(_center.x, _center.y + radius * 0.04 - (opts.lift ?? 0), _center.z);
   camera.updateProjectionMatrix();
   return { center: _center.clone(), radius, dist, desired: _desired.clone() };
 }

@@ -46,7 +46,7 @@ export const CLIPS: Record<string, string[]> = {
 };
 
 export function clipForReaction(reaction: PortraitReaction, sad: boolean, asleep: boolean) {
-  if (asleep || reaction === 'sleep') return 'sleep';
+  if (asleep || reaction === 'sleep') return 'idle';
   if (reaction === 'pet') return 'pet';
   if (reaction === 'feed') return 'eat';
   if (reaction === 'walk') return 'walk';
