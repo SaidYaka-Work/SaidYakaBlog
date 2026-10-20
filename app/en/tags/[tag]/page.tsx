@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -45,21 +46,26 @@ export default async function TagPage({
 
   return (
     <div className="mx-auto max-w-4xl px-5 py-16 sm:px-8 sm:py-24">
-      <p className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Topic</p>
-      <h1 className="mt-3 font-serif text-5xl tracking-tight">{label}</h1>
+      <p className="hero-kicker text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Topic</p>
+      <h1 className="hero-title mt-3 font-serif text-5xl tracking-tight">{label}</h1>
       <p className="mt-4 text-[var(--muted)]">
         {posts.length} {posts.length === 1 ? 'essay' : 'essays'}
       </p>
       <ol className="mt-12 divide-y divide-[var(--line)] border-y border-[var(--line)]">
-        {posts.map((post) => (
-          <li key={post.slug} className="py-7">
+        {posts.map((post, index) => (
+          <li
+            key={post.slug}
+            className="py-7"
+            data-reveal
+            style={{ '--reveal-delay': Math.min(index, 8) } as CSSProperties}
+          >
             <time dateTime={post.date} className="text-sm text-[var(--faint)]">
               {formatDate(post.date)}
             </time>
             <h2 className="mt-2 font-serif text-3xl tracking-tight">
               <Link
                 href={englishPath(`/posts/${post.slug}`)}
-                className="hover:text-[var(--accent)]"
+                className="link-underline hover:text-[var(--accent)]"
               >
                 {post.title}
               </Link>

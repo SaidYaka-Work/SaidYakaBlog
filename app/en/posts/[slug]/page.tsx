@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import ReadingProgress from '@/components/ReadingProgress';
 import TableOfContents from '@/components/TableOfContents';
 import { markdownToHtml } from '@/lib/markdown';
 import { getAllPosts, getPostBySlug } from '@/lib/posts';
@@ -117,16 +118,17 @@ export default async function PostPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
       />
+      <ReadingProgress />
       <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,42rem)_16rem] lg:justify-between">
           <article>
             <header className="mb-10">
-              <p className="text-sm text-[var(--faint)]">
+              <p className="hero-kicker text-sm text-[var(--faint)]">
                 <time dateTime={post.date}>{formatDate(post.date)}</time>
                 <span aria-hidden="true"> · </span>
                 <span>{minutes} min read</span>
               </p>
-              <h1 className="mt-4 font-serif text-4xl leading-[1.05] tracking-tight sm:text-6xl">
+              <h1 className="hero-title mt-4 font-serif text-4xl leading-[1.05] tracking-tight sm:text-6xl">
                 {post.title}
               </h1>
               {post.tags.length > 0 && (
@@ -135,7 +137,7 @@ export default async function PostPage({
                     <li key={tag}>
                       <Link
                         href={englishPath(`/tags/${encodeURIComponent(tag.toLowerCase())}`)}
-                        className="text-sm text-[var(--muted)] hover:text-[var(--ink)]"
+                        className="link-underline text-sm text-[var(--muted)] hover:text-[var(--ink)]"
                       >
                         {tag}
                       </Link>
@@ -155,7 +157,7 @@ export default async function PostPage({
                 <h2 className="font-serif text-3xl tracking-tight">More on {firstTag}</h2>
                 <ul className="mt-6 space-y-6">
                   {related.map((item) => (
-                    <li key={item.slug}>
+                    <li key={item.slug} data-reveal>
                       <Link href={englishPath(`/posts/${item.slug}`)} className="group block">
                         <h3 className="font-serif text-2xl tracking-tight group-hover:text-[var(--accent)]">
                           {item.title}

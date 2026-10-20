@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import ThemeToggle from './ThemeToggle';
+import MotionRoot from './MotionRoot';
 
 const nav = [
   { href: '/en/posts/', label: 'Writing' },
@@ -30,11 +31,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         Skip to content
       </a>
 
-      <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] backdrop-blur-xl">
+      <MotionRoot />
+      <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] backdrop-blur-xl transition-colors duration-500">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:h-[4.25rem] sm:px-8">
           <Link
             href="/en/"
-            className="font-serif text-xl tracking-tight text-[var(--ink)] sm:text-2xl"
+            className="font-serif text-xl tracking-tight text-[var(--ink)] transition-colors duration-300 hover:text-[var(--accent)] sm:text-2xl"
           >
             Said Yaka
           </Link>
@@ -44,7 +46,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`text-sm tracking-wide transition ${
+                data-active={isActive(pathname, item.href)}
+                className={`nav-link text-sm tracking-wide ${
                   isActive(pathname, item.href)
                     ? 'text-[var(--ink)]'
                     : 'text-[var(--muted)] hover:text-[var(--ink)]'
@@ -104,7 +107,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <footer className="mt-auto border-t border-[var(--line)]">
+      <footer className="mt-auto border-t border-[var(--line)] transition-colors duration-500">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-10 sm:flex-row sm:items-end sm:justify-between sm:px-8">
           <div>
             <p className="font-serif text-xl text-[var(--ink)]">Said Yaka</p>

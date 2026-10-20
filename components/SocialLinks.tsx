@@ -19,7 +19,7 @@ export default function SocialLinks({
             href={link.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-[var(--muted)] transition hover:text-[var(--ink)]"
+            className="link-underline text-sm text-[var(--muted)] hover:text-[var(--ink)]"
           >
             {link.label}
           </a>
