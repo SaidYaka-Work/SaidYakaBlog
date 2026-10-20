@@ -15,12 +15,12 @@ function FootShadow({ target }: { target: RefObject<Group | null> }) {
     const dog = target.current;
     const shadow = ref.current;
     if (!dog || !shadow) return;
-    shadow.position.set(dog.position.x, 0.014, dog.position.z);
+    shadow.position.set(dog.position.x, 0.012, dog.position.z);
   });
   return (
     <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2}>
-      <circleGeometry args={[0.26, 22]} />
-      <meshBasicMaterial color="#2a1a10" transparent opacity={0.45} depthWrite={false} />
+      <circleGeometry args={[0.3, 24]} />
+      <meshBasicMaterial color="#1c120c" transparent opacity={0.52} depthWrite={false} />
     </mesh>
   );
 }
