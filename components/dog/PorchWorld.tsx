@@ -2,8 +2,8 @@
 
 import { useFrame, useThree } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei';
-import { useEffect, useRef } from 'react';
-import { CanvasTexture, SRGBColorSpace } from 'three';
+import { useEffect, useMemo, useRef } from 'react';
+import { CanvasTexture, Color, SRGBColorSpace } from 'three';
 import type { Group } from 'three';
 import type { SkyMood } from './look';
 import { BOWL } from './frame';
@@ -83,14 +83,15 @@ export default function PorchWorld({
   const { scene, gl } = useThree();
   const sky = SKY[mood];
 
+  const backdrop = useMemo(() => skyTexture(mood), [mood]);
+
   useEffect(() => {
-    const texture = skyTexture(mood);
-    scene.background = texture;
+    scene.background = new Color(sky.top);
     gl.setClearColor(sky.top, 1);
     return () => {
-      texture?.dispose();
+      backdrop?.dispose();
     };
-  }, [gl, mood, scene, sky.top]);
+  }, [backdrop, gl, scene, sky.top]);
 
   useFrame((_, dt) => {
     if (!hills.current) return;
@@ -104,6 +105,12 @@ export default function PorchWorld({
 
   return (
     <group>
+      {backdrop && (
+        <mesh position={[0, 8, -18]} frustumCulled={false}>
+          <planeGeometry args={[160, 70]} />
+          <meshBasicMaterial map={backdrop} depthWrite={false} />
+        </mesh>
+      )}
       <hemisphereLight args={[night ? '#6a7a98' : '#fff6ea', night ? '#1a1814' : '#d4b496', night ? 0.7 : 1.05]} />
       <directionalLight
         position={[5, 7, 3.5]}

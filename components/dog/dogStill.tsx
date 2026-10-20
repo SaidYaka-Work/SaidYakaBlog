@@ -159,7 +159,7 @@ async function renderDogStillNow(opts: StillKey, key: string) {
   const camera = new PerspectiveCamera(36, 640 / 500, 0.1, 80);
   frameCamera(camera, dog, {
     pad: 1.4,
-    yaw: CAMERA_YAW,
+    yaw: asleep ? 0.85 : CAMERA_YAW,
     pitch: asleep ? 0.2 : 0.2,
     aspect: 640 / 500,
     minDist: asleep ? 5.2 : 4.2,

@@ -46,7 +46,7 @@ function FramedCamera({
     from.current.copy(camera.position);
     const info = frameCamera(camera, object, {
       pad: fill ? 1.38 : compact ? 1.4 : 1.42,
-      yaw: CAMERA_YAW,
+      yaw: asleep ? 0.85 : CAMERA_YAW,
       pitch: asleep ? 0.28 : fill ? 0.18 : 0.2,
       aspect: camera.aspect,
       lift: fill ? 0.06 : 0,
