@@ -69,7 +69,7 @@ function placeWord(grid: string[][], word: string) {
 
 function makeGrid() {
   const grid = emptyGrid();
-  const pool = [...WORDS].filter((word) => word.length >= 4 && word.length <= 6);
+  const pool = Array.from(WORDS).filter((word) => word.length >= 4 && word.length <= 6);
   for (let i = pool.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
