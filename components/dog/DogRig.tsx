@@ -4,7 +4,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import { SkeletonUtils } from 'three-stdlib';
-import { AnimationMixer, LoopOnce, LoopRepeat, Mesh, MeshStandardMaterial, TorusGeometry } from 'three';
+import { AnimationMixer, LoopOnce, LoopRepeat, Mesh, MeshStandardMaterial, TorusGeometry, Vector3 } from 'three';
 import type { AnimationAction, Group, Object3D } from 'three';
 import { generateGenome, type DogGenome, type LifeStage } from '@/lib/dog';
 import { wagMs, type PortraitReaction } from './look';
@@ -100,6 +100,11 @@ const DogRig = forwardRef<Group, {
       collar.name = 'Collar';
       collar.rotation.x = Math.PI / 2;
       collar.position.y = 0.02;
+      neck.updateWorldMatrix(true, false);
+      const boneScale = new Vector3();
+      neck.getWorldScale(boneScale);
+      const compensate = 1 / Math.max(0.08, (boneScale.x + boneScale.y + boneScale.z) / 3);
+      if (Number.isFinite(compensate) && compensate < 8) collar.scale.setScalar(compensate);
       neck.add(collar);
     }
     const mixer = new AnimationMixer(scene);

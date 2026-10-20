@@ -75,7 +75,7 @@ groundToFloor(dog, 0);
 const yardCam = new PerspectiveCamera(36, 16 / 9, 0.1, 80);
 const yard = followYardCamera(yardCam, dog, { stage: 'puppy', aspect: 16 / 9 });
 const yardProj = projectMeshBounds(dog, yardCam);
-assert(yard && yard.dist >= 7.6 && yard.dist <= 13.6, `yard camera should pull back, dist ${yard?.dist}`);
+assert(yard && yard.dist >= 8.4 && yard.dist <= 13.6, `yard camera should pull back, dist ${yard?.dist}`);
 assert(yardProj, 'yard projection exists');
 assert(yardProj && yardProj.minY > YARD_SAFE.minY - 0.02 && yardProj.maxY < YARD_SAFE.maxY + 0.02, `yard camera keeps the dog in the HUD-safe box ${JSON.stringify(yardProj)}`);
 assert(yardProj && yardProj.minX > YARD_SAFE.minX - 0.02 && yardProj.maxX < YARD_SAFE.maxX + 0.02, `yard camera keeps the dog off the side HUD ${JSON.stringify(yardProj)}`);

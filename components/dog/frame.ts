@@ -31,7 +31,7 @@ export function meshBounds(object: Object3D) {
   object.traverse((node) => {
     const mesh = node as Mesh & SkinnedMesh;
     if (!mesh.isMesh || !mesh.geometry) return;
-    if (isBoneParent(mesh)) return;
+    if (mesh.name === 'Collar' || isBoneParent(mesh)) return;
     if (mesh.isSkinnedMesh) {
       mesh.computeBoundingBox();
       if (!mesh.boundingBox || mesh.boundingBox.isEmpty()) return;
@@ -116,29 +116,46 @@ export const YARD_BODY: Record<string, number> = {
   senior: 0.8,
 };
 
+const YARD_HEIGHT: Record<string, number> = {
+  puppy: 0.62,
+  young: 0.82,
+  adult: 1.02,
+  senior: 0.96,
+};
+
 export function followYardCamera(
   camera: PerspectiveCamera,
   object: Object3D,
   opts: { stage?: string; asleep?: boolean; aspect?: number } = {},
 ) {
-  if (!meshBounds(object)) return null;
-  _box.getCenter(_center);
-  _box.getSize(_size);
   const stage = opts.stage ?? 'adult';
   const frac = YARD_FRAC[stage] ?? YARD_FRAC.adult;
   const aspect = opts.aspect ?? camera.aspect ?? 1;
   const fov = (camera.fov * Math.PI) / 180;
-  const dogH = Math.max(_size.y, 0.32);
-  const pitch = opts.asleep ? 0.56 : YARD_PITCH;
+  const visualH = YARD_HEIGHT[stage] ?? YARD_HEIGHT.adult;
+  object.getWorldPosition(_center);
+  const hasBounds = meshBounds(object);
+  if (hasBounds) {
+    const mid = _box.getCenter(new Vector3());
+    _center.x = object.position.x;
+    _center.z = object.position.z;
+    _center.y = Math.min(mid.y, visualH * 0.55);
+    _box.getSize(_size);
+  } else {
+    _center.y = visualH * 0.42;
+    _size.set(0.45, visualH, 0.8);
+  }
+  const dogH = Math.min(Math.max(hasBounds ? _size.y : visualH, visualH * 0.7), visualH * 1.35);
+  const pitch = opts.asleep ? 0.58 : YARD_PITCH;
   const yaw = CAMERA_YAW;
-  const lookY = _center.y + dogH * 0.06;
+  const lookY = Math.max(0.22, Math.min(dogH * 0.38, 0.48));
   let dist = dogH / (Math.max(0.14, frac * 2) * Math.tan(fov / 2));
-  dist = Math.max(opts.asleep ? 6.4 : 7.6, dist);
+  dist = Math.max(opts.asleep ? 7.2 : 8.4, dist);
 
   for (let i = 0; i < 14; i += 1) {
     _desired.set(
       _center.x + dist * Math.sin(yaw) * Math.cos(pitch),
-      Math.max(1.85, lookY + dist * Math.sin(pitch)),
+      Math.max(2.15, lookY + dist * Math.sin(pitch)),
       _center.z + dist * Math.cos(yaw) * Math.cos(pitch),
     );
     camera.up.set(0, 1, 0);
@@ -148,6 +165,7 @@ export function followYardCamera(
     camera.aspect = aspect;
     camera.lookAt(_center.x, lookY, _center.z);
     camera.updateProjectionMatrix();
+    if (!hasBounds) break;
     const projected = projectCorners(camera);
     const height = projected.maxY - projected.minY;
     const overflow =
@@ -155,7 +173,7 @@ export function followYardCamera(
       projected.maxX > YARD_SAFE.maxX ||
       projected.minY < YARD_SAFE.minY ||
       projected.maxY > YARD_SAFE.maxY ||
-      height > frac * 2 * 1.18 ||
+      height > frac * 2 * 1.2 ||
       projected.behind >= 8;
     if (!overflow) break;
     dist = Math.min(13.6, dist * 1.07);
