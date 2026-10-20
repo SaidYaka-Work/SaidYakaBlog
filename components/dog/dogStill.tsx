@@ -151,11 +151,11 @@ async function renderDogStillNow(opts: StillKey, key: string) {
   groundToFloor(dog, 0.012);
   const camera = new PerspectiveCamera(36, 640 / 500, 0.1, 80);
   frameCamera(camera, dog, {
-    pad: 1.55,
+    pad: 1.4,
     yaw: CAMERA_YAW,
-    pitch: asleep ? 0.22 : 0.18,
+    pitch: asleep ? 0.4 : 0.2,
     aspect: 640 / 500,
-    minDist: 2.8,
+    minDist: asleep ? 3.7 : 3.15,
   });
   const gl = getRenderer();
   gl.render(scene, camera);

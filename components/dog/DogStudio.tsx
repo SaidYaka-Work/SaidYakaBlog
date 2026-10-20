@@ -39,23 +39,23 @@ export default function DogStudio() {
       ))}
       <div className="mt-12 grid gap-4 sm:grid-cols-3">
         <figure className="overflow-hidden rounded-[1.4rem] border border-[var(--line)]">
-          <DogPortrait genome={generateGenome('biscuit-porch-1')} asleep reaction="sleep" night={false} stage="adult" />
+          <DogPortrait genome={generateGenome('biscuit-porch-1')} asleep reaction="sleep" night={false} stage="adult" compact />
           <figcaption className="px-3 py-2 text-sm">Sleeping</figcaption>
         </figure>
         <figure className="overflow-hidden rounded-[1.4rem] border border-[var(--line)]">
-          <DogPortrait genome={generateGenome('biscuit-porch-1')} asleep={false} reaction="pet" night={false} stage="adult" happiness={92} />
+          <DogPortrait genome={generateGenome('biscuit-porch-1')} asleep={false} reaction="pet" night={false} stage="adult" happiness={92} compact />
           <figcaption className="px-3 py-2 text-sm">Petting</figcaption>
         </figure>
         <figure className="overflow-hidden rounded-[1.4rem] border border-[var(--line)]">
-          <DogPortrait genome={generateGenome('biscuit-porch-1')} asleep={false} reaction="idle" night={false} stage="adult" sad happiness={18} />
+          <DogPortrait genome={generateGenome('biscuit-porch-1')} asleep={false} reaction="idle" night={false} stage="adult" sad happiness={18} compact />
           <figcaption className="px-3 py-2 text-sm">Sad</figcaption>
         </figure>
         <figure className="overflow-hidden rounded-[1.4rem] border border-[var(--line)]">
-          <DogPortrait genome={generateGenome('biscuit-porch-1')} asleep={false} reaction="walk" night={false} stage="adult" happiness={80} />
+          <DogPortrait genome={generateGenome('biscuit-porch-1')} asleep={false} reaction="walk" night={false} stage="adult" happiness={80} compact />
           <figcaption className="px-3 py-2 text-sm">Walking</figcaption>
         </figure>
         <figure className="overflow-hidden rounded-[1.4rem] border border-[var(--line)]">
-          <DogPortrait genome={generateGenome('biscuit-porch-1')} asleep={false} reaction="feed" night={false} stage="adult" hungry />
+          <DogPortrait genome={generateGenome('biscuit-porch-1')} asleep={false} reaction="feed" night={false} stage="adult" hungry compact />
           <figcaption className="px-3 py-2 text-sm">Eating</figcaption>
         </figure>
       </div>

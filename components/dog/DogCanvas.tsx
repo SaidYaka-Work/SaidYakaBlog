@@ -45,12 +45,12 @@ function FramedCamera({
     camera.aspect = size.width / Math.max(1, size.height);
     from.current.copy(camera.position);
     const info = frameCamera(camera, object, {
-      pad: fill ? 1.62 : compact ? 1.52 : 1.56,
+      pad: fill ? 1.38 : compact ? 1.4 : 1.42,
       yaw: CAMERA_YAW,
-      pitch: asleep ? 0.22 : fill ? 0.16 : 0.18,
+      pitch: asleep ? 0.4 : fill ? 0.18 : 0.2,
       aspect: camera.aspect,
-      lift: fill ? 0.1 : 0,
-      minDist: fill ? 3.1 : 2.7,
+      lift: fill ? 0.08 : 0,
+      minDist: asleep ? 3.7 : fill ? 3.2 : 3.05,
     });
     if (!info) return;
     if (ready.current) {

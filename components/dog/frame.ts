@@ -9,7 +9,7 @@ const _corner = new Vector3();
 
 export const THREE_QUARTER_YAW = 0.55;
 export const CAMERA_YAW = 0.1;
-export const SLEEP_ROLL = Math.PI / 2;
+export const SLEEP_ROLL = -Math.PI / 2;
 export const BOWL = { x: -0.58, y: 0.07, z: 0.7 };
 export const EAT_YAW = Math.atan2(BOWL.x, BOWL.z);
 
@@ -87,26 +87,27 @@ export function frameCamera(
   if (!meshBounds(object)) return null;
   _box.getBoundingSphere(_sphere);
   _box.getCenter(_center);
-  const pad = opts.pad ?? 1.58;
+  const pad = opts.pad ?? 1.42;
   const yaw = opts.yaw ?? CAMERA_YAW;
   const pitch = opts.pitch ?? 0.16;
   const lift = opts.lift ?? 0;
-  const fov = (camera.fov * Math.PI) / 180;
   const aspect = opts.aspect ?? camera.aspect ?? 1;
-  const radius = Math.min(2.1, Math.max(_sphere.radius, 0.35) * pad);
-  let dist = Math.max(opts.minDist ?? 2.6, radius / Math.sin(fov / 2) / Math.min(1, aspect));
-  for (let i = 0; i < 6; i += 1) {
+  const radius = Math.max(_sphere.radius, 0.35);
+  let dist = opts.minDist ?? 3.05;
+  for (let i = 0; i < 10; i += 1) {
     placeCamera(camera, dist, yaw, pitch, lift, aspect);
     const projected = projectCorners(camera);
+    const margin = Math.min(0.9, 0.92 / Math.max(1.15, pad));
     if (
-      projected.minX > -0.92 &&
-      projected.maxX < 0.92 &&
-      projected.minY > -0.92 &&
-      projected.maxY < 0.92
+      projected.minX > -margin &&
+      projected.maxX < margin &&
+      projected.minY > -margin &&
+      projected.maxY < margin &&
+      projected.behind < 8
     ) {
       break;
     }
-    dist = Math.min(7.2, dist * 1.12);
+    dist = Math.min(6.4, dist * 1.1);
   }
   return { center: _center.clone(), radius, dist, desired: _desired.clone() };
 }

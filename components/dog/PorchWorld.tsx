@@ -12,7 +12,7 @@ const _skyDir = new Vector3();
 
 const SKY: Record<SkyMood, { top: string; bot: string }> = {
   dawn: { top: '#f6e6d6', bot: '#f0c8a8' },
-  day: { top: '#f4ead8', bot: '#f0c9a4' },
+  day: { top: '#f7f1e6', bot: '#f3d2b0' },
   dusk: { top: '#e8c4b0', bot: '#d89878' },
   night: { top: '#0b1220', bot: '#1a2438' },
 };
@@ -41,9 +41,9 @@ function SkyBackdrop({ mood }: { mood: SkyMood }) {
         uniform vec3 uLine;
         varying vec2 vUv;
         void main() {
-          float h = smoothstep(0.18, 0.92, vUv.y);
+          float h = smoothstep(0.0, 0.7, vUv.y);
           vec3 col = mix(uBot, uTop, h);
-          float horizon = smoothstep(0.34, 0.38, vUv.y) * (1.0 - smoothstep(0.38, 0.42, vUv.y));
+          float horizon = smoothstep(0.28, 0.32, vUv.y) * (1.0 - smoothstep(0.32, 0.36, vUv.y));
           col = mix(col, uLine, horizon * 0.45);
           float star = 0.0;
           if (uTop.b > 0.12 && uTop.r < 0.2) {

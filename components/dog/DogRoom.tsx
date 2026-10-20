@@ -24,7 +24,7 @@ const HistoryBoard = dynamic(() => import('./HistoryBoard'), { ssr: false });
 type PlayKind = 'feed' | 'walk' | 'catch' | null;
 type Reaction = 'idle' | 'pet' | 'walk' | 'feed' | 'sleep';
 type Panel = 'hall' | 'feed' | 'walk' | 'catch' | 'name' | null;
-type Preview = 'start' | 'hungry' | 'feed' | 'walk' | 'hall' | null;
+type Preview = 'start' | 'hungry' | 'feed' | 'walk' | 'hall' | 'sleep' | 'eat' | 'sad' | 'pose-walk' | null;
 
 const ERRORS: Record<string, string> = {
   cooldown: 'Give him a moment.',
@@ -73,17 +73,32 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   mutedRef.current = muted;
   const panelRef = useRef(panel);
   panelRef.current = panel;
+  const previewRef = useRef<Preview>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setStudio(params.has('studio'));
     const next = params.get('preview');
-    if (next === 'start' || next === 'hungry' || next === 'feed' || next === 'walk' || next === 'hall') {
+    if (
+      next === 'start' ||
+      next === 'hungry' ||
+      next === 'feed' ||
+      next === 'walk' ||
+      next === 'hall' ||
+      next === 'sleep' ||
+      next === 'eat' ||
+      next === 'sad' ||
+      next === 'pose-walk'
+    ) {
       setPreview(next);
+      previewRef.current = next;
       if (next !== 'start') setPlaying(true);
       if (next === 'hall') setPanel('hall');
       if (next === 'feed') setPlay('feed');
       if (next === 'walk') setPlay('walk');
+      if (next === 'sleep') setReaction('sleep');
+      if (next === 'eat') setReaction('feed');
+      if (next === 'pose-walk') setReaction('walk');
     } else if (initialPanel === 'hall') {
       setPlaying(true);
       setPanel('hall');
@@ -176,7 +191,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         if (message.type === 'event') {
           pushToast(message.text);
           const next = reactionFromEvent(message.text);
-          if (next) {
+          if (next && !previewRef.current) {
             setReaction(next);
             if (next === 'pet') playDogSfx('bark', mutedRef.current);
             if (next === 'feed') playDogSfx('munch', mutedRef.current);
@@ -244,8 +259,12 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const dog = snapshot?.dog ?? null;
   const awaitingName = Boolean(snapshot?.awaitingName);
   const shownName = dog?.profile.name || (awaitingName ? 'A new dog' : snapshot?.memorial?.profile.name || 'Biscuit');
-  const hungry = preview === 'hungry' || Boolean(dog?.care.feedOverdue) || (dog?.care.hunger ?? 0) > 70;
+  const hungry = preview === 'hungry' || preview === 'eat' || Boolean(dog?.care.feedOverdue) || (dog?.care.hunger ?? 0) > 70;
   const wantsWalk = preview === 'hungry' || Boolean(dog?.care.walkOverdue) || (dog?.care.walkNeed ?? 0) > 70;
+  const poseAsleep = preview === 'sleep' || Boolean(dog?.asleep);
+  const poseReaction =
+    preview === 'sleep' ? 'sleep' : preview === 'eat' ? 'feed' : preview === 'pose-walk' ? 'walk' : dog?.asleep ? 'sleep' : reaction;
+  const poseSad = preview === 'sad' || (dog?.happiness ?? 100) < 40;
   const overlay = play || (awaitingName && canName) || panel;
   const canTap = ready || progress >= 88 || napping;
 
@@ -264,13 +283,13 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       {dog ? (
         <DogPortrait
           genome={dog.genome}
-          asleep={dog.asleep}
-          reaction={dog.asleep ? 'sleep' : reaction}
+          asleep={poseAsleep}
+          reaction={poseReaction}
           night={dog.night}
           stage={dog.stage}
           happiness={dog.happiness}
           hungry={hungry}
-          sad={dog.happiness < 40}
+          sad={poseSad}
           interactive
           fill
           onReady={() => setReady(true)}

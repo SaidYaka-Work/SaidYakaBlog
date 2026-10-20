@@ -234,6 +234,10 @@
   grid-template-columns: 1.1rem 1fr;
   align-items: center;
   gap: 0.45rem;
+  padding: 0.28rem 0.45rem 0.3rem 0.28rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--bg-elevated) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
 }
 
 .dog-meter span {
@@ -254,10 +258,10 @@
   display: block;
   margin-bottom: 0.12rem;
   font-style: normal;
-  font-size: 0.62rem;
+  font-size: 0.64rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--faint);
+  color: var(--ink);
 }
 
 .dog-meter b {
