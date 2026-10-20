@@ -78,7 +78,7 @@ function getRenderer() {
 }
 
 function addStillPorch(scene: Scene, night: boolean, showBowl: boolean) {
-  const ground = new Mesh(new CircleGeometry(80, 64), new MeshStandardMaterial({ color: night ? '#1c1a18' : '#efe2d0' }));
+  const ground = new Mesh(new CircleGeometry(4.8, 48), new MeshStandardMaterial({ color: night ? '#1c1a18' : '#efe2d0' }));
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.02;
   scene.add(ground);
