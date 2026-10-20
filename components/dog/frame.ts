@@ -45,13 +45,13 @@ export function meshBounds(object: Object3D) {
     const sizeX = _meshBox.max.x - _meshBox.min.x;
     const sizeY = _meshBox.max.y - _meshBox.min.y;
     const sizeZ = _meshBox.max.z - _meshBox.min.z;
-    if (sizeX > 14 || sizeY > 14 || sizeZ > 14) return;
+    if (sizeX > 4 || sizeY > 4 || sizeZ > 4) return;
     _box.union(_meshBox);
   });
   if (_box.isEmpty()) {
     _box.setFromObject(object, true);
     _box.getSize(_size);
-    if (_box.isEmpty() || _size.x > 14 || _size.y > 14 || _size.z > 14) {
+    if (_box.isEmpty() || _size.x > 4 || _size.y > 4 || _size.z > 4) {
       object.getWorldPosition(_center);
       _box.setFromCenterAndSize(_center, _size.set(1.2, 1.5, 2.1));
     }
@@ -62,6 +62,11 @@ export function meshBounds(object: Object3D) {
 export function groundToFloor(object: Object3D, floorY = 0) {
   if (!meshBounds(object)) return null;
   const lift = floorY - _box.min.y;
+  if (!Number.isFinite(lift) || Math.abs(lift) > 1.6) {
+    object.position.y = floorY;
+    object.updateWorldMatrix(true, true);
+    return { lift: 0, minY: floorY, maxY: floorY + 1.2, center: object.position.clone() };
+  }
   object.position.y += lift;
   object.updateWorldMatrix(true, true);
   meshBounds(object);
