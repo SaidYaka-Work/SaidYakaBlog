@@ -98,47 +98,47 @@ export default function PorchWorld({
       {!compact && <pointLight position={[1.4, 1.6, 1.2]} intensity={night ? 1.6 : 0.35} color="#fbe8c8" distance={7} />}
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-        <circleGeometry args={[7.5, 48]} />
+        <circleGeometry args={[4.2, 48]} />
         <meshStandardMaterial color={night ? '#2a221c' : '#f0e0cc'} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.1, 0.012, 0.15]} receiveShadow>
-        <circleGeometry args={[1.45, 40]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.08, 0.012, 0.12]} receiveShadow>
+        <circleGeometry args={[1.35, 40]} />
         <meshStandardMaterial color={night ? '#8a3a18' : '#c46a3a'} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.1, 0.016, 0.15]}>
-        <ringGeometry args={[1.08, 1.22, 40]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.08, 0.016, 0.12]}>
+        <ringGeometry args={[1.02, 1.16, 40]} />
         <meshStandardMaterial color="#e08a5a" />
       </mesh>
 
       <group ref={hills}>
-        <mesh position={[-2.6, 0.18, -3.4]} rotation={[-0.1, 0.2, 0]}>
-          <sphereGeometry args={[1.6, 16, 12]} />
+        <mesh position={[-1.8, 0.12, -2.4]} rotation={[-0.1, 0.2, 0]}>
+          <sphereGeometry args={[0.95, 16, 12]} />
           <meshStandardMaterial color={night ? '#3d2c22' : '#e2c4a8'} />
         </mesh>
-        <mesh position={[2.2, 0.12, -3.8]}>
-          <sphereGeometry args={[2.1, 16, 12]} />
+        <mesh position={[1.6, 0.1, -2.6]}>
+          <sphereGeometry args={[1.15, 16, 12]} />
           <meshStandardMaterial color={night ? '#32261e' : '#d8b496'} />
         </mesh>
       </group>
 
       {!compact && (
         <>
-          <mesh position={[-2.4, 0.34, -1.6]} castShadow>
-            <cylinderGeometry args={[0.16, 0.2, 0.32, 10]} />
+          <mesh position={[-1.55, 0.28, -0.95]} castShadow>
+            <cylinderGeometry args={[0.14, 0.18, 0.28, 10]} />
             <meshStandardMaterial color="#c46a3a" />
           </mesh>
-          <mesh position={[-2.4, 0.78, -1.6]} castShadow>
-            <sphereGeometry args={[0.32, 12, 12]} />
+          <mesh position={[-1.55, 0.64, -0.95]} castShadow>
+            <sphereGeometry args={[0.26, 12, 12]} />
             <meshStandardMaterial color="#4a6a48" />
           </mesh>
-          <mesh position={[-2.55, 0.92, -1.45]}>
-            <sphereGeometry args={[0.2, 10, 10]} />
+          <mesh position={[-1.66, 0.78, -0.84]}>
+            <sphereGeometry args={[0.16, 10, 10]} />
             <meshStandardMaterial color="#3d5a42" />
           </mesh>
         </>
       )}
 
-      <group position={[1.05, 0.07, 0.95]} visible={showBowl || !compact}>
+      <group position={[0.95, 0.07, 0.82]} visible={showBowl || !compact}>
         <mesh castShadow>
           <cylinderGeometry args={[0.2, 0.16, 0.09, 16]} />
           <meshStandardMaterial color="#c46a3a" />

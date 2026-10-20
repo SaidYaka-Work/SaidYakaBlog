@@ -63,7 +63,7 @@ const DogRig = forwardRef<Group, {
   const lookRef = useRef(look);
   lookRef.current = look;
   const wander = useRef<Wander>({ mode: 'idle', t: 0, next: 3.5, yaw: THREE_QUARTER_YAW, x: 0, z: 0, look: 0 });
-  useImperativeHandle(ref, () => group.current as Group, []);
+  useImperativeHandle(ref, () => group.current as Group);
 
   useEffect(() => {
     const colors = applyDogLook(scene, genes, stage, { asleep }).colors;

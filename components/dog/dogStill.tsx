@@ -49,6 +49,17 @@ function loadGltf(url: string) {
   return pending;
 }
 
+let renderChain: Promise<unknown> = Promise.resolve();
+
+function queueStill<T>(work: () => Promise<T>) {
+  const next = renderChain.then(work, work);
+  renderChain = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
+
 function keyOf(opts: StillKey) {
   const genes = opts.genome ?? generateGenome('napping-biscuit');
   return [genes.seed, opts.stage, opts.reaction, opts.asleep ? 1 : 0, opts.night ? 1 : 0, opts.sad ? 1 : 0].join(':');
@@ -67,7 +78,7 @@ function getRenderer() {
 }
 
 function addStillPorch(scene: Scene, night: boolean, showBowl: boolean) {
-  const ground = new Mesh(new CircleGeometry(6.5, 40), new MeshStandardMaterial({ color: night ? '#2a221c' : '#f0e0cc' }));
+  const ground = new Mesh(new CircleGeometry(4.2, 40), new MeshStandardMaterial({ color: night ? '#2a221c' : '#f0e0cc' }));
   ground.rotation.x = -Math.PI / 2;
   scene.add(ground);
   const mat = new Mesh(new CircleGeometry(1.4, 36), new MeshStandardMaterial({ color: night ? '#8a3a18' : '#c46a3a' }));
@@ -95,6 +106,12 @@ export async function renderDogStill(opts: StillKey) {
   const key = keyOf(opts);
   const hit = cache.get(key);
   if (hit) return hit;
+  return queueStill(() => renderDogStillNow(opts, key));
+}
+
+async function renderDogStillNow(opts: StillKey, key: string) {
+  const cached = cache.get(key);
+  if (cached) return cached;
   const genes = opts.genome ?? generateGenome('napping-biscuit');
   const gltf = await loadGltf(modelUrl(breedFromGenome(genes)));
   const scene = new Scene();

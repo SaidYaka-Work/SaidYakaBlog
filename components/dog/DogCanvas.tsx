@@ -146,7 +146,7 @@ export default function DogCanvas({
     >
       <Canvas
         dpr={[1, 1.6]}
-        camera={{ position: [2.4, 1.9, 5.4], fov: fill ? 32 : compact ? 38 : 34, near: 0.1, far: 50 }}
+        camera={{ position: [2.05, 1.45, 3.35], fov: fill ? 30 : compact ? 36 : 32, near: 0.1, far: 50 }}
         shadows
         frameloop={frameloop}
         gl={{ antialias: true, alpha: false, powerPreference: 'default' }}
