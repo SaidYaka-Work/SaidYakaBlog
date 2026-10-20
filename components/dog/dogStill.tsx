@@ -12,7 +12,6 @@ import {
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
-  PlaneGeometry,
   RingGeometry,
   Scene,
   SphereGeometry,
