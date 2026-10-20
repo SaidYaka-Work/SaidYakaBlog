@@ -59,13 +59,13 @@ export default function AboutPage() {
             alt="Portrait of Said Yaka, AI engineer"
             width={160}
             height={160}
-            className="h-28 w-28 rounded-full object-cover ring-1 ring-[var(--line)] sm:h-36 sm:w-36"
+            className="hero-kicker h-28 w-28 rounded-full object-cover ring-1 ring-[var(--line)] sm:h-36 sm:w-36"
           />
-          <h1 className="mt-8 font-serif text-5xl tracking-tight sm:text-6xl">About</h1>
-          <p className="mt-3 text-lg text-[var(--muted)]">AI engineer and software developer</p>
+          <h1 className="hero-title mt-8 font-serif text-5xl tracking-tight sm:text-6xl">About</h1>
+          <p className="hero-copy mt-3 text-lg text-[var(--muted)]">AI engineer and software developer</p>
         </div>
 
-        <div className="space-y-6 text-lg leading-relaxed text-[var(--muted)]">
+        <div className="space-y-6 text-lg leading-relaxed text-[var(--muted)]" data-reveal>
           <p>
             Hi, I&apos;m <span className="text-[var(--ink)]">Said Yaka</span> — a software engineer
             at{' '}
@@ -73,7 +73,7 @@ export default function AboutPage() {
               href="https://evertune.ai"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[var(--ink)] underline decoration-[var(--line)] underline-offset-4 hover:decoration-[var(--accent)]"
+              className="link-underline text-[var(--ink)]"
             >
               Evertune.ai
             </a>
@@ -93,7 +93,7 @@ export default function AboutPage() {
           </p>
         </div>
 
-        <section className="mt-14 border-t border-[var(--line)] pt-8">
+        <section className="mt-14 border-t border-[var(--line)] pt-8" data-reveal>
           <h2 className="font-serif text-3xl tracking-tight">Let’s connect</h2>
           <SocialLinks className="mt-5 text-base" />
         </section>

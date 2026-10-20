@@ -60,11 +60,12 @@ export default function TableOfContents({ content }: { content: string }) {
           <li key={id} style={{ paddingLeft: `${(level - 2) * 12 + 12}px` }}>
             <a
               href={`#${id}`}
-              className={`block py-0.5 text-sm leading-snug transition ${
-                activeId === id
-                  ? 'text-[var(--ink)]'
-                  : 'text-[var(--muted)] hover:text-[var(--ink)]'
-              }`}
+              data-active={activeId === id}
+                className={`toc-link block py-0.5 text-sm leading-snug ${
+                  activeId === id
+                    ? 'text-[var(--ink)]'
+                    : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                }`}
             >
               {text}
             </a>

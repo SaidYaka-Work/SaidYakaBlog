@@ -21,7 +21,7 @@ export default function PlayPage() {
       <div className="mx-auto max-w-5xl">
         <Link
           href={englishPath('/')}
-          className="text-sm text-[var(--muted)] transition hover:text-[var(--ink)]"
+          className="link-underline text-sm text-[var(--muted)] hover:text-[var(--ink)]"
         >
           ← Back home
         </Link>

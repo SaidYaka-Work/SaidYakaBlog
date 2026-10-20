@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getAllPosts } from '@/lib/posts';
@@ -34,17 +35,21 @@ export default async function TagsPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-5 py-16 sm:px-8 sm:py-24">
-      <p className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Index</p>
-      <h1 className="mt-3 font-serif text-5xl tracking-tight sm:text-6xl">Topics</h1>
-      <p className="mt-5 max-w-xl text-lg text-[var(--muted)]">
+      <p className="hero-kicker text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Index</p>
+      <h1 className="hero-title mt-3 font-serif text-5xl tracking-tight sm:text-6xl">Topics</h1>
+      <p className="hero-copy mt-5 max-w-xl text-lg text-[var(--muted)]">
         A map of recurring problems: retrieval, evals, agents, and shipping.
       </p>
       <ul className="mt-14 grid gap-3 sm:grid-cols-2">
-        {tags.map(([tag, count]) => (
-          <li key={tag}>
+        {tags.map(([tag, count], index) => (
+          <li
+            key={tag}
+            data-reveal
+            style={{ '--reveal-delay': Math.min(index, 8) } as CSSProperties}
+          >
             <Link
               href={englishPath(`/tags/${encodeURIComponent(tag.toLowerCase())}`)}
-              className="flex items-baseline justify-between rounded-2xl border border-[var(--line)] bg-[var(--bg-elevated)] px-5 py-4 transition hover:border-[var(--accent)]"
+              className="lift-card flex items-baseline justify-between rounded-2xl border border-[var(--line)] bg-[var(--bg-elevated)] px-5 py-4"
             >
               <span className="font-serif text-2xl tracking-tight">{tag}</span>
               <span className="text-sm text-[var(--faint)]">

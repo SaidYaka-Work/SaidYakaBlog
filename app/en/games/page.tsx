@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
 import fs from 'fs';
 import path from 'path';
@@ -65,16 +66,16 @@ export default function GamesPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-5 py-16 sm:px-8 sm:py-24">
-      <p className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Arcade</p>
-      <h1 className="mt-3 font-serif text-5xl tracking-tight sm:text-6xl">Play</h1>
-      <p className="mt-5 max-w-xl text-lg text-[var(--muted)]">
+      <p className="hero-kicker text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Arcade</p>
+      <h1 className="hero-title mt-3 font-serif text-5xl tracking-tight sm:text-6xl">Play</h1>
+      <p className="hero-copy mt-5 max-w-xl text-lg text-[var(--muted)]">
         A running shelf for experiments, arcade distractions, and odd little browser toys.
       </p>
       <ul className="mt-12 grid gap-4 md:grid-cols-2">
-        {games.map((game) => {
+        {games.map((game, index) => {
           const isInternal = game.href.startsWith('/en/');
           const className =
-            'block rounded-[1.6rem] border border-[var(--line)] bg-[var(--bg-elevated)] p-6 transition hover:border-[var(--accent)]';
+            'lift-card block rounded-[1.6rem] border border-[var(--line)] bg-[var(--bg-elevated)] p-6';
           const body = (
             <>
               <p className="text-xs uppercase tracking-[0.16em] text-[var(--faint)]">Game</p>
@@ -83,7 +84,11 @@ export default function GamesPage() {
             </>
           );
           return (
-            <li key={game.slug}>
+            <li
+              key={game.slug}
+              data-reveal
+              style={{ '--reveal-delay': index } as CSSProperties}
+            >
               {isInternal ? (
                 <Link href={game.href} className={className}>
                   {body}

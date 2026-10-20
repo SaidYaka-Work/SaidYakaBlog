@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getAllPosts } from '@/lib/posts';
@@ -72,21 +73,22 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
       />
 
-      <section className="mx-auto max-w-6xl px-5 pb-8 pt-16 sm:px-8 sm:pt-24">
-        <p className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">
+      <section className="hero-shell mx-auto max-w-6xl px-5 pb-8 pt-16 sm:px-8 sm:pt-24">
+        <div className="hero-accent" aria-hidden="true" />
+        <p className="hero-kicker text-xs uppercase tracking-[0.22em] text-[var(--accent)]">
           AI engineer at Evertune
         </p>
-        <h1 className="mt-5 max-w-4xl font-serif text-5xl leading-[0.95] tracking-tight text-[var(--ink)] sm:text-7xl">
+        <h1 className="hero-title mt-5 max-w-4xl font-serif text-5xl leading-[0.95] tracking-tight text-[var(--ink)] sm:text-7xl">
           Notes on making language models hold up in production.
         </h1>
-        <p className="mt-8 max-w-2xl text-lg leading-relaxed text-[var(--muted)] sm:text-xl">
+        <p className="hero-copy mt-8 max-w-2xl text-lg leading-relaxed text-[var(--muted)] sm:text-xl">
           I&apos;m Said Yaka. I write about retrieval, evaluations, agent interfaces, and the
           unglamorous work of shipping LLM systems people can trust.
         </p>
-        <div className="mt-10 flex flex-wrap items-center gap-6">
+        <div className="hero-actions mt-10 flex flex-wrap items-center gap-6">
           <Link
             href={englishPath('/posts')}
-            className="inline-flex items-center rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm text-[var(--bg)] transition hover:opacity-90"
+            className="pressable inline-flex items-center rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm text-[var(--bg)]"
           >
             Read the writing
           </Link>
@@ -96,8 +98,11 @@ export default async function HomePage() {
 
       {featured && (
         <section className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
-          <div className="overflow-hidden rounded-[2rem] border border-[var(--line)] bg-[var(--bg-elevated)]">
-            <Link href={englishPath(`/posts/${featured.slug}`)} className="block p-6 sm:p-10">
+          <div
+            data-reveal
+            className="lift-card overflow-hidden rounded-[2rem] border border-[var(--line)] bg-[var(--bg-elevated)]"
+          >
+            <Link href={englishPath(`/posts/${featured.slug}`)} className="group block p-6 sm:p-10">
               <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.18em] text-[var(--faint)]">
                 <span>Latest</span>
                 <span aria-hidden="true">·</span>
@@ -111,7 +116,9 @@ export default async function HomePage() {
               </p>
               <span className="mt-8 inline-flex items-center gap-2 text-sm text-[var(--ink)]">
                 Continue reading
-                <span aria-hidden="true">→</span>
+                <span className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true">
+                  →
+                </span>
               </span>
             </Link>
           </div>
@@ -123,14 +130,18 @@ export default async function HomePage() {
           <h2 className="font-serif text-3xl tracking-tight">Recent writing</h2>
           <Link
             href={englishPath('/posts')}
-            className="text-sm text-[var(--muted)] transition hover:text-[var(--ink)]"
+            className="link-underline text-sm text-[var(--muted)] hover:text-[var(--ink)]"
           >
             All posts
           </Link>
         </div>
         <ul className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
-          {recent.map((post) => (
-            <li key={post.slug}>
+          {recent.map((post, index) => (
+            <li
+              key={post.slug}
+              data-reveal
+              style={{ '--reveal-delay': index } as CSSProperties}
+            >
               <Link
                 href={englishPath(`/posts/${post.slug}`)}
                 className="group grid gap-2 py-6 sm:grid-cols-[7rem_1fr] sm:gap-8"

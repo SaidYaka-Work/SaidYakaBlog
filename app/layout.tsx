@@ -75,6 +75,9 @@ const themeBoot = `
     var dark = stored === 'dark' || (!stored && preferDark);
     if (dark) document.documentElement.classList.add('dark');
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.documentElement.dataset.motion = 'on';
+    }
   } catch (e) {}
 })();
 `;
