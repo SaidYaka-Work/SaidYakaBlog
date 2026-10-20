@@ -1,85 +1,35 @@
 import { MetadataRoute } from 'next';
-import { getAllPosts } from '@/lib/posts';
-import { locales } from '@/lib/i18n/config';
+import { getAllPosts, getAllTags } from '@/lib/posts';
+import { englishUrl } from '@/lib/site';
 
 export const dynamic = 'force-static';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = 'https://saidyaka.com';
-  const routes: MetadataRoute.Sitemap = [];
+  const posts = await getAllPosts({ includeFuture: false });
+  const tags = await getAllTags();
 
-  // Add homepage and locale-specific homepages
-  routes.push({
-    url: baseUrl,
+  const staticRoutes: MetadataRoute.Sitemap = [
+    { url: englishUrl('/'), lastModified: new Date(), changeFrequency: 'weekly', priority: 1 },
+    { url: englishUrl('/posts'), lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
+    { url: englishUrl('/tags'), lastModified: new Date(), changeFrequency: 'weekly', priority: 0.5 },
+    { url: englishUrl('/about'), lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
+    { url: englishUrl('/games'), lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
+    { url: englishUrl('/play'), lastModified: new Date(), changeFrequency: 'monthly', priority: 0.2 },
+  ];
+
+  const postRoutes = posts.map((post) => ({
+    url: englishUrl(`/posts/${post.slug}`),
+    lastModified: new Date(`${post.date}T00:00:00Z`),
+    changeFrequency: 'monthly' as const,
+    priority: 0.7,
+  }));
+
+  const tagRoutes = tags.map((tag) => ({
+    url: englishUrl(`/tags/${tag.toLowerCase()}`),
     lastModified: new Date(),
-    changeFrequency: 'weekly',
-    priority: 1,
-  });
+    changeFrequency: 'weekly' as const,
+    priority: 0.4,
+  }));
 
-  for (const locale of locales) {
-    // Locale-specific homepage
-    routes.push({
-      url: `${baseUrl}/${locale}`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 1,
-    });
-
-    // Locale-specific posts listing
-    routes.push({
-      url: `${baseUrl}/${locale}/posts`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    });
-
-    // Locale-specific tags listing
-    routes.push({
-      url: `${baseUrl}/${locale}/tags`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.5,
-    });
-
-    // Locale-specific about page
-    routes.push({
-      url: `${baseUrl}/${locale}/about`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    });
-
-    // Get posts for this locale (only published posts)
-    const posts = await getAllPosts({ includeFuture: false, locale });
-
-    // Add all posts for this locale
-    posts.forEach(post => {
-      routes.push({
-        url: `${baseUrl}/${locale}/posts/${post.slug}`,
-        lastModified: new Date(post.date),
-        changeFrequency: 'monthly',
-        priority: 0.7,
-      });
-    });
-
-    // Get unique tags for this locale
-    const tagsSet = new Set<string>();
-    posts.forEach(post => {
-      post.tags.forEach(tag => {
-        tagsSet.add(tag.toLowerCase());
-      });
-    });
-
-    // Add all tag pages for this locale
-    Array.from(tagsSet).forEach(tag => {
-      routes.push({
-        url: `${baseUrl}/${locale}/tags/${encodeURIComponent(tag)}`,
-        lastModified: new Date(),
-        changeFrequency: 'weekly',
-        priority: 0.5,
-      });
-    });
-  }
-
-  return routes;
+  return [...staticRoutes, ...postRoutes, ...tagRoutes];
 }

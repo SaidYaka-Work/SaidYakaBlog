@@ -1,9 +1,7 @@
-import { redirect } from 'next/navigation';
-import { defaultLocale } from '@/lib/i18n/config';
+import LocaleRedirect, { localeRedirectMetadata } from '@/components/LocaleRedirect';
 
-// Redirect old posts list URL without locale to English version
-export default function OldPostsRedirect() {
-  redirect(`/${defaultLocale}/posts`);
+export const metadata = localeRedirectMetadata('/en/posts/');
+
+export default function PostsAlias() {
+  return <LocaleRedirect to="/en/posts/" />;
 }
-
-
