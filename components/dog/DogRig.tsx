@@ -289,11 +289,6 @@ const DogRig = forwardRef<Group, {
     node.position.set(w.x, 0, w.z);
     node.rotation.set(0, w.yaw, 0);
     node.scale.set(figure.body * yard, figure.body * yard, figure.body * yard * figure.length);
-    if (footOffset.current === null) {
-      node.updateWorldMatrix(true, true);
-      footOffset.current = computeFootOffset(node);
-    }
-    plantOnFloor(node, footOffset.current, hop);
 
     const wag = asleep || sad || lieDown ? 0 : (performance.now() / 1000) * (1000 / Math.max(180, wagMs(happiness, asleep, sad))) * Math.PI * 2;
     applyMoodBones(scene, {
@@ -308,6 +303,12 @@ const DogRig = forwardRef<Group, {
       const skinned = child as { isSkinnedMesh?: boolean; skeleton?: { update: () => void } };
       if (skinned.isSkinnedMesh) skinned.skeleton?.update();
     });
+    if (footOffset.current === null) {
+      node.updateWorldMatrix(true, true);
+      const measured = computeFootOffset(node);
+      footOffset.current = Math.abs(measured) > 0.12 ? 0 : measured;
+    }
+    plantOnFloor(node, footOffset.current, hop);
   });
 
   return (

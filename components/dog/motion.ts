@@ -48,18 +48,17 @@ export function computeFootOffset(root: Object3D) {
   let minY = Infinity;
   root.traverse((node) => {
     const mesh = node as SkinnedMesh;
-    if (!mesh.isMesh || !mesh.geometry) return;
-    if (mesh.name === 'Collar') return;
-    const pos = mesh.geometry.getAttribute('position');
-    if (!pos) return;
-    for (let i = 0; i < pos.count; i += Math.max(1, Math.floor(pos.count / 240))) {
-      _min.fromBufferAttribute(pos, i);
-      mesh.localToWorld(_min);
-      if (Number.isFinite(_min.y)) minY = Math.min(minY, _min.y);
-    }
+    if (!mesh.isSkinnedMesh || !mesh.geometry || mesh.name === 'Collar') return;
+    mesh.computeBoundingBox();
+    if (!mesh.boundingBox || mesh.boundingBox.isEmpty()) return;
+    const box = mesh.boundingBox;
+    _min.set(box.min.x, box.min.y, box.min.z).applyMatrix4(mesh.matrixWorld);
+    const y = _min.y;
+    if (Number.isFinite(y)) minY = Math.min(minY, y);
   });
-  if (!Number.isFinite(minY) || Math.abs(minY) > 2.4) return 0;
-  return minY - root.position.y;
+  const offset = minY - root.position.y;
+  if (!Number.isFinite(offset) || Math.abs(offset) > 0.45) return 0;
+  return offset;
 }
 
 export function plantOnFloor(root: Object3D, footOffset: number, floorY = FLOOR_Y) {

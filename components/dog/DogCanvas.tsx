@@ -20,7 +20,7 @@ function FootShadow({ target }: { target: RefObject<Group | null> }) {
   return (
     <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2}>
       <circleGeometry args={[0.26, 22]} />
-      <meshBasicMaterial color="#3a2414" transparent opacity={0.34} depthWrite={false} />
+      <meshBasicMaterial color="#2a1a10" transparent opacity={0.45} depthWrite={false} />
     </mesh>
   );
 }
