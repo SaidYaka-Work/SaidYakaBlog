@@ -1,5 +1,5 @@
 import { Bone, BoxGeometry, Group, Mesh, PerspectiveCamera } from 'three';
-import { BOWL, EAT_YAW, frameCamera, groundToFloor, meshBounds, projectMeshBounds, SLEEP_ROLL } from '../components/dog/frame.ts';
+import { BOWL, EAT_STAND, EAT_YAW, frameCamera, groundToFloor, meshBounds, projectMeshBounds, SLEEP_ROLL } from '../components/dog/frame.ts';
 
 function assert(cond: unknown, message: string) {
   if (!cond) throw new Error(message);
@@ -52,8 +52,9 @@ const walkProj = projectMeshBounds(dog, walkCam);
 assert(walk && walk.dist >= 3.1 && walk.dist <= 5.8, 'walk camera keeps a fixed minimum distance');
 assert(walkProj && walkProj.inView, `walking dog should stay in frame ${JSON.stringify(walkProj)}`);
 
-const headingDot = Math.sin(EAT_YAW) * BOWL.x + Math.cos(EAT_YAW) * BOWL.z;
+const headingDot =
+  Math.sin(EAT_YAW) * (BOWL.x - EAT_STAND.x) + Math.cos(EAT_YAW) * (BOWL.z - EAT_STAND.z);
 assert(headingDot > 0.3, `eat heading should point toward the bowl, got ${headingDot}`);
-assert(BOWL.x < 0 && BOWL.z > 0, 'bowl stays front-left of the dog, camera-side');
+assert(BOWL.x < 0 && BOWL.z > 0, 'bowl stays front-left of the room, camera-side');
 
 console.log('dog-frame-check ok');

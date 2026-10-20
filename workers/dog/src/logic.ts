@@ -14,6 +14,23 @@ import {
   stageFromAge,
   type LifeStage,
 } from './stages';
+import {
+  applyDrive,
+  createYard,
+  fillFeeder,
+  markWalkCredited,
+  migrateYard,
+  nearFeeder,
+  publicFeeder,
+  publicLeash,
+  publicPose,
+  startEating,
+  tickYardAi,
+  tryAcquireLeash,
+  walkCreditPending,
+  WALK_CREDIT_M,
+  type YardState,
+} from './room';
 
 export {
   CARE_BY_STAGE,
@@ -53,7 +70,8 @@ export type ErrorCode =
   | 'missed'
   | 'not_catcher'
   | 'too_late'
-  | 'named';
+  | 'named'
+  | 'too_far';
 
 export type CareGame = 'feed' | 'walk' | 'catch';
 
@@ -157,6 +175,7 @@ export type RoomState = {
   history: Memorial[];
   lastCatchAt: number;
   pendingName: PendingName | null;
+  yard?: YardState;
 };
 
 export type CareView = {
@@ -201,6 +220,24 @@ export type PublicDog = {
   namedByCatcher: boolean;
 };
 
+export type PublicPose = {
+  x: number;
+  z: number;
+  yaw: number;
+  gait: YardState['pose']['gait'];
+};
+
+export type PublicLeash = {
+  held: boolean;
+  holderId: string | null;
+};
+
+export type PublicFeeder = {
+  hasFood: boolean;
+  eating: boolean;
+  near: boolean;
+};
+
 export type PublicSnapshot = {
   type: 'state';
   dog: PublicDog | null;
@@ -211,6 +248,9 @@ export type PublicSnapshot = {
   usedNameIds: string[];
   memorial: Memorial | null;
   history: Memorial[];
+  pose?: PublicPose;
+  leash?: PublicLeash;
+  feeder?: PublicFeeder;
 };
 
 export function clamp(value: number, min = 0, max = 100) {
@@ -274,6 +314,7 @@ export function createRoom(now: number): RoomState {
     history: [],
     lastCatchAt: 0,
     pendingName: null,
+    yard: createYard(now),
   };
 }
 
@@ -298,13 +339,14 @@ function withGenome<T extends { id: string; profile: DogProfile; genome?: DogGen
   };
 }
 
-export function migrateRoom(room: RoomState): RoomState {
+export function migrateRoom(room: RoomState, now = Date.now()): RoomState {
   return {
     ...room,
     pendingName: room.pendingName ?? null,
     dog: room.dog ? withGenome(room.dog) : null,
     memorial: room.memorial ? withGenome(room.memorial) : null,
     history: room.history.map((record) => withGenome(record)),
+    yard: migrateYard(room.yard, now),
   };
 }
 
@@ -571,6 +613,7 @@ export function runaway(room: RoomState, dog: LivingDog, now: number): RoomState
     history: [memorial, ...room.history].slice(0, MAX_HISTORY),
     lastCatchAt: room.lastCatchAt,
     pendingName: null,
+    yard: migrateYard(room.yard, now),
   };
 }
 
@@ -630,6 +673,7 @@ export function toPublic(dog: LivingDog, now: number): PublicDog {
 
 export function snapshot(room: RoomState, now: number, presence: number): PublicSnapshot {
   const current = applyDecay(room, now);
+  const yard = migrateYard(current.yard, now);
   return {
     type: 'state',
     dog: current.dog ? toPublic(current.dog, now) : null,
@@ -640,6 +684,9 @@ export function snapshot(room: RoomState, now: number, presence: number): Public
     usedNameIds: usedNameIds(current),
     memorial: current.memorial,
     history: current.history.slice(0, 4),
+    pose: publicPose(yard.pose),
+    leash: publicLeash(yard.leash, now),
+    feeder: publicFeeder(yard.feeder, yard.pose, now),
   };
 }
 
@@ -783,6 +830,85 @@ export function applyCare(
   return { ok: true, kind: 'walk', room: { ...allowed.room, dog: next }, event };
 }
 
+export function creditLeashWalk(room: RoomState, now: number): ActionResult | null {
+  const current = applyDecay(room, now);
+  const yard = migrateYard(current.yard, now);
+  if (walkCreditPending(yard.leash) < WALK_CREDIT_M) return null;
+  const allowed = canStartCare(current, 'walk', now);
+  if (!allowed.ok) return null;
+  const result = applyCare(allowed.room, 'walk', 62, now);
+  if (!result.ok) return null;
+  return {
+    ...result,
+    room: { ...result.room, yard: markWalkCredited(yard) },
+  };
+}
+
+export function applyVisitorMove(
+  room: RoomState,
+  clientId: string,
+  ip: string,
+  ax: number,
+  az: number,
+  run: boolean,
+  dt: number,
+  now: number,
+): { room: RoomState; acquired: boolean; code?: ErrorCode; retryAfterMs?: number; walk?: ActionResult } {
+  const current = applyDecay(room, now);
+  const yard = migrateYard(current.yard, now);
+  const acquired = tryAcquireLeash(yard, clientId, ip, now);
+  if (!acquired.ok) {
+    return { room: { ...current, yard: acquired.yard }, acquired: false, code: acquired.code, retryAfterMs: acquired.retryAfterMs };
+  }
+  const driven = applyDrive(acquired.yard, ax, az, run, dt, now);
+  const next = { ...current, yard: driven };
+  const walk = creditLeashWalk(next, now);
+  return { room: walk && walk.ok ? walk.room : next, acquired: true, walk: walk ?? undefined };
+}
+
+export function applyBowlAction(
+  room: RoomState,
+  now: number,
+): { room: RoomState; fed?: ActionResult; code?: ErrorCode } {
+  const current = applyDecay(room, now);
+  const yard = migrateYard(current.yard, now);
+  const filled = fillFeeder(yard, now);
+  if (!nearFeeder(filled.pose.x, filled.pose.z)) {
+    return { room: { ...current, yard: filled }, code: 'too_far' };
+  }
+  const allowed = canStartCare({ ...current, yard: filled }, 'feed', now);
+  if (!allowed.ok) {
+    return { room: { ...current, yard: filled }, code: allowed.code };
+  }
+  const fed = applyCare(allowed.room, 'feed', 74, now);
+  if (!fed.ok) {
+    return { room: { ...fed.room, yard: filled }, fed, code: fed.code };
+  }
+  return { room: { ...fed.room, yard: startEating(filled, now) }, fed };
+}
+
+export function tickSharedYard(room: RoomState, now: number, dt: number): { room: RoomState; fed?: ActionResult } {
+  const current = applyDecay(room, now);
+  const yard = migrateYard(current.yard, now);
+  const dog = current.dog;
+  const care = dog ? careView(dog, now) : null;
+  const nextYard = tickYardAi(yard, now, dt, {
+    hungry: Boolean(care && (care.feedOverdue || care.hunger > 58)),
+    tired: Boolean(dog && dog.energy < 28),
+    asleep: Boolean(dog?.asleep),
+  });
+  let next = { ...current, yard: nextYard };
+  if (
+    yard.feeder.hasFood &&
+    nextYard.feeder.eatingUntil > now &&
+    nextYard.feeder.eatingUntil !== yard.feeder.eatingUntil
+  ) {
+    const fed = applyCare(next, 'feed', 70, now);
+    if (fed.ok) return { room: { ...fed.room, yard: nextYard }, fed };
+  }
+  return { room: next };
+}
+
 export function applyCatch(
   room: RoomState,
   score: number,
@@ -817,6 +943,7 @@ export function applyCatch(
       history: allowed.room.history,
       lastCatchAt: now,
       pendingName: { token, until: now + NAME_WINDOW_MS },
+      yard: createYard(now),
     },
     event,
   };
@@ -865,7 +992,22 @@ export type ClientMessage =
   | { ok: true; kind: 'start'; game: CareGame }
   | { ok: true; kind: 'finish'; playId: string; score: number }
   | { ok: true; kind: 'name'; nameId: string }
+  | { ok: true; kind: 'move'; ax: number; az: number; run: boolean }
+  | { ok: true; kind: 'bowl' }
   | { ok: false; code: ErrorCode };
+
+const CLIENT_KEYS = [
+  'type',
+  'action',
+  'kind',
+  'game',
+  'playId',
+  'score',
+  'nameId',
+  'ax',
+  'az',
+  'run',
+];
 
 export function parseClientMessage(raw: string): ClientMessage {
   let parsed: unknown;
@@ -877,7 +1019,7 @@ export function parseClientMessage(raw: string): ClientMessage {
   if (!parsed || typeof parsed !== 'object') return { ok: false, code: 'invalid' };
   const message = parsed as Record<string, unknown>;
   const keys = Object.keys(message);
-  if (keys.some((key) => !['type', 'action', 'kind', 'game', 'playId', 'score', 'nameId'].includes(key))) {
+  if (keys.some((key) => !CLIENT_KEYS.includes(key))) {
     return { ok: false, code: 'invalid' };
   }
   if (message.type === 'hello') return { ok: true, kind: 'hello' };
@@ -893,6 +1035,11 @@ export function parseClientMessage(raw: string): ClientMessage {
     if (!/^[a-z0-9-]{1,40}$/.test(message.nameId)) return { ok: false, code: 'invalid' };
     return { ok: true, kind: 'name', nameId: message.nameId };
   }
+  if (message.type === 'move' && typeof message.ax === 'number' && typeof message.az === 'number') {
+    if (!Number.isFinite(message.ax) || !Number.isFinite(message.az)) return { ok: false, code: 'invalid' };
+    return { ok: true, kind: 'move', ax: message.ax, az: message.az, run: message.run === true };
+  }
+  if (message.type === 'bowl') return { ok: true, kind: 'bowl' };
   return { ok: false, code: 'invalid' };
 }
 

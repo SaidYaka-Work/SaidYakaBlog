@@ -2,11 +2,13 @@ import {
   DECAY_ALARM_MS,
   HISTORY_PAGE,
   MAX_CONNECTIONS,
+  applyBowlAction,
   applyCare,
   applyCatch,
   applyDecay,
   applyName,
   applyPet,
+  applyVisitorMove,
   canStartCare,
   canStartCatch,
   createRoom,
@@ -19,11 +21,13 @@ import {
   snapshot,
   takeConnectionGap,
   takeRate,
+  tickSharedYard,
   validateFinish,
   type CareGame,
   type RateBucket,
   type RoomState,
 } from './logic';
+import { MOVE_MIN_MS, YARD_TICK_MS, migrateYard, releaseLeash } from './room';
 
 export interface Env {
   DOG: DurableObjectNamespace;
@@ -39,8 +43,10 @@ type PlaySession = {
 type SocketMeta = {
   ip: string;
   lastAt: number;
+  lastMoveAt: number;
   play: PlaySession | null;
   nameToken: string | null;
+  clientId: string;
 };
 
 function corsHeaders(origin: string | null, env: Env): HeadersInit {
@@ -129,10 +135,19 @@ export class DogRoom {
         '0.0.0.0';
 
       this.ctx.acceptWebSocket(server);
-      server.serializeAttachment({ ip, lastAt: 0, play: null, nameToken: null } satisfies SocketMeta);
+      const clientId = crypto.randomUUID();
+      server.serializeAttachment({
+        ip,
+        lastAt: 0,
+        lastMoveAt: 0,
+        play: null,
+        nameToken: null,
+        clientId,
+      } satisfies SocketMeta);
 
       const now = Date.now();
       const room = await this.load(now);
+      server.send(JSON.stringify({ type: 'welcome', clientId }));
       server.send(JSON.stringify(snapshot(room, now, this.ctx.getWebSockets().length)));
       this.broadcastSnapshot();
 
@@ -164,9 +179,57 @@ export class DogRoom {
     const meta = (ws.deserializeAttachment() as SocketMeta | null) ?? {
       ip: '0.0.0.0',
       lastAt: 0,
+      lastMoveAt: 0,
       play: null,
       nameToken: null,
+      clientId: crypto.randomUUID(),
     };
+
+    if (parsed.kind === 'move') {
+      const wait = meta.lastMoveAt + MOVE_MIN_MS - now;
+      if (wait > 0) return;
+      const dt = meta.lastMoveAt ? Math.min(0.18, (now - meta.lastMoveAt) / 1000) : 0.08;
+      const moved = applyVisitorMove(await this.load(now), meta.clientId, meta.ip, parsed.ax, parsed.az, parsed.run, dt, now);
+      ws.serializeAttachment({ ...meta, lastMoveAt: now } satisfies SocketMeta);
+      await this.commit(moved.room);
+      if (!moved.acquired && moved.code) {
+        ws.send(JSON.stringify({ type: 'error', code: moved.code, retryAfterMs: moved.retryAfterMs }));
+      }
+      this.broadcastPose(moved.room, now);
+      if (moved.walk && moved.walk.ok) {
+        this.broadcast(snapshot(moved.room, now, this.ctx.getWebSockets().length));
+        this.broadcast({ type: 'event', text: moved.walk.event.text, at: moved.walk.event.at });
+      }
+      return;
+    }
+
+    if (parsed.kind === 'bowl') {
+      const gatedBowl = await this.gate(ws, meta, now);
+      if (!gatedBowl) return;
+      const result = applyBowlAction(await this.load(now), now);
+      await this.commit(result.room);
+      if (result.code === 'too_far') {
+        ws.send(JSON.stringify({ type: 'error', code: 'too_far', text: 'Walk him to the feeder.' }));
+        this.broadcastPose(result.room, now);
+        return;
+      }
+      if (result.fed && !result.fed.ok) {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            code: result.fed.code,
+            retryAfterMs: result.fed.retryAfterMs,
+          }),
+        );
+        this.sendSnapshot(ws, result.room, now);
+        return;
+      }
+      this.broadcast(snapshot(result.room, now, this.ctx.getWebSockets().length));
+      if (result.fed && result.fed.ok) {
+        this.broadcast({ type: 'event', text: result.fed.event.text, at: result.fed.event.at });
+      }
+      return;
+    }
 
     if (parsed.kind === 'name') {
       const result = applyName(await this.load(now), parsed.nameId, meta.nameToken, now);
@@ -276,20 +339,46 @@ export class DogRoom {
     }
   }
 
-  async webSocketClose() {
+  async webSocketClose(ws: WebSocket) {
+    await this.releaseIfHolder(ws);
     this.broadcastSnapshot();
   }
 
-  async webSocketError() {
+  async webSocketError(ws: WebSocket) {
+    await this.releaseIfHolder(ws);
     this.broadcastSnapshot();
   }
 
   async alarm() {
     const now = Date.now();
+    const lastTick = (await this.ctx.storage.get<number>('yardTick')) ?? now;
+    const dt = Math.min(0.25, Math.max(0.05, (now - lastTick) / 1000));
+    const loaded = await this.load(now);
+    const ticked = tickSharedYard(loaded, now, dt);
+    await this.commit(ticked.room);
+    await this.ctx.storage.put('yardTick', now);
+    this.broadcastPose(ticked.room, now);
+    if (ticked.fed && ticked.fed.ok) {
+      this.broadcast(snapshot(ticked.room, now, this.ctx.getWebSockets().length));
+      this.broadcast({ type: 'event', text: ticked.fed.event.text, at: ticked.fed.event.at });
+    }
+    const lastFull = (await this.ctx.storage.get<number>('fullSnap')) ?? 0;
+    if (now - lastFull >= DECAY_ALARM_MS) {
+      this.broadcast(snapshot(ticked.room, now, this.ctx.getWebSockets().length));
+      await this.ctx.storage.put('fullSnap', now);
+    }
+    const held = Boolean(ticked.room.yard?.leash.holderId);
+    await this.ctx.storage.setAlarm(now + (held ? 400 : YARD_TICK_MS * 3));
+  }
+
+  private async releaseIfHolder(ws: WebSocket) {
+    const meta = ws.deserializeAttachment() as SocketMeta | null;
+    if (!meta?.clientId) return;
+    const now = Date.now();
     const room = await this.load(now);
-    await this.commit(room);
-    this.broadcast(snapshot(room, now, this.ctx.getWebSockets().length));
-    await this.ctx.storage.setAlarm(now + DECAY_ALARM_MS);
+    const yard = migrateYard(room.yard, now);
+    if (yard.leash.holderId !== meta.clientId) return;
+    await this.commit({ ...room, yard: releaseLeash(yard, now) });
   }
 
   private async gate(ws: WebSocket, meta: SocketMeta, now: number): Promise<SocketMeta | null> {
@@ -330,6 +419,16 @@ export class DogRoom {
     const now = Date.now();
     void this.load(now).then((room) => {
       this.broadcast(snapshot(room, now, this.ctx.getWebSockets().length));
+    });
+  }
+
+  private broadcastPose(room: RoomState, now: number) {
+    const snap = snapshot(room, now, this.ctx.getWebSockets().length);
+    this.broadcast({
+      type: 'pose',
+      pose: snap.pose,
+      leash: snap.leash,
+      feeder: snap.feeder,
     });
   }
 

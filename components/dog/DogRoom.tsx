@@ -17,6 +17,7 @@ import FeedGame from './FeedGame';
 import NamePicker from './NamePicker';
 import WalkGame from './WalkGame';
 import { playDogSfx } from './dogSound';
+import useDogDrive from './useDogDrive';
 import './dog.css';
 
 const HistoryBoard = dynamic(() => import('./HistoryBoard'), { ssr: false });
@@ -24,7 +25,7 @@ const HistoryBoard = dynamic(() => import('./HistoryBoard'), { ssr: false });
 type PlayKind = 'feed' | 'walk' | 'catch' | null;
 type Reaction = 'idle' | 'pet' | 'walk' | 'feed' | 'sleep';
 type Panel = 'hall' | 'feed' | 'walk' | 'catch' | 'name' | null;
-type Preview = 'start' | 'hungry' | 'feed' | 'walk' | 'hall' | 'sleep' | 'eat' | 'sad' | 'pose-walk' | null;
+type Preview = 'start' | 'hungry' | 'feed' | 'walk' | 'hall' | 'sleep' | 'eat' | 'sad' | 'pose-walk' | 'room' | 'leash' | null;
 
 const ERRORS: Record<string, string> = {
   cooldown: 'Give him a moment.',
@@ -33,10 +34,12 @@ const ERRORS: Record<string, string> = {
   too_tired: 'He is too tired for that.',
   too_soon: 'He just did that.',
   gone: 'Nobody is on the rug right now.',
+  too_far: 'Walk him to the feeder.',
+  busy: 'A visitor already has the leash.',
   home: 'A dog is already home.',
   missed: 'The stray slipped past. Try again.',
   invalid: 'Pick a name from the list.',
-  busy: 'Too many neighbors on the porch.',
+  porch_busy: 'Too many neighbors on the porch.',
   not_catcher: 'Only the catcher can pick the name.',
   too_late: 'The naming window closed.',
   named: 'This dog already has a name.',
@@ -67,8 +70,12 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const [muted, setMuted] = useState(true);
   const [panel, setPanel] = useState<Panel>(initialPanel);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [hint, setHint] = useState(true);
+  const feedRef = useRef<() => void>(() => undefined);
   const socket = useRef<WebSocket | null>(null);
   const toastId = useRef(1);
+  const lastMove = useRef(0);
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
   const panelRef = useRef(panel);
@@ -88,7 +95,9 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       next === 'sleep' ||
       next === 'eat' ||
       next === 'sad' ||
-      next === 'pose-walk'
+      next === 'pose-walk' ||
+      next === 'room' ||
+      next === 'leash'
     ) {
       setPreview(next);
       previewRef.current = next;
@@ -106,6 +115,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
     try {
       const stored = localStorage.getItem('biscuit-muted');
       setMuted(stored !== '0');
+      setHint(localStorage.getItem('biscuit-hint') !== '1');
     } catch {
       setMuted(true);
     }
@@ -164,7 +174,24 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           | { type: 'play'; playId: string; game: PlayKind }
           | { type: 'error'; code: string; text?: string }
           | { type: 'event'; text: string }
-          | { type: 'name-please'; until: number };
+          | { type: 'name-please'; until: number }
+          | { type: 'welcome'; clientId: string }
+          | { type: 'pose'; pose?: DogSnapshot['pose']; leash?: DogSnapshot['leash']; feeder?: DogSnapshot['feeder'] };
+        if (message.type === 'welcome') {
+          setClientId(message.clientId);
+        }
+        if (message.type === 'pose') {
+          setSnapshot((current) =>
+            current
+              ? {
+                  ...current,
+                  pose: message.pose ?? current.pose,
+                  leash: message.leash ?? current.leash,
+                  feeder: message.feeder ?? current.feeder,
+                }
+              : current,
+          );
+        }
         if (message.type === 'state') {
           apply(message);
           if (!message.awaitingName) {
@@ -279,6 +306,60 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
     preview === 'eat' ? 'feed' : preview === 'pose-walk' ? 'walk' : preview === 'sleep' ? 'sleep' : preview === 'sad' || preview === 'hungry' ? 'idle' : 'sleep';
   const overlay = play || (awaitingName && canName) || panel;
   const canTap = ready || progress >= 88 || napping;
+  const shared = Boolean(snapshot?.pose);
+  const youHold = Boolean(snapshot?.leash?.held && snapshot.leash.holderId && snapshot.leash.holderId === clientId);
+  const visitorWalking = preview === 'leash' || Boolean(snapshot?.leash?.held && snapshot.leash.holderId && snapshot.leash.holderId !== clientId);
+  const hideDrive = preview === 'eat' || preview === 'sleep' || preview === 'pose-walk';
+
+  const hideHint = useCallback(() => {
+    setHint(false);
+    try {
+      localStorage.setItem('biscuit-hint', '1');
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const { input, touch, setStick } = useDogDrive({
+    enabled: playing && !studio,
+    blocked: Boolean(overlay),
+    onFirstUse: hideHint,
+  });
+
+  function feedHim() {
+    hideHint();
+    if (shared) {
+      send({ type: 'bowl' });
+      return;
+    }
+    start('feed');
+  }
+  feedRef.current = feedHim;
+
+  useEffect(() => {
+    if (!playing || overlay || !shared) return;
+    const moving = Math.hypot(input.ax, input.az) > 0.12;
+    if (!moving) return;
+    const now = performance.now();
+    if (now - lastMove.current < 80) return;
+    lastMove.current = now;
+    send({ type: 'move', ax: input.ax, az: input.az, run: input.run });
+  }, [input, overlay, playing, shared]);
+
+  useEffect(() => {
+    if (!playing || overlay) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.repeat) return;
+      if (event.code !== 'KeyE' && event.code !== 'Space') return;
+      if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, .dog-overlay, .dog-modal, .dog-start')) {
+        return;
+      }
+      event.preventDefault();
+      feedRef.current();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [overlay, playing]);
 
   useEffect(() => {
     if (canName) setPlaying(true);
@@ -304,6 +385,18 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           sad={poseSad}
           interactive
           fill
+          food={Boolean(snapshot?.feeder?.hasFood || snapshot?.feeder?.eating)}
+          drive={
+            hideDrive
+              ? null
+              : {
+                  input,
+                  server: snapshot?.pose ?? null,
+                  youHold,
+                  localOnly: !shared,
+                  onPose: undefined,
+                }
+          }
           onReady={() => setReady(true)}
         />
       ) : (
@@ -319,6 +412,18 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           interactive={previewing}
           fill
           empty={!napping && !previewing}
+          food={preview === 'eat'}
+          drive={
+            previewing && !hideDrive
+              ? {
+                  input,
+                  server: null,
+                  youHold: true,
+                  localOnly: true,
+                  onPose: undefined,
+                }
+              : null
+          }
           onReady={() => setReady(true)}
         />
       )}
@@ -337,6 +442,9 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           empty={!dog && !previewing}
           busy={Boolean(overlay)}
           toasts={toasts}
+          visitorWalking={visitorWalking}
+          hint={hint}
+          touch={touch}
           onMute={toggleMute}
           onPet={() => {
             send({ type: 'action', action: 'pet' });
@@ -344,10 +452,10 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
             playDogSfx('bark', muted);
             window.setTimeout(() => setReaction('idle'), 900);
           }}
-          onFeed={() => start('feed')}
-          onWalk={() => start('walk')}
+          onFeed={feedHim}
           onHall={() => setPanel('hall')}
           onCatch={() => start('catch')}
+          onStick={setStick}
         />
       )}
 

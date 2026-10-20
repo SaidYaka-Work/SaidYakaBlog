@@ -6,7 +6,7 @@ import { PerspectiveCamera, Vector3, type Group } from 'three';
 import type { DogGenome, LifeStage } from '@/lib/dog';
 import type { PortraitReaction } from './look';
 import { CAMERA_YAW, frameCamera, projectMeshBounds } from './frame';
-import DogRig from './DogRig';
+import DogRig, { type DriveControl } from './DogRig';
 import PorchWorld from './PorchWorld';
 
 function EmptyReady({ onReady }: { onReady?: () => void }) {
@@ -50,7 +50,7 @@ function FramedCamera({
       pitch: 0.2,
       aspect: camera.aspect,
       lift: 0,
-      minDist: asleep ? 4.6 : fill ? 4.1 : 3.8,
+      minDist: asleep ? 4.6 : fill ? 4.4 : 3.8,
     });
     if (!info) return;
     camera.up.set(0, 1, 0);
@@ -87,6 +87,8 @@ export default function DogCanvas({
   interactive = false,
   fill = false,
   empty = false,
+  drive = null,
+  food = false,
   onReady,
 }: {
   genome?: DogGenome | null;
@@ -101,6 +103,8 @@ export default function DogCanvas({
   interactive?: boolean;
   fill?: boolean;
   empty?: boolean;
+  drive?: DriveControl | null;
+  food?: boolean;
   onReady?: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
@@ -171,9 +175,10 @@ export default function DogCanvas({
         <Suspense fallback={null}>
           <PorchWorld
             night={night}
-            showBowl={hungry || reaction === 'feed'}
+            showBowl={hungry || food || reaction === 'feed'}
             compact={compact}
             walking={reaction === 'walk'}
+            food={food || reaction === 'feed'}
           />
           {!empty && (
             <DogRig
@@ -187,6 +192,7 @@ export default function DogCanvas({
               look={look}
               reduced={reduced}
               interactive={interactive}
+              drive={drive}
             />
           )}
           {!empty && (

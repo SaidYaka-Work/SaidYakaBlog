@@ -1,4 +1,5 @@
 import { Box3, PerspectiveCamera, Sphere, Vector3, type Mesh, type Object3D, type SkinnedMesh } from 'three';
+import { FEEDER, eatStand } from '../../workers/dog/src/room';
 
 const _box = new Box3();
 const _meshBox = new Box3();
@@ -12,8 +13,9 @@ export const THREE_QUARTER_YAW = 0.55;
 export const CAMERA_YAW = 0.32;
 export const SLEEP_ROLL = Math.PI / 2;
 export const SLEEP_YAW = Math.PI / 2;
-export const BOWL = { x: -0.48, y: 0.07, z: 0.7 };
-export const EAT_YAW = -0.28;
+export const BOWL = { x: FEEDER.x, y: FEEDER.y, z: FEEDER.z };
+export const EAT_STAND = eatStand();
+export const EAT_YAW = EAT_STAND.yaw;
 
 function isBoneParent(node: Object3D) {
   let parent = node.parent;
