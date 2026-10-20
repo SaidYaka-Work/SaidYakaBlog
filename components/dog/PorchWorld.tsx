@@ -2,47 +2,15 @@
 
 import { useFrame, useThree } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei';
-import { useEffect, useMemo, useRef } from 'react';
-import { CanvasTexture, Color, SRGBColorSpace } from 'three';
+import { useEffect, useRef } from 'react';
+import { Color } from 'three';
 import type { Group } from 'three';
-import type { SkyMood } from './look';
 import { BOWL } from './frame';
 
-const SKY: Record<SkyMood, { top: string; bot: string; line: string }> = {
-  dawn: { top: '#f6e6d6', bot: '#f0c8a8', line: '#c9a888' },
-  day: { top: '#f7f1e6', bot: '#f3d2b0', line: '#c9a888' },
-  dusk: { top: '#e8c4b0', bot: '#d89878', line: '#b88870' },
-  night: { top: '#0b1220', bot: '#1a2438', line: '#243044' },
+const SKY = {
+  day: { top: '#f4ead8', bot: '#f0c9a4' },
+  night: { top: '#0b1220', bot: '#1a2438' },
 };
-
-function skyTexture(mood: SkyMood) {
-  const { top, bot, line } = SKY[mood];
-  const canvas = document.createElement('canvas');
-  canvas.width = 8;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
-  const gradient = ctx.createLinearGradient(0, 0, 0, 256);
-  gradient.addColorStop(0, top);
-  gradient.addColorStop(0.62, top);
-  gradient.addColorStop(0.7, line);
-  gradient.addColorStop(0.74, bot);
-  gradient.addColorStop(1, bot);
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 8, 256);
-  if (mood === 'night') {
-    ctx.fillStyle = '#e8eef8';
-    for (let i = 0; i < 40; i += 1) {
-      const x = (i * 17) % 8;
-      const y = 8 + ((i * 13) % 150);
-      ctx.fillRect(x, y, 1, 1);
-    }
-  }
-  const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
-  texture.needsUpdate = true;
-  return texture;
-}
 
 function HorizonFence({ night }: { night: boolean }) {
   const wood = night ? '#3a2a20' : '#8a6a48';
@@ -83,15 +51,10 @@ export default function PorchWorld({
   const { scene, gl } = useThree();
   const sky = SKY[mood];
 
-  const backdrop = useMemo(() => skyTexture(mood), [mood]);
-
   useEffect(() => {
     scene.background = new Color(sky.top);
     gl.setClearColor(sky.top, 1);
-    return () => {
-      backdrop?.dispose();
-    };
-  }, [backdrop, gl, scene, sky.top]);
+  }, [gl, scene, sky.top]);
 
   useFrame((_, dt) => {
     if (!hills.current) return;
@@ -105,12 +68,6 @@ export default function PorchWorld({
 
   return (
     <group>
-      {backdrop && (
-        <mesh position={[0, 8, -18]} frustumCulled={false}>
-          <planeGeometry args={[160, 70]} />
-          <meshBasicMaterial map={backdrop} depthWrite={false} />
-        </mesh>
-      )}
       <hemisphereLight args={[night ? '#6a7a98' : '#fff6ea', night ? '#1a1814' : '#d4b496', night ? 0.7 : 1.05]} />
       <directionalLight
         position={[5, 7, 3.5]}

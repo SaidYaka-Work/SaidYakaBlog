@@ -4,7 +4,7 @@
   overflow: hidden;
   aspect-ratio: 460 / 360;
   border-radius: inherit;
-  background: #f4ead8;
+  background: linear-gradient(180deg, #f7f1e6 0%, #f3d2b0 100%);
 }
 
 .biscuit-scene.is-night {
