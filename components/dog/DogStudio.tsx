@@ -39,7 +39,7 @@ export default function DogStudio() {
       ))}
       <div className="mt-12 grid gap-4 sm:grid-cols-3">
         <figure className="overflow-hidden rounded-[1.4rem] border border-[var(--line)]">
-          <DogPortrait genome={generateGenome('biscuit-porch-1')} asleep reaction="sleep" night stage="adult" />
+          <DogPortrait genome={generateGenome('biscuit-porch-1')} asleep reaction="sleep" night={false} stage="adult" />
           <figcaption className="px-3 py-2 text-sm">Sleeping</figcaption>
         </figure>
         <figure className="overflow-hidden rounded-[1.4rem] border border-[var(--line)]">

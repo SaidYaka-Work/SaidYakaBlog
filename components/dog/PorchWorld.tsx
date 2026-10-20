@@ -1,8 +1,9 @@
 'use client';
 
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { Color } from 'three';
 import type { Group } from 'three';
 import { localSky, type SkyMood } from './look';
 
@@ -10,7 +11,7 @@ const SKY: Record<SkyMood, string> = {
   dawn: '#f6c8b0',
   day: '#f8ead6',
   dusk: '#f0a878',
-  night: '#1c1816',
+  night: '#2a211c',
 };
 
 export default function PorchWorld({
@@ -24,6 +25,13 @@ export default function PorchWorld({
 }) {
   const sky = night ? 'night' : localSky();
   const sway = useRef<Group>(null);
+  const { scene, gl } = useThree();
+
+  useEffect(() => {
+    const hex = SKY[sky];
+    scene.background = new Color(hex);
+    gl.setClearColor(hex, 1);
+  }, [gl, scene, sky]);
 
   useFrame((state) => {
     if (compact) return;
@@ -38,10 +46,10 @@ export default function PorchWorld({
   return (
     <group ref={sway}>
       <color attach="background" args={[SKY[sky]]} />
-      <hemisphereLight args={[night ? '#4a3a32' : '#fff4e6', night ? '#16120f' : '#c4a888', night ? 0.35 : 0.85]} />
+      <hemisphereLight args={[night ? '#6a4a3a' : '#fff4e6', night ? '#2a221c' : '#c4a888', night ? 0.7 : 1.05]} />
       <directionalLight
         position={[4.5, 6.5, 3]}
-        intensity={night ? 0.28 : 1.15}
+        intensity={night ? 0.55 : 1.25}
         color={night ? '#e8a87c' : '#ffe7c4'}
         castShadow
         shadow-mapSize-width={1024}
@@ -73,15 +81,15 @@ export default function PorchWorld({
             <boxGeometry args={[0.08, 1.1, 1.3]} />
             <meshStandardMaterial color="#c46a3a" emissive={night ? '#e8a87c' : '#fbe8c8'} emissiveIntensity={night ? 0.8 : 0.15} />
           </mesh>
-          <mesh position={[-2.2, 0.85, 2.1]} castShadow>
+          <mesh position={[-2.2, 0.85, -2.2]} castShadow>
             <boxGeometry args={[0.14, 1.7, 0.14]} />
             <meshStandardMaterial color="#e8d4bc" />
           </mesh>
-          <mesh position={[2.4, 0.85, 2.15]} castShadow>
+          <mesh position={[2.4, 0.85, -2.2]} castShadow>
             <boxGeometry args={[0.14, 1.7, 0.14]} />
             <meshStandardMaterial color="#e8d4bc" />
           </mesh>
-          <mesh position={[0.1, 1.55, 2.15]}>
+          <mesh position={[0.1, 1.55, -2.2]}>
             <boxGeometry args={[4.6, 0.08, 0.08]} />
             <meshStandardMaterial color="#c47848" />
           </mesh>

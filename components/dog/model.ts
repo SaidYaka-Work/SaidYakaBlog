@@ -72,10 +72,10 @@ export function figureFromGenome(genome: DogGenome, stage: LifeStage): Figure {
     long: { body: 0.96, length: 1.18, leg: 1.08 },
   }[genome.build];
   const life = {
-    puppy: { body: 0.72, head: 1.38, ear: 1.12, leg: 0.82, timeScale: 1.12 },
-    young: { body: 0.9, head: 1.06, ear: 1, leg: 1.14, timeScale: 1.04 },
+    puppy: { body: 0.58, head: 1.48, ear: 1.18, leg: 0.78, timeScale: 1.12 },
+    young: { body: 0.86, head: 1.08, ear: 1, leg: 1.18, timeScale: 1.04 },
     adult: { body: 1, head: 1, ear: 1, leg: 1, timeScale: 1 },
-    senior: { body: 1.02, head: 0.98, ear: 0.96, leg: 0.9, timeScale: 0.72 },
+    senior: { body: 1.04, head: 0.96, ear: 0.94, leg: 0.86, timeScale: 0.72 },
   }[stage];
   const ear = genome.earShape === 'prick' ? 1.12 : genome.earShape === 'flop' ? 0.92 + genome.earFloppy * 0.2 : 0.88;
   return {

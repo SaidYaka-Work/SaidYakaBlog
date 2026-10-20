@@ -4,8 +4,11 @@ import { useEffect, useState } from 'react';
 import {
   AmbientLight,
   AnimationMixer,
+  CircleGeometry,
   Color,
   DirectionalLight,
+  Mesh,
+  MeshStandardMaterial,
   PerspectiveCamera,
   Scene,
   WebGLRenderer,
@@ -65,11 +68,16 @@ export async function renderDogStill(opts: StillKey) {
   const genes = opts.genome ?? generateGenome('napping-biscuit');
   const gltf = await loadGltf(modelUrl(breedFromGenome(genes)));
   const scene = new Scene();
-  scene.background = new Color(opts.night ? '#1c1816' : '#f8ead6');
-  scene.add(new AmbientLight(opts.night ? '#4a3a32' : '#fff4e6', opts.night ? 0.4 : 0.9));
-  const keyLight = new DirectionalLight(opts.night ? '#e8a87c' : '#ffe7c4', opts.night ? 0.35 : 1.1);
+  const sky = opts.night ? '#2a211c' : '#f8ead6';
+  scene.background = new Color(sky);
+  scene.add(new AmbientLight(opts.night ? '#4a3a32' : '#fff4e6', opts.night ? 0.55 : 1.05));
+  const keyLight = new DirectionalLight(opts.night ? '#e8a87c' : '#ffe7c4', opts.night ? 0.55 : 1.25);
   keyLight.position.set(4.2, 6, 3);
   scene.add(keyLight);
+  const rug = new Mesh(new CircleGeometry(1.55, 32), new MeshStandardMaterial({ color: opts.night ? '#8a3a18' : '#c46a3a' }));
+  rug.rotation.x = -Math.PI / 2;
+  rug.position.set(0.15, 0.01, 0.35);
+  scene.add(rug);
   const dog = SkeletonUtils.clone(gltf.scene);
   applyDogLook(dog, genes, opts.stage);
   const figure = figureFromGenome(genes, opts.stage);
