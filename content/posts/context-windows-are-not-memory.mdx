@@ -1,0 +1,176 @@
+---
+slug: "context-windows-are-not-memory"
+title: "Context Windows Are Not Memory"
+date: 2026-10-20
+author: Said Yaka
+tags:
+  - AI Engineering
+  - LLMs
+  - System Design
+  - Memory
+  - Product Quality
+description: "A long context window feels like memory, but it is just a working set. Real memory needs selection, persistence, and a plan for what to forget."
+canonical_url: "https://saidyaka.com/en/posts/context-windows-are-not-memory"
+keywords:
+  - LLM context window
+  - AI memory
+  - long context
+  - agent state
+  - production LLM systems
+og_title: "Context Windows Are Not Memory"
+og_description: "Stuffing more tokens into a prompt is not the same as giving a system memory. Here is how I separate the two."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+A bigger context window is a gift. It is also a trap.
+
+I keep seeing teams treat a long context as if it were a filing cabinet. Paste the docs. Paste the thread. Paste last week's notes. The model has it now, so it will remember. That sounds reasonable until the product has to survive more than a demo.
+
+A context window is a working set. Memory is a system. Those are not the same job.
+
+## What a context window actually is
+
+A context window is the text the model can see on this turn. That is it.
+
+It is closer to RAM than to a hard drive. It is closer to a desk than to an archive. If a fact is not on the desk when the model starts writing, it is not in play.
+
+That sounds obvious, but product conversations blur it constantly. People say "the model knows" when they mean "we put it in the prompt this time." People say "it forgot" when they mean "we never stored it anywhere that outlives the request."
+
+I try to keep the language strict:
+
+- **context** is what the model can attend to right now
+- **state** is what the application remembers across turns
+- **memory** is state plus a policy for what to keep, retrieve, update, and drop
+
+If you only have the first one, you do not have memory. You have a large clipboard.
+
+## Why stuffing everything in feels like it works
+
+Long context is seductive because the first version is easy.
+
+You skip chunking. You skip retrieval. You skip deciding what matters. You dump the transcript, the policy PDF, and a few tool traces into one prompt and the answer looks great. For a narrow internal demo, it often *is* great.
+
+The failure shows up later, when the same pattern has to handle:
+
+- a user who comes back tomorrow
+- a thread that lasts two weeks
+- a corpus that is no longer "a few files"
+- a teammate who edits the source of truth after you pasted it
+
+At that point the prompt is not a workspace. It is a landfill. The model will still produce fluent text. Fluency is not the same as having the right page on the desk.
+
+## The failure modes I actually see
+
+### Attention is not uniform
+
+Putting a fact in the window does not mean the model will use it. Long prompts have a shape. Instructions at the top compete with the latest user turn. A constraint buried in the middle of a pasted spec can disappear in practice even though it is technically present.
+
+If a rule matters, I do not want it sitting in a 40-page paste. I want it short, close to the task, and hard to ignore.
+
+### Stale copies quietly become source of truth
+
+Once you paste a document into context, you have forked it.
+
+The live doc can change. The prompt will not. The model will answer from the fork and sound confident. Users will believe the fork. Support will debug the live doc. That gap is not a model bug. It is an architecture choice.
+
+If the answer has to match a moving source, I want a lookup at request time, not a souvenir from last Tuesday.
+
+### Cost and latency become product constraints
+
+A fat context is not free. It is slower. It is more expensive. It makes caching harder. It makes evals noisier because the input is huge and slightly different every time.
+
+I have watched teams celebrate "we just put the whole repo in context" and then wonder why a simple follow-up question feels heavy. The user did not ask for the repo. They asked for one function.
+
+### Nothing persists when the window ends
+
+This is the one that still surprises people.
+
+Close the tab. Start a new thread. Restart the worker. The window is gone. If the only place you stored a preference, a decision, or a correction was inside that prompt, you did not remember it. You rented it for one session.
+
+Users experience that as the product being forgetful. They are right.
+
+## What memory actually requires
+
+I do not think of memory as a bigger prompt. I think of it as a few boring jobs that have to exist somewhere outside the model.
+
+### A place to write
+
+Preferences, decisions, extracted facts, and open questions need a store. It can be a database row, a note, a profile, a ticket. It should outlive the request.
+
+If you cannot point to the record, you do not have memory. You have a story the model told you this time.
+
+### A way to select
+
+The whole point of memory is that you do *not* load everything. You load the working set for this task.
+
+That can be retrieval. It can be a structured query. It can be a hand-built profile. The mechanism matters less than the honesty: someone has to decide what belongs on the desk.
+
+### A way to update
+
+Corrections are the real test.
+
+If a user says "don't use that vendor" and the next session still recommends the vendor, the system did not learn. It performed listening. Memory that cannot be revised is just cache with better branding.
+
+### A way to forget
+
+This part gets skipped.
+
+Not every utterance should become permanent. Scratch reasoning, one-off experiments, and stale project details will poison later answers if you keep them forever. Forgetting is a feature. It is how you keep the working set small enough to be useful.
+
+## A split that has helped me
+
+When I design these systems, I try to separate three layers.
+
+### Working set
+
+The prompt. The current user turn. The few retrieved snippets that actually support this job. The tool results from this step. Tight, current, disposable.
+
+### Durable memory
+
+Things we are willing to stand behind later: account preferences, confirmed facts, decisions, constraints. Small on purpose. Reviewed when they matter.
+
+### Source of truth
+
+The systems of record. Docs, tickets, databases, APIs. We look them up. We do not photocopy them into the prompt and hope.
+
+RAG belongs in that last hop when the source is messy text. It is a way to *fetch*, not a way to *remember*. I have written before about when not to use it. The same instinct applies here: do not use a pile of tokens to hide an unclear state model.
+
+## How I decide what goes in context
+
+I use a few questions before I add another block to the prompt.
+
+**Is this needed for this turn?**
+If not, it is archive, not context.
+
+**Will it still be true next week?**
+If yes, it should live in a store or a source system, not only in a paste.
+
+**What happens if the model ignores it?**
+If the answer is "something expensive," it should be structured, checked, or kept out of freeform generation.
+
+**Can I find it again without this thread?**
+If no, I do not have memory yet. I have a chat log.
+
+Those questions sound simple. They stop a lot of "just add more context" work that feels productive and makes the product worse.
+
+## What I want the product to feel like
+
+I do not want users to manage the model's desk.
+
+I want them to say something once and have the system decide whether that was a fleeting detail or a durable fact. I want follow-up questions to start from a small, current working set, not from a replay of the entire relationship. I want the model to be allowed to say it does not have the file instead of improvising from a stale excerpt.
+
+That is a product problem more than a model problem. The model can only use what we put in front of it. We chose the pile.
+
+## The rule I keep coming back to
+
+Use the context window like a workbench.
+
+Put the current task on it. Put the few tools and facts that make the next step possible. Keep it clean enough that a person could skim it and still understand the job.
+
+Store the rest.
+
+If you need a bigger window to make a hard task possible, use it. I am not against long context. I am against pretending that capacity is the same thing as recollection.
+
+A model with a huge window and no memory policy will still forget you tomorrow.
+It will just forget you more expensively.
