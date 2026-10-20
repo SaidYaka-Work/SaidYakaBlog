@@ -10,7 +10,7 @@ const nav = [
   { href: '/en/posts/', label: 'Writing' },
   { href: '/en/tags/', label: 'Topics' },
   { href: '/en/games/', label: 'Play' },
-  { href: '/en/dog/', label: 'Biscuit' },
+  { href: '/en/dog/', label: 'Dog' },
   { href: '/en/about/', label: 'About' },
 ];
 
