@@ -12,6 +12,7 @@ import {
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
+  PlaneGeometry,
   RingGeometry,
   Scene,
   SphereGeometry,
@@ -78,8 +79,9 @@ function getRenderer() {
 }
 
 function addStillPorch(scene: Scene, night: boolean, showBowl: boolean) {
-  const ground = new Mesh(new CircleGeometry(5.2, 40), new MeshStandardMaterial({ color: night ? '#1c1a18' : '#efe2d0' }));
+  const ground = new Mesh(new PlaneGeometry(28, 28), new MeshStandardMaterial({ color: night ? '#1c1a18' : '#efe2d0' }));
   ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.01;
   scene.add(ground);
   const mat = new Mesh(new CircleGeometry(1.32, 36), new MeshStandardMaterial({ color: night ? '#8a3a18' : '#c46a3a' }));
   mat.rotation.x = -Math.PI / 2;

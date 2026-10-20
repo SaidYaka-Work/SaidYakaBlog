@@ -49,14 +49,14 @@ function FramedCamera({
       yaw: CAMERA_YAW,
       pitch: asleep ? 0.22 : fill ? 0.16 : 0.18,
       aspect: camera.aspect,
-      lift: fill ? 0.28 : 0.04,
+      lift: fill ? 0.1 : 0,
       minDist: fill ? 3.1 : 2.7,
     });
     if (!info) return;
     if (ready.current) {
       camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 4));
       camera.up.set(0, 1, 0);
-      camera.lookAt(info.center.x, info.center.y + info.radius * 0.02 - (fill ? 0.28 : 0.04), info.center.z);
+      camera.lookAt(info.center.x, info.center.y - (fill ? 0.1 : 0), info.center.z);
       camera.updateProjectionMatrix();
     } else {
       ready.current = true;
@@ -65,6 +65,7 @@ function FramedCamera({
     const bounds = projectMeshBounds(object, camera);
     if (host.current && bounds) {
       host.current.dataset.inView = bounds.inView ? '1' : '0';
+      host.current.dataset.fills = bounds.fills ? '1' : '0';
     }
   });
   return null;

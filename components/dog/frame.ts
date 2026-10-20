@@ -1,4 +1,4 @@
-import { Box3, PerspectiveCamera, Sphere, Vector3, type Mesh, type Object3D } from 'three';
+import { Box3, PerspectiveCamera, Sphere, Vector3, type Mesh, type Object3D, type SkinnedMesh } from 'three';
 
 const _box = new Box3();
 const _meshBox = new Box3();
@@ -13,16 +13,36 @@ export const SLEEP_ROLL = Math.PI / 2;
 export const BOWL = { x: -0.58, y: 0.07, z: 0.7 };
 export const EAT_YAW = Math.atan2(BOWL.x, BOWL.z);
 
+function isBoneParent(node: Object3D) {
+  let parent = node.parent;
+  while (parent) {
+    if ((parent as { isBone?: boolean }).isBone) return true;
+    parent = parent.parent;
+  }
+  return false;
+}
+
 export function meshBounds(object: Object3D) {
   object.updateWorldMatrix(true, true);
   _box.makeEmpty();
   object.traverse((node) => {
-    const mesh = node as Mesh;
+    const mesh = node as Mesh & SkinnedMesh;
     if (!mesh.isMesh || !mesh.geometry) return;
-    if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
-    const local = mesh.geometry.boundingBox;
-    if (!local) return;
-    _meshBox.copy(local).applyMatrix4(mesh.matrixWorld);
+    if (isBoneParent(mesh)) return;
+    if (mesh.isSkinnedMesh) {
+      mesh.computeBoundingBox();
+      if (!mesh.boundingBox || mesh.boundingBox.isEmpty()) return;
+      _meshBox.copy(mesh.boundingBox).applyMatrix4(mesh.matrixWorld);
+    } else {
+      if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+      const local = mesh.geometry.boundingBox;
+      if (!local) return;
+      _meshBox.copy(local).applyMatrix4(mesh.matrixWorld);
+    }
+    const sizeX = _meshBox.max.x - _meshBox.min.x;
+    const sizeY = _meshBox.max.y - _meshBox.min.y;
+    const sizeZ = _meshBox.max.z - _meshBox.min.z;
+    if (sizeX > 8 || sizeY > 8 || sizeZ > 8) return;
     _box.union(_meshBox);
   });
   return !_box.isEmpty();
@@ -37,21 +57,14 @@ export function groundToFloor(object: Object3D, floorY = 0) {
   return { lift, minY: _box.min.y, maxY: _box.max.y, center: _box.getCenter(new Vector3()) };
 }
 
-export function frameCamera(
+function placeCamera(
   camera: PerspectiveCamera,
-  object: Object3D,
-  opts: { pad?: number; yaw?: number; pitch?: number; aspect?: number; lift?: number; minDist?: number } = {},
+  dist: number,
+  yaw: number,
+  pitch: number,
+  lift: number,
+  aspect: number,
 ) {
-  if (!meshBounds(object)) return null;
-  _box.getBoundingSphere(_sphere);
-  _box.getCenter(_center);
-  const pad = opts.pad ?? 1.55;
-  const yaw = opts.yaw ?? CAMERA_YAW;
-  const pitch = opts.pitch ?? 0.18;
-  const fov = (camera.fov * Math.PI) / 180;
-  const aspect = opts.aspect ?? camera.aspect ?? 1;
-  const radius = Math.max(_sphere.radius, 0.35) * pad;
-  const dist = Math.max(opts.minDist ?? 2.7, radius / Math.sin(fov / 2) / Math.min(1, aspect));
   _desired.set(
     _center.x + dist * Math.sin(yaw) * Math.cos(pitch),
     _center.y + dist * Math.sin(pitch),
@@ -61,13 +74,44 @@ export function frameCamera(
   camera.position.copy(_desired);
   camera.near = Math.max(0.08, dist / 40);
   camera.far = Math.max(80, dist * 10);
-  camera.lookAt(_center.x, _center.y + radius * 0.02 - (opts.lift ?? 0), _center.z);
+  camera.aspect = aspect;
+  camera.lookAt(_center.x, _center.y - lift, _center.z);
   camera.updateProjectionMatrix();
+}
+
+export function frameCamera(
+  camera: PerspectiveCamera,
+  object: Object3D,
+  opts: { pad?: number; yaw?: number; pitch?: number; aspect?: number; lift?: number; minDist?: number } = {},
+) {
+  if (!meshBounds(object)) return null;
+  _box.getBoundingSphere(_sphere);
+  _box.getCenter(_center);
+  const pad = opts.pad ?? 1.58;
+  const yaw = opts.yaw ?? CAMERA_YAW;
+  const pitch = opts.pitch ?? 0.16;
+  const lift = opts.lift ?? 0;
+  const fov = (camera.fov * Math.PI) / 180;
+  const aspect = opts.aspect ?? camera.aspect ?? 1;
+  const radius = Math.min(2.1, Math.max(_sphere.radius, 0.35) * pad);
+  let dist = Math.max(opts.minDist ?? 2.6, radius / Math.sin(fov / 2) / Math.min(1, aspect));
+  for (let i = 0; i < 6; i += 1) {
+    placeCamera(camera, dist, yaw, pitch, lift, aspect);
+    const projected = projectCorners(camera);
+    if (
+      projected.minX > -0.92 &&
+      projected.maxX < 0.92 &&
+      projected.minY > -0.92 &&
+      projected.maxY < 0.92
+    ) {
+      break;
+    }
+    dist = Math.min(7.2, dist * 1.12);
+  }
   return { center: _center.clone(), radius, dist, desired: _desired.clone() };
 }
 
-export function projectMeshBounds(object: Object3D, camera: PerspectiveCamera) {
-  if (!meshBounds(object)) return null;
+function projectCorners(camera: PerspectiveCamera) {
   const { min, max } = _box;
   let minX = Infinity;
   let minY = Infinity;
@@ -86,9 +130,18 @@ export function projectMeshBounds(object: Object3D, camera: PerspectiveCamera) {
       }
     }
   }
-  const pad = 0.9;
-  const inView = behind < 8 && minX >= -pad && maxX <= pad && minY >= -pad && maxY <= pad;
-  return { minX, minY, maxX, maxY, behind, inView };
+  return { minX, minY, maxX, maxY, behind };
+}
+
+export function projectMeshBounds(object: Object3D, camera: PerspectiveCamera) {
+  if (!meshBounds(object)) return null;
+  const { minX, minY, maxX, maxY, behind } = projectCorners(camera);
+  const width = maxX - minX;
+  const height = maxY - minY;
+  const onScreen = behind < 8 && minX >= -1 && maxX <= 1 && minY >= -1 && maxY <= 1;
+  const fills = width >= 0.2 && height >= 0.16;
+  const inView = onScreen && fills;
+  return { minX, minY, maxX, maxY, width, height, behind, onScreen, fills, inView };
 }
 
 export function clipPreviewTime(kind: string, duration: number) {
