@@ -92,7 +92,7 @@ function placeCamera(
 
 /** Puppy occupies ~1/6–1/4 of the viewport; later stages grow a little. */
 export const YARD_FRAC: Record<string, number> = {
-  puppy: 0.2,
+  puppy: 0.21,
   young: 0.26,
   adult: 0.31,
   senior: 0.29,
@@ -106,21 +106,21 @@ export const YARD_SAFE = {
   maxY: 0.5,
 };
 
-export const YARD_PITCH = 0.62;
+export const YARD_PITCH = 0.52;
 
 /** Room-only body scale so the yard reads roomy next to furniture. */
 export const YARD_BODY: Record<string, number> = {
-  puppy: 0.54,
-  young: 0.7,
-  adult: 0.82,
-  senior: 0.8,
+  puppy: 0.62,
+  young: 0.76,
+  adult: 0.88,
+  senior: 0.86,
 };
 
 const YARD_HEIGHT: Record<string, number> = {
-  puppy: 0.62,
-  young: 0.82,
-  adult: 1.02,
-  senior: 0.96,
+  puppy: 0.78,
+  young: 0.96,
+  adult: 1.12,
+  senior: 1.06,
 };
 
 export function followYardCamera(
@@ -150,7 +150,7 @@ export function followYardCamera(
   const yaw = CAMERA_YAW;
   const lookY = Math.max(0.22, Math.min(dogH * 0.38, 0.48));
   let dist = dogH / (Math.max(0.14, frac * 2) * Math.tan(fov / 2));
-  dist = Math.max(opts.asleep ? 7.2 : 8.4, dist);
+  dist = Math.max(opts.asleep ? 5.4 : 5.8, dist);
 
   for (let i = 0; i < 14; i += 1) {
     _desired.set(
