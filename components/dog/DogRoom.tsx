@@ -18,6 +18,7 @@ import NamePicker from './NamePicker';
 import WalkGame from './WalkGame';
 import { playDogSfx } from './dogSound';
 import useDogDrive from './useDogDrive';
+import { nearFeeder } from '../../workers/dog/src/room';
 import './dog.css';
 
 const HistoryBoard = dynamic(() => import('./HistoryBoard'), { ssr: false });
@@ -72,6 +73,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [clientId, setClientId] = useState<string | null>(null);
   const [hint, setHint] = useState(true);
+  const [nearBowl, setNearBowl] = useState(false);
   const feedRef = useRef<() => void>(() => undefined);
   const socket = useRef<WebSocket | null>(null);
   const toastId = useRef(1);
@@ -310,6 +312,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const youHold = Boolean(snapshot?.leash?.held && snapshot.leash.holderId && snapshot.leash.holderId === clientId);
   const visitorWalking = preview === 'leash' || Boolean(snapshot?.leash?.held && snapshot.leash.holderId && snapshot.leash.holderId !== clientId);
   const hideDrive = preview === 'eat' || preview === 'sleep' || preview === 'pose-walk';
+  const inRange = preview === 'eat' || Boolean(snapshot?.feeder?.near) || nearBowl;
 
   const hideHint = useCallback(() => {
     setHint(false);
@@ -386,6 +389,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           interactive
           fill
           food={Boolean(snapshot?.feeder?.hasFood || snapshot?.feeder?.eating)}
+          near={inRange}
           drive={
             hideDrive
               ? null
@@ -394,7 +398,10 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
                   server: snapshot?.pose ?? null,
                   youHold,
                   localOnly: !shared,
-                  onPose: undefined,
+                  onPose: (pose) => {
+                    const next = nearFeeder(pose.x, pose.z);
+                    setNearBowl((current) => (current === next ? current : next));
+                  },
                 }
           }
           onReady={() => setReady(true)}
@@ -413,6 +420,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           fill
           empty={!napping && !previewing}
           food={preview === 'eat'}
+          near={inRange}
           drive={
             previewing && !hideDrive
               ? {
@@ -420,7 +428,10 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
                   server: null,
                   youHold: true,
                   localOnly: true,
-                  onPose: undefined,
+                  onPose: (pose) => {
+                    const next = nearFeeder(pose.x, pose.z);
+                    setNearBowl((current) => (current === next ? current : next));
+                  },
                 }
               : null
           }
@@ -445,6 +456,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           visitorWalking={visitorWalking}
           hint={hint}
           touch={touch}
+          near={inRange}
           onMute={toggleMute}
           onPet={() => {
             send({ type: 'action', action: 'pet' });

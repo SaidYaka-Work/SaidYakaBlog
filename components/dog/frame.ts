@@ -90,6 +90,80 @@ function placeCamera(
   camera.updateProjectionMatrix();
 }
 
+/** Puppy occupies ~1/6–1/4 of the viewport; later stages grow a little. */
+export const YARD_FRAC: Record<string, number> = {
+  puppy: 0.2,
+  young: 0.26,
+  adult: 0.31,
+  senior: 0.29,
+};
+
+/** Keep the dog out of name, chips, meters, and the Pet/Feed bar. */
+export const YARD_SAFE = {
+  minX: -0.48,
+  maxX: 0.78,
+  minY: -0.42,
+  maxY: 0.5,
+};
+
+export const YARD_PITCH = 0.62;
+
+/** Room-only body scale so the yard reads roomy next to furniture. */
+export const YARD_BODY: Record<string, number> = {
+  puppy: 0.54,
+  young: 0.7,
+  adult: 0.82,
+  senior: 0.8,
+};
+
+export function followYardCamera(
+  camera: PerspectiveCamera,
+  object: Object3D,
+  opts: { stage?: string; asleep?: boolean; aspect?: number } = {},
+) {
+  if (!meshBounds(object)) return null;
+  _box.getCenter(_center);
+  _box.getSize(_size);
+  const stage = opts.stage ?? 'adult';
+  const frac = YARD_FRAC[stage] ?? YARD_FRAC.adult;
+  const aspect = opts.aspect ?? camera.aspect ?? 1;
+  const fov = (camera.fov * Math.PI) / 180;
+  const dogH = Math.max(_size.y, 0.32);
+  const pitch = opts.asleep ? 0.56 : YARD_PITCH;
+  const yaw = CAMERA_YAW;
+  const lookY = _center.y + dogH * 0.06;
+  let dist = dogH / (Math.max(0.14, frac * 2) * Math.tan(fov / 2));
+  dist = Math.max(opts.asleep ? 6.4 : 7.6, dist);
+
+  for (let i = 0; i < 14; i += 1) {
+    _desired.set(
+      _center.x + dist * Math.sin(yaw) * Math.cos(pitch),
+      Math.max(1.85, lookY + dist * Math.sin(pitch)),
+      _center.z + dist * Math.cos(yaw) * Math.cos(pitch),
+    );
+    camera.up.set(0, 1, 0);
+    camera.position.copy(_desired);
+    camera.near = Math.max(0.08, dist / 40);
+    camera.far = Math.max(80, dist * 8);
+    camera.aspect = aspect;
+    camera.lookAt(_center.x, lookY, _center.z);
+    camera.updateProjectionMatrix();
+    const projected = projectCorners(camera);
+    const height = projected.maxY - projected.minY;
+    const overflow =
+      projected.minX < YARD_SAFE.minX ||
+      projected.maxX > YARD_SAFE.maxX ||
+      projected.minY < YARD_SAFE.minY ||
+      projected.maxY > YARD_SAFE.maxY ||
+      height > frac * 2 * 1.18 ||
+      projected.behind >= 8;
+    if (!overflow) break;
+    dist = Math.min(13.6, dist * 1.07);
+  }
+
+  return { center: _center.clone(), dist, desired: _desired.clone(), lookY };
+}
+
 export function frameCamera(
   camera: PerspectiveCamera,
   object: Object3D,

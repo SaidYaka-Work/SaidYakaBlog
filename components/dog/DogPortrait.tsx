@@ -25,6 +25,7 @@ export default function DogPortrait({
   empty = false,
   drive = null,
   food = false,
+  near = false,
   onReady,
 }: {
   genome?: DogGenome | null;
@@ -41,6 +42,7 @@ export default function DogPortrait({
   empty?: boolean;
   drive?: DriveControl | null;
   food?: boolean;
+  near?: boolean;
   onReady?: () => void;
 }) {
   if (compact) {
@@ -61,6 +63,7 @@ export default function DogPortrait({
           empty={empty}
           drive={drive}
           food={food}
+          near={near}
           onReady={onReady}
     />
   );

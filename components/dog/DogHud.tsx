@@ -22,6 +22,7 @@ export default function DogHud({
   visitorWalking,
   hint,
   touch,
+  near,
   onMute,
   onPet,
   onFeed,
@@ -44,6 +45,7 @@ export default function DogHud({
   visitorWalking?: boolean;
   hint?: boolean;
   touch?: boolean;
+  near?: boolean;
   onMute: () => void;
   onPet: () => void;
   onFeed: () => void;
@@ -105,8 +107,14 @@ export default function DogHud({
         ))}
       </div>
 
-      {hint && !empty && (
+      {hint && !empty && !near && (
         <p className="dog-hint">{touch ? 'Joystick to walk · Feed at the bowl' : 'WASD to walk · E to feed'}</p>
+      )}
+
+      {near && !empty && (
+        <p className="dog-prompt" role="status">
+          {touch ? 'Feed' : 'E · Feed'}
+        </p>
       )}
 
       {touch && !empty && onStick && <Joystick onStick={onStick} />}
@@ -121,7 +129,7 @@ export default function DogHud({
             <button type="button" className="dog-action is-primary" onClick={onPet} disabled={busy}>
               Pet
             </button>
-            <button type="button" className="dog-action" onClick={onFeed} disabled={busy}>
+            <button type="button" className={`dog-action${near ? ' is-ready' : ''}`} onClick={onFeed} disabled={busy}>
               Feed
             </button>
           </>

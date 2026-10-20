@@ -5,7 +5,7 @@ import { Suspense, useEffect, useRef, useState, type RefObject } from 'react';
 import { PerspectiveCamera, Vector3, type Group } from 'three';
 import type { DogGenome, LifeStage } from '@/lib/dog';
 import type { PortraitReaction } from './look';
-import { CAMERA_YAW, frameCamera, projectMeshBounds } from './frame';
+import { CAMERA_YAW, frameCamera, followYardCamera, projectMeshBounds } from './frame';
 import DogRig, { type DriveControl } from './DogRig';
 import PorchWorld from './PorchWorld';
 
@@ -25,6 +25,7 @@ function FramedCamera({
   compact,
   fill,
   asleep,
+  stage,
   onReady,
 }: {
   target: RefObject<Group | null>;
@@ -32,11 +33,13 @@ function FramedCamera({
   compact?: boolean;
   fill?: boolean;
   asleep?: boolean;
+  stage?: LifeStage;
   onReady?: () => void;
 }) {
   const camera = useThree((state) => state.camera) as PerspectiveCamera;
   const size = useThree((state) => state.size);
   const from = useRef(new Vector3());
+  const look = useRef(new Vector3());
   const ready = useRef(false);
 
   useFrame((_, dt) => {
@@ -45,22 +48,18 @@ function FramedCamera({
     camera.aspect = size.width / Math.max(1, size.height);
     from.current.copy(camera.position);
     if (fill) {
-      const x = object.position.x * 0.82;
-      const z = object.position.z * 0.82;
-      const dist = asleep ? 6.4 : 7.1;
-      const pitch = 0.46;
-      camera.position.set(
-        x + dist * Math.sin(CAMERA_YAW) * Math.cos(pitch),
-        1.15 + dist * Math.sin(pitch),
-        z + dist * Math.cos(CAMERA_YAW) * Math.cos(pitch),
-      );
-      camera.up.set(0, 1, 0);
-      camera.lookAt(x, 0.28, z);
-      camera.updateProjectionMatrix();
+      const info = followYardCamera(camera, object, {
+        stage,
+        asleep,
+        aspect: camera.aspect,
+      });
+      if (!info) return;
+      look.current.set(info.center.x, info.lookY, info.center.z);
       if (ready.current) {
-        camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 3.2));
+        camera.position.lerpVectors(from.current, info.desired, 1 - Math.exp(-dt * 3.4));
         camera.up.set(0, 1, 0);
-        camera.lookAt(x, 0.28, z);
+        camera.lookAt(look.current);
+        camera.updateProjectionMatrix();
       } else {
         ready.current = true;
         onReady?.();
@@ -112,6 +111,7 @@ export default function DogCanvas({
   empty = false,
   drive = null,
   food = false,
+  near = false,
   onReady,
 }: {
   genome?: DogGenome | null;
@@ -128,6 +128,7 @@ export default function DogCanvas({
   empty?: boolean;
   drive?: DriveControl | null;
   food?: boolean;
+  near?: boolean;
   onReady?: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
@@ -190,7 +191,7 @@ export default function DogCanvas({
     >
       <Canvas
         dpr={[1, 1.6]}
-        camera={{ position: [2.1, 1.5, 3.6], fov: fill ? 34 : compact ? 36 : 32, near: 0.1, far: 80 }}
+        camera={{ position: [3.4, 3.2, 6.4], fov: fill ? 36 : compact ? 36 : 32, near: 0.1, far: 80 }}
         shadows
         frameloop={frameloop}
         gl={{ antialias: true, alpha: false, powerPreference: 'default' }}
@@ -202,6 +203,7 @@ export default function DogCanvas({
             compact={compact}
             walking={reaction === 'walk'}
             food={food || reaction === 'feed'}
+            near={near || reaction === 'feed'}
           />
           {!empty && (
             <DogRig
@@ -216,6 +218,7 @@ export default function DogCanvas({
               reduced={reduced}
               interactive={interactive}
               drive={drive}
+              roomy={fill}
             />
           )}
           {!empty && (
@@ -225,6 +228,7 @@ export default function DogCanvas({
               compact={compact}
               fill={fill}
               asleep={asleep || reaction === 'sleep'}
+              stage={stage}
               onReady={onReady}
             />
           )}

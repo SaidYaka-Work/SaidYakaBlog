@@ -10,7 +10,7 @@ import { generateGenome, type DogGenome, type LifeStage } from '@/lib/dog';
 import { wagMs, type PortraitReaction } from './look';
 import type { DogGait, DogPose } from '@/lib/dog';
 import { applyDrive as stepDrive, createYard } from '../../workers/dog/src/room';
-import { EAT_STAND, EAT_YAW, SLEEP_ROLL, SLEEP_YAW, THREE_QUARTER_YAW, groundToFloor } from './frame';
+import { EAT_STAND, EAT_YAW, SLEEP_ROLL, SLEEP_YAW, THREE_QUARTER_YAW, YARD_BODY, groundToFloor } from './frame';
 import {
   applyDogLook,
   applyMoodBones,
@@ -57,6 +57,7 @@ const DogRig = forwardRef<Group, {
   reduced?: boolean;
   interactive?: boolean;
   drive?: DriveControl | null;
+  roomy?: boolean;
 }>(function DogRig(
   {
     genome,
@@ -69,6 +70,7 @@ const DogRig = forwardRef<Group, {
     reduced = false,
     interactive = false,
     drive = null,
+    roomy = false,
   },
   ref,
 ) {
@@ -274,7 +276,8 @@ const DogRig = forwardRef<Group, {
     const breathe = lieDown && !reduced ? Math.sin((performance.now() / 1000) * 1.7) * 0.03 : 0;
     node.position.set(w.x, 0, w.z);
     node.rotation.set(0, w.yaw, lieDown ? SLEEP_ROLL : 0);
-    node.scale.set(figure.body * (1 + breathe), figure.body, figure.body * figure.length);
+    const yard = roomy ? YARD_BODY[stage] ?? 1 : 1;
+    node.scale.set(figure.body * yard * (1 + breathe), figure.body * yard, figure.body * yard * figure.length);
 
     const wag = asleep || sad || lieDown ? 0 : (performance.now() / 1000) * (1000 / Math.max(180, wagMs(happiness, asleep, sad))) * Math.PI * 2;
     applyMoodBones(scene, {
