@@ -1,26 +1,30 @@
 'use client';
 
-import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   dogWorkerUrl,
   dogWsUrl,
-  formatCountdown,
   generateGenome,
-  stageWord,
   type DogSnapshot,
-  type Memorial,
 } from '@/lib/dog';
-import { englishPath } from '@/lib/site';
+import { reactionFromEvent } from './look';
 import CatchGame from './CatchGame';
+import DogHud, { type Toast } from './DogHud';
 import DogPortrait from './DogPortrait';
+import DogStudio from './DogStudio';
 import FeedGame from './FeedGame';
 import NamePicker from './NamePicker';
 import WalkGame from './WalkGame';
+import { playDogSfx } from './dogSound';
 import './dog.css';
+
+const HistoryBoard = dynamic(() => import('./HistoryBoard'), { ssr: false });
 
 type PlayKind = 'feed' | 'walk' | 'catch' | null;
 type Reaction = 'idle' | 'pet' | 'walk' | 'feed' | 'sleep';
+type Panel = 'hall' | 'feed' | 'walk' | 'catch' | 'name' | null;
+type Preview = 'start' | 'hungry' | 'feed' | 'walk' | 'hall' | 'sleep' | 'eat' | 'sad' | 'pose-walk' | null;
 
 const ERRORS: Record<string, string> = {
   cooldown: 'Give him a moment.',
@@ -38,30 +42,113 @@ const ERRORS: Record<string, string> = {
   named: 'This dog already has a name.',
 };
 
-export default function DogRoom() {
+function toastFromText(text: string): Omit<Toast, 'id'> {
+  const line = text.toLowerCase();
+  if (line.includes('petted') || line.includes('scratched')) return { emote: '👋', text };
+  if (line.includes('fed') || line.includes('dinner')) return { emote: '🍖', text };
+  if (line.includes('walk') || line.includes('sniff')) return { emote: '🐾', text };
+  return { emote: '✨', text };
+}
+
+export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel }) {
   const worker = dogWorkerUrl();
   const [snapshot, setSnapshot] = useState<DogSnapshot | null>(null);
-  const [status, setStatus] = useState('Looking for the porch…');
   const [connected, setConnected] = useState(false);
   const [play, setPlay] = useState<PlayKind>(null);
   const [playId, setPlayId] = useState<string | null>(null);
   const [reaction, setReaction] = useState<Reaction>('idle');
   const [canName, setCanName] = useState(false);
   const [nameStatus, setNameStatus] = useState('');
+  const [studio, setStudio] = useState(false);
+  const [preview, setPreview] = useState<Preview>(null);
+  const [playing, setPlaying] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [progress, setProgress] = useState(12);
+  const [muted, setMuted] = useState(true);
+  const [panel, setPanel] = useState<Panel>(initialPanel);
+  const [toasts, setToasts] = useState<Toast[]>([]);
   const socket = useRef<WebSocket | null>(null);
+  const toastId = useRef(1);
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
+  const panelRef = useRef(panel);
+  panelRef.current = panel;
+  const previewRef = useRef<Preview>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setStudio(params.has('studio'));
+    const next = params.get('preview');
+    if (
+      next === 'start' ||
+      next === 'hungry' ||
+      next === 'feed' ||
+      next === 'walk' ||
+      next === 'hall' ||
+      next === 'sleep' ||
+      next === 'eat' ||
+      next === 'sad' ||
+      next === 'pose-walk'
+    ) {
+      setPreview(next);
+      previewRef.current = next;
+      if (next !== 'start') setPlaying(true);
+      if (next === 'hall') setPanel('hall');
+      if (next === 'feed') setPlay('feed');
+      if (next === 'walk') setPlay('walk');
+      if (next === 'sleep') setReaction('sleep');
+      if (next === 'eat') setReaction('feed');
+      if (next === 'pose-walk') setReaction('walk');
+    } else if (initialPanel === 'hall') {
+      setPlaying(true);
+      setPanel('hall');
+    }
+    try {
+      const stored = localStorage.getItem('biscuit-muted');
+      setMuted(stored !== '0');
+    } catch {
+      setMuted(true);
+    }
+  }, [initialPanel]);
+
+  useEffect(() => {
+    let live = true;
+    const urls = ['/dog/ShibaInu.glb', '/dog/Husky.glb'];
+    let loaded = 0;
+    urls.forEach((url) => {
+      fetch(url)
+        .then((response) => response.arrayBuffer())
+        .catch(() => undefined)
+        .finally(() => {
+          if (!live) return;
+          loaded += 1;
+          setProgress(20 + Math.round((loaded / urls.length) * 55));
+        });
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const pushToast = useCallback((text: string) => {
+    const id = toastId.current++;
+    setToasts((current) => [...current.slice(-2), { id, ...toastFromText(text) }]);
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((item) => item.id !== id));
+    }, 2800);
+  }, []);
 
   const apply = useCallback((data: DogSnapshot) => {
     setSnapshot(data);
     setConnected(true);
-    setStatus(
-      data.dog
-        ? `${data.presence} ${data.presence === 1 ? 'neighbor' : 'neighbors'} on the porch`
-        : 'The rug is empty.',
-    );
+    setProgress((value) => Math.max(value, 78));
   }, []);
 
   useEffect(() => {
-    if (!worker) return;
+    if (!worker) {
+      setProgress((value) => Math.max(value, 70));
+      return;
+    }
     let closed = false;
     let pause = 800;
     const open = () => {
@@ -83,22 +170,35 @@ export default function DogRoom() {
           if (!message.awaitingName) {
             setCanName(false);
             setNameStatus('');
+            if (panelRef.current === 'name') setPanel(null);
           }
         }
         if (message.type === 'play') {
           setPlayId(message.playId);
           setPlay(message.game);
+          setPanel(null);
         }
         if (message.type === 'name-please') {
           setCanName(true);
           setNameStatus('');
+          setPanel('name');
         }
         if (message.type === 'error') {
           const text = message.text || ERRORS[message.code] || 'Not just now.';
-          setStatus(text);
+          pushToast(text);
           if (message.code === 'invalid' || message.code === 'not_catcher') setNameStatus(text);
         }
-        if (message.type === 'event') setStatus(message.text);
+        if (message.type === 'event') {
+          pushToast(message.text);
+          const next = reactionFromEvent(message.text);
+          if (next && !previewRef.current) {
+            setReaction(next);
+            if (next === 'pet') playDogSfx('bark', mutedRef.current);
+            if (next === 'feed') playDogSfx('munch', mutedRef.current);
+            if (next === 'walk') playDogSfx('step', mutedRef.current);
+            window.setTimeout(() => setReaction('idle'), next === 'feed' || next === 'walk' ? 1600 : 1200);
+          }
+        }
       };
       ws.onclose = () => {
         setConnected(false);
@@ -112,7 +212,7 @@ export default function DogRoom() {
       closed = true;
       socket.current?.close();
     };
-  }, [apply, worker]);
+  }, [apply, pushToast, worker]);
 
   function send(payload: object) {
     if (socket.current?.readyState === WebSocket.OPEN) {
@@ -126,8 +226,14 @@ export default function DogRoom() {
 
   function finish(score: number) {
     if (playId) send({ type: 'finish', playId, score });
-    if (play === 'walk') setReaction('walk');
-    if (play === 'feed') setReaction('feed');
+    if (play === 'walk') {
+      setReaction('walk');
+      playDogSfx('step', muted);
+    }
+    if (play === 'feed') {
+      setReaction('feed');
+      playDogSfx('munch', muted);
+    }
     setPlay(null);
     setPlayId(null);
     window.setTimeout(() => setReaction('idle'), 1200);
@@ -137,199 +243,199 @@ export default function DogRoom() {
     send({ type: 'name', nameId });
   }
 
+  function toggleMute() {
+    setMuted((value) => {
+      const next = !value;
+      try {
+        localStorage.setItem('biscuit-muted', next ? '1' : '0');
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
+
   const napping = !worker || !connected;
   const dog = snapshot?.dog ?? null;
-  const memorial = snapshot?.memorial ?? null;
+  const previewing = Boolean(preview) && preview !== 'start' && preview !== 'hall';
   const awaitingName = Boolean(snapshot?.awaitingName);
-  const shownName = dog?.profile.name || (awaitingName ? 'A new dog' : memorial ? `${memorial.profile.name} left` : 'Biscuit');
+  const shownName = dog?.profile.name || (awaitingName ? 'A new dog' : snapshot?.memorial?.profile.name || 'Biscuit');
+  const hungry = preview === 'hungry' || preview === 'eat' || Boolean(dog?.care.feedOverdue) || (dog?.care.hunger ?? 0) > 70;
+  const wantsWalk = preview === 'hungry' || Boolean(dog?.care.walkOverdue) || (dog?.care.walkNeed ?? 0) > 70;
+  const poseAsleep = preview === 'sleep' || (!previewing && Boolean(dog?.asleep));
+  const poseReaction =
+    preview === 'sleep'
+      ? 'sleep'
+      : preview === 'eat'
+        ? 'feed'
+        : preview === 'pose-walk'
+          ? 'walk'
+          : dog?.asleep
+            ? 'sleep'
+            : reaction;
+  const poseSad = preview === 'sad' || (!previewing && (dog?.happiness ?? 100) < 40);
+  const fallbackAsleep = preview === 'sleep' || preview === 'start' || !preview;
+  const fallbackReaction: Reaction =
+    preview === 'eat' ? 'feed' : preview === 'pose-walk' ? 'walk' : preview === 'sleep' ? 'sleep' : preview === 'sad' || preview === 'hungry' ? 'idle' : 'sleep';
+  const overlay = play || (awaitingName && canName) || panel;
+  const canTap = ready || progress >= 88 || napping;
+
+  useEffect(() => {
+    if (canName) setPlaying(true);
+  }, [canName]);
+
+  useEffect(() => {
+    if (ready) setProgress(100);
+  }, [ready]);
+
+  if (studio) return <DogStudio />;
 
   return (
-    <section className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
-      <p className="hero-kicker text-xs uppercase tracking-[0.18em] text-[var(--accent)]">The porch</p>
-      <h1 className="hero-title mt-2 font-serif text-4xl tracking-tight sm:text-5xl">
-        {shownName}
-      </h1>
-      <p className="hero-copy mt-4 max-w-xl text-[var(--muted)] leading-relaxed">
-        One dog for the whole internet. Anyone can pet him, feed him, or take him around the block.
-        What he needs changes with his age.
-      </p>
-
-      <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-[var(--muted)]">
-        <span>{status}</span>
-        <Link href={englishPath('/dog/history')} className="link-underline text-[var(--ink)]">
-          Past dogs
-        </Link>
-      </div>
-
-      <div className="mt-6 overflow-hidden rounded-[1.6rem] border border-[var(--line)] bg-[var(--bg-elevated)]">
-        {napping && !dog ? (
-          <div className="px-6 py-16 text-center">
-            <DogPortrait genome={generateGenome('napping-biscuit')} asleep reaction="sleep" night={false} stage="puppy" />
-            <p className="mt-6 font-serif text-2xl">The dog is napping</p>
-            <p className="mx-auto mt-3 max-w-md text-[var(--muted)]">
-              The shared kennel is not connected yet. The rug stays warm until the Worker wakes up.
-            </p>
-          </div>
-        ) : play === 'feed' ? (
-          <div className="p-4">
-            <FeedGame onDone={(score) => finish(score)} drops={dog?.care.feedDrops} />
-          </div>
-        ) : play === 'walk' ? (
-          <div className="p-4">
-            <WalkGame
-              onDone={(score) => finish(score)}
-              durationMs={dog?.care.walkGameMs}
-              speed={dog?.care.walkSpeed}
-              spawnMs={dog?.care.walkSpawnMs}
-              rockChance={dog?.care.walkRockChance}
-              caption={dog?.care.walkCaption}
-            />
-          </div>
-        ) : play === 'catch' ? (
-          <div className="p-4">
-            <CatchGame onDone={(score) => finish(score)} />
-          </div>
-        ) : awaitingName && canName ? (
-          <div>
-            {dog && (
-              <DogPortrait
-                genome={dog.genome}
-                asleep={dog.asleep}
-                reaction="idle"
-                night={dog.night}
-                stage={dog.stage}
-              />
-            )}
-            <NamePicker
-              until={snapshot?.nameUntil ?? null}
-              onPick={pickName}
-              status={nameStatus}
-              avoidIds={snapshot?.usedNameIds ?? []}
-            />
-          </div>
-        ) : dog ? (
-          <DogPortrait
-            genome={dog.genome}
-            asleep={dog.asleep}
-            reaction={dog.asleep ? 'sleep' : reaction}
-            night={dog.night}
-            stage={dog.stage}
-          />
-        ) : (
-          <div className="px-6 py-12 text-center">
-            <p className="font-serif text-3xl">The porch is empty</p>
-            {memorial && <MemorialCard record={memorial} />}
-          </div>
-        )}
-      </div>
-
-      {awaitingName && !canName && (
-        <p className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--accent-soft)] px-4 py-3 text-sm">
-          A new dog was caught, waiting for a name.
-        </p>
+    <div className="dog-game">
+      {dog ? (
+        <DogPortrait
+          genome={dog.genome}
+          asleep={poseAsleep}
+          reaction={poseReaction}
+          night={dog.night}
+          stage={dog.stage}
+          happiness={dog.happiness}
+          hungry={hungry}
+          sad={poseSad}
+          interactive
+          fill
+          onReady={() => setReady(true)}
+        />
+      ) : (
+        <DogPortrait
+          genome={generateGenome(previewing ? 'biscuit-porch-1' : 'napping-biscuit')}
+          asleep={fallbackAsleep}
+          reaction={fallbackReaction}
+          night={false}
+          stage="puppy"
+          happiness={72}
+          hungry={hungry}
+          sad={preview === 'sad'}
+          interactive={previewing}
+          fill
+          empty={!napping && !previewing}
+          onReady={() => setReady(true)}
+        />
       )}
 
-      {dog && !awaitingName && (
-        <>
-          <div className="mt-5 flex flex-wrap gap-2 text-sm">
-            <Pill>
-              {dog.stageLabel} · {dog.ageDays} days old
-            </Pill>
-            <Pill>{dog.mood}</Pill>
-          </div>
-          <p className="mt-3 text-sm text-[var(--ink)]">{dog.care.ageNote}</p>
-          <p className="mt-2 text-sm text-[var(--muted)]">{dog.profile.personality}</p>
-          {dog.care.warning && (
-            <p className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--accent-soft)] px-4 py-3 text-sm">
-              {dog.care.warning}
-            </p>
-          )}
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <Need
-              label="Dinner"
-              hint={dog.care.mealHint}
-              value={dog.care.feedOverdue ? `Overdue ${formatCountdown(dog.care.nextFeedInMs)}` : `In ${formatCountdown(dog.care.nextFeedInMs)}`}
-              hot={dog.care.feedOverdue}
-            />
-            <Need
-              label="Walk"
-              hint={dog.care.walkHint}
-              value={dog.care.walkOverdue ? `Overdue ${formatCountdown(dog.care.nextWalkInMs)}` : `In ${formatCountdown(dog.care.nextWalkInMs)}`}
-              hot={dog.care.walkOverdue}
-            />
-          </div>
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label="Happiness" value={dog.happiness} />
-            <Stat label="Energy" value={dog.energy} />
-            <Stat label="Fullness" value={dog.fullness} />
-            <Stat label="Affection" value={dog.affection} />
-          </div>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <button type="button" className="pressable rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm text-[var(--bg)]" onClick={() => { send({ type: 'action', action: 'pet' }); setReaction('pet'); window.setTimeout(() => setReaction('idle'), 900); }}>
-              Pet
-            </button>
-            <button type="button" className="pressable rounded-full border border-[var(--line)] px-5 py-2.5 text-sm" onClick={() => start('feed')}>
-              Feed
-            </button>
-            <button type="button" className="pressable rounded-full border border-[var(--line)] px-5 py-2.5 text-sm" onClick={() => start('walk')}>
-              Walk
-            </button>
-          </div>
-          <p className="mt-4 text-sm text-[var(--faint)]">
-            {dog.totals.pets} pets · {dog.totals.feeds} meals · {dog.totals.walks} walks · {dog.totals.miles} miles
-          </p>
-          <ul className="mt-6 space-y-2 text-sm text-[var(--muted)]">
-            {dog.activity.slice(0, 6).map((item) => (
-              <li key={`${item.at}-${item.text}`}>{item.text}</li>
-            ))}
-          </ul>
-        </>
+      {playing && (
+        <DogHud
+          name={shownName}
+          stageLabel={dog?.stageLabel || (awaitingName ? 'new' : napping ? 'napping' : 'away')}
+          presence={snapshot?.presence ?? 0}
+          happiness={dog?.happiness ?? (previewing ? 72 : 0)}
+          energy={dog?.energy ?? (previewing ? 64 : 0)}
+          fullness={dog?.fullness ?? (previewing ? 38 : 0)}
+          hungry={hungry && Boolean(dog || previewing)}
+          wantsWalk={wantsWalk && Boolean(dog || previewing)}
+          muted={muted}
+          empty={!dog && !previewing}
+          busy={Boolean(overlay)}
+          toasts={toasts}
+          onMute={toggleMute}
+          onPet={() => {
+            send({ type: 'action', action: 'pet' });
+            setReaction('pet');
+            playDogSfx('bark', muted);
+            window.setTimeout(() => setReaction('idle'), 900);
+          }}
+          onFeed={() => start('feed')}
+          onWalk={() => start('walk')}
+          onHall={() => setPanel('hall')}
+          onCatch={() => start('catch')}
+        />
       )}
 
-      {!dog && !napping && (
-        <div className="mt-6">
-          <p className="text-[var(--muted)]">Catch the next dog before the porch forgets how.</p>
-          <button type="button" className="pressable mt-4 rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm text-[var(--bg)]" onClick={() => start('catch')}>
-            Catch a dog
+      {!playing && (
+        <div className="dog-start">
+          <p className="dog-start-kicker">the porch</p>
+          <p className="dog-start-title">{shownName}</p>
+          <div className="dog-start-bar" aria-hidden="true">
+            <i style={{ width: `${Math.min(100, progress)}%` }} />
+          </div>
+          <button type="button" className="dog-start-play" disabled={!canTap && preview !== 'start'} onClick={() => setPlaying(true)}>
+            {canTap ? 'Tap to play' : 'Loading…'}
           </button>
         </div>
       )}
-    </section>
-  );
-}
 
-function Stat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-2xl border border-[var(--line)] bg-[var(--bg-elevated)] px-4 py-3">
-      <span className="block text-xs uppercase tracking-[0.12em] text-[var(--faint)]">{label}</span>
-      <strong className="mt-1 block text-xl font-normal">{value}</strong>
-    </div>
-  );
-}
+      {play === 'feed' && (
+        <Overlay title="Dinner" onClose={() => finish(0)}>
+          <FeedGame onDone={(score) => finish(score)} drops={dog?.care.feedDrops} genome={dog?.genome} />
+        </Overlay>
+      )}
+      {play === 'walk' && (
+        <Overlay title="Around the block" onClose={() => finish(0)}>
+          <WalkGame
+            onDone={(score) => finish(score)}
+            durationMs={dog?.care.walkGameMs}
+            speed={dog?.care.walkSpeed}
+            spawnMs={dog?.care.walkSpawnMs}
+            rockChance={dog?.care.walkRockChance}
+            caption={dog?.care.walkCaption}
+            genome={dog?.genome}
+          />
+        </Overlay>
+      )}
+      {play === 'catch' && (
+        <Overlay title="Catch a dog" onClose={() => finish(0)}>
+          <CatchGame onDone={(score) => finish(score)} />
+        </Overlay>
+      )}
+      {awaitingName && canName && (
+        <Overlay title="Name him" onClose={() => setPanel(null)}>
+          <NamePicker
+            until={snapshot?.nameUntil ?? null}
+            onPick={pickName}
+            status={nameStatus}
+            avoidIds={snapshot?.usedNameIds ?? []}
+          />
+        </Overlay>
+      )}
+      {panel === 'hall' && (
+        <Overlay title="Hall of Dogs" wide onClose={() => setPanel(null)}>
+          <HistoryBoard embedded />
+        </Overlay>
+      )}
 
-function Need({ label, hint, value, hot }: { label: string; hint: string; value: string; hot: boolean }) {
-  return (
-    <div className={`rounded-2xl border px-4 py-3 ${hot ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-[var(--line)] bg-[var(--bg-elevated)]'}`}>
-      <span className="block text-xs uppercase tracking-[0.12em] text-[var(--faint)]">{label}</span>
-      <strong className="mt-1 block font-normal">{value}</strong>
-      <p className="mt-1 text-sm text-[var(--muted)]">{hint}</p>
-    </div>
-  );
-}
-
-function Pill({ children }: { children: React.ReactNode }) {
-  return <span className="rounded-full border border-[var(--line)] px-3 py-1">{children}</span>;
-}
-
-export function MemorialCard({ record }: { record: Memorial }) {
-  return (
-    <div className="mx-auto mt-6 max-w-md text-left">
-      <DogPortrait genome={record.genome} asleep={false} reaction="idle" night={false} stage={record.furthestStage} />
-      <p className="mt-4 text-sm text-[var(--muted)]">
-        {record.profile.name} made it to {stageWord(record.furthestStage)} · {record.daysSurvived} days · {record.totals.walks} walks · peak happiness {record.peakHappiness}
-        {record.namedByCatcher ? ' · named by the catcher' : ''}
+      <p className="dog-credit">
+        3D Shiba Inu and Husky by{' '}
+        <a className="link-underline" href="https://quaternius.com/packs/ultimateanimatedanimals.html">
+          Quaternius
+        </a>
+        , CC0.
       </p>
     </div>
   );
 }
 
+function Overlay({
+  title,
+  wide,
+  onClose,
+  children,
+}: {
+  title: string;
+  wide?: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="dog-overlay">
+      <div className={`dog-modal ${wide ? 'dog-modal-wide' : ''}`}>
+        <div className="dog-modal-head">
+          <h2>{title}</h2>
+          <button type="button" className="dog-chip" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <div className="dog-modal-body">{children}</div>
+      </div>
+    </div>
+  );
+}

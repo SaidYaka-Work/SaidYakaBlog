@@ -5,7 +5,7 @@ import { dogWorkerUrl, stageWord, type HistoryPage, type Memorial } from '@/lib/
 import DogPortrait from './DogPortrait';
 import './dog.css';
 
-export default function HistoryBoard() {
+export default function HistoryBoard({ embedded = false }: { embedded?: boolean }) {
   const [page, setPage] = useState<HistoryPage | null>(null);
   const [error, setError] = useState(false);
 
@@ -26,18 +26,18 @@ export default function HistoryBoard() {
 
   if (error || !dogWorkerUrl()) {
     return (
-      <p className="mt-10 text-[var(--muted)]">
+      <p className={embedded ? 'text-[var(--muted)]' : 'mt-10 text-[var(--muted)]'}>
         The kennel log is napping with the dog. History will show up once the Worker is connected.
       </p>
     );
   }
 
   if (!page) {
-    return <p className="mt-10 text-[var(--muted)]">Opening the kennel book…</p>;
+    return <p className={embedded ? 'text-[var(--muted)]' : 'mt-10 text-[var(--muted)]'}>Opening the kennel book…</p>;
   }
 
   return (
-    <div className="mt-10">
+    <div className={embedded ? '' : 'mt-10'}>
       <div className="grid gap-3 sm:grid-cols-3">
         <Leader label="Longest lived" record={page.leaders.longestLived} detail={(dog) => `${dog.daysSurvived} days`} />
         <Leader label="Most walked" record={page.leaders.mostWalked} detail={(dog) => `${dog.totals.miles} miles`} />
@@ -55,6 +55,7 @@ export default function HistoryBoard() {
                 reaction="idle"
                 night={false}
                 stage={dog.furthestStage}
+                compact
               />
               <div className="p-5">
                 <p className="text-xs uppercase tracking-[0.16em] text-[var(--accent)]">{dog.furthestStage}</p>

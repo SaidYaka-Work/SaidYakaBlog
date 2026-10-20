@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import ThemeToggle from './ThemeToggle';
@@ -19,12 +19,35 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href);
 }
 
+function isDogPath(pathname: string) {
+  return pathname === '/en/dog' || pathname === '/en/dog/' || pathname.startsWith('/en/dog/history');
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || '';
   const [open, setOpen] = useState(false);
+  const dogGame = isDogPath(pathname);
+  const [navShown, setNavShown] = useState(true);
+
+  useEffect(() => {
+    if (!dogGame) {
+      setNavShown(true);
+      return;
+    }
+    setNavShown(true);
+    const hide = window.setTimeout(() => setNavShown(false), 1800);
+    const onMove = (event: PointerEvent) => {
+      setNavShown(event.clientY < 72 || open);
+    };
+    window.addEventListener('pointermove', onMove);
+    return () => {
+      window.clearTimeout(hide);
+      window.removeEventListener('pointermove', onMove);
+    };
+  }, [dogGame, open, pathname]);
 
   return (
-    <div className="relative flex min-h-screen flex-col">
+    <div className={dogGame ? 'dog-game-shell' : 'relative flex min-h-screen flex-col'}>
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-[var(--ink)] focus:px-4 focus:py-2 focus:text-[var(--bg)]"
@@ -33,7 +56,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </a>
 
       <MotionRoot />
-      <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] backdrop-blur-xl transition-colors duration-500">
+      <header
+        className={`${
+          dogGame ? `dog-nav ${navShown || open ? 'is-shown' : ''}` : 'sticky top-0'
+        } z-50 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] backdrop-blur-xl transition-colors duration-500`}
+      >
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:h-[4.25rem] sm:px-8">
           <Link
             href="/en/"

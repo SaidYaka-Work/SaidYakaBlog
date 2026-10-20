@@ -348,6 +348,50 @@ html[data-motion='on'] [data-reveal].will-reveal.is-in {
   }
 }
 
+.dog-game-shell {
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+.dog-game-shell > header.dog-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  transform: translateY(-110%);
+  opacity: 0;
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+
+.dog-game-shell > header.dog-nav.is-shown {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.dog-game-shell > footer {
+  display: none;
+}
+
+.dog-game-shell > main {
+  min-height: 100dvh;
+  height: 100dvh;
+}
+
+.dog-game-shell:has(.dog-studio-page) {
+  overflow: auto;
+  height: auto;
+}
+
+.dog-game-shell:has(.dog-studio-page) > main {
+  height: auto;
+}
+
+.dog-game-shell:has(.dog-studio-page) > header.dog-nav {
+  position: sticky;
+  transform: none;
+  opacity: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -363,5 +407,9 @@ html[data-motion='on'] [data-reveal].will-reveal.is-in {
 
   @view-transition {
     navigation: none;
+  }
+
+  .dog-game-shell > header.dog-nav {
+    transition: none;
   }
 }

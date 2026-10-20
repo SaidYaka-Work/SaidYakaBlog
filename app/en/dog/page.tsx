@@ -31,5 +31,11 @@ export const metadata: Metadata = {
 };
 
 export default function DogPage() {
-  return <DogPlayer />;
+  return (
+    <>
+      <h1 className="sr-only">{title}</h1>
+      <p className="sr-only">{description}</p>
+      <DogPlayer />
+    </>
+  );
 }

@@ -1,6 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { generateGenome } from '@/lib/dog';
+import { drawDogSprite, paintPorchCanvas } from './drawSprite';
+
+const STRAY = generateGenome('stray-porch');
 
 const DURATION = 14_000;
 
@@ -61,14 +65,14 @@ export default function CatchGame({ onDone }: { onDone: (score: number, duration
       if (state.x < 24 || state.x > w - 24) state.dir *= -1;
       state.flash = Math.max(0, state.flash - dt);
 
-      ctx.fillStyle = '#16120f';
-      ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = state.flash > 0 ? 'rgba(232,168,124,0.35)' : 'rgba(232,168,124,0.14)';
+      paintPorchCanvas(ctx, w, h, true, now / 40);
+      ctx.fillStyle = state.flash > 0 ? 'rgba(232,168,124,0.4)' : 'rgba(232,168,124,0.16)';
       ctx.fillRect(w / 2 - 36, 40, 72, 160);
-      ctx.fillStyle = '#e8a87c';
-      ctx.beginPath();
-      ctx.ellipse(state.x, 150, 18, 12, 0, 0, Math.PI * 2);
-      ctx.fill();
+      drawDogSprite(ctx, state.x, 150, STRAY, {
+        phase: now / 80,
+        scale: 1.2,
+        facing: state.dir >= 0 ? 1 : -1,
+      });
       ctx.fillStyle = '#a8a198';
       ctx.font = '12px ui-sans-serif, system-ui';
       ctx.fillText('Tap when the stray is in the porch light.', 12, 20);
