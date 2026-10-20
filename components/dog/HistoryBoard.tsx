@@ -55,6 +55,7 @@ export default function HistoryBoard() {
                 reaction="idle"
                 night={false}
                 stage={dog.furthestStage}
+                compact
               />
               <div className="p-5">
                 <p className="text-xs uppercase tracking-[0.16em] text-[var(--accent)]">{dog.furthestStage}</p>

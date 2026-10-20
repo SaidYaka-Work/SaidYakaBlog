@@ -1,7 +1,7 @@
 import type { DogGenome } from '../workers/dog/src/genome';
 
 export type { DogGenome } from '../workers/dog/src/genome';
-export { BISCUIT_SEED, generateGenome, lookFromGenome } from '../workers/dog/src/genome';
+export { BISCUIT_SEED, generateGenome, hashSeed, lookFromGenome, mulberry32 } from '../workers/dog/src/genome';
 export { DOG_NAMES, nameById, suggestNames, recentNameIds } from '../workers/dog/src/names';
 export type { DogName } from '../workers/dog/src/names';
 

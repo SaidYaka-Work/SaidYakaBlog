@@ -1,8 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type { DogGenome } from '@/lib/dog';
+import { generateGenome } from '@/lib/dog';
+import { drawDogSprite, paintPorchCanvas } from './drawSprite';
 
 const DURATION = 12_000;
+const FALLBACK_GENOME = generateGenome('walk-sprite');
 
 type Thing = { x: number; y: number; kind: 'sniff' | 'rock'; id: number };
 
@@ -13,6 +17,7 @@ export default function WalkGame({
   spawnMs = 550,
   rockChance = 0.4,
   caption = 'Tap or Space to hop. Sniff the sparks, skip the rocks.',
+  genome,
 }: {
   onDone: (score: number, durationMs: number) => void;
   durationMs?: number;
@@ -20,6 +25,7 @@ export default function WalkGame({
   spawnMs?: number;
   rockChance?: number;
   caption?: string;
+  genome?: DogGenome;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const started = useRef(performance.now());
@@ -112,19 +118,28 @@ export default function WalkGame({
         });
       }
 
-      ctx.fillStyle = '#16120f';
-      ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = '#2a211c';
-      ctx.fillRect(0, 168, w, 72);
-      ctx.fillStyle = '#e8a87c';
-      ctx.beginPath();
-      ctx.ellipse(56, state.y, 16, 12, 0, 0, Math.PI * 2);
-      ctx.fill();
+      const scroll = ((now - started.current) / 1000) * speed * 0.35;
+      paintPorchCanvas(ctx, w, h, true, scroll);
+      drawDogSprite(ctx, 64, state.y, genome ?? FALLBACK_GENOME, {
+        phase: now / 90,
+        scale: 1.15,
+      });
       for (const thing of state.things) {
-        ctx.fillStyle = thing.kind === 'sniff' ? '#f0d8c8' : '#6d675e';
-        ctx.beginPath();
-        ctx.arc(thing.x, thing.y, thing.kind === 'sniff' ? 6 : 9, 0, Math.PI * 2);
-        ctx.fill();
+        if (thing.kind === 'sniff') {
+          ctx.fillStyle = '#f0d8c8';
+          ctx.beginPath();
+          ctx.arc(thing.x, thing.y, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(232,168,124,0.45)';
+          ctx.beginPath();
+          ctx.arc(thing.x, thing.y, 11, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = '#6d675e';
+          ctx.beginPath();
+          ctx.ellipse(thing.x, thing.y + 2, 10, 7, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
       ctx.fillStyle = '#a8a198';
       ctx.font = '12px ui-sans-serif, system-ui';
@@ -148,7 +163,7 @@ export default function WalkGame({
       canvas.removeEventListener('pointerdown', hop);
       window.removeEventListener('keydown', onKey);
     };
-  }, [onDone, durationMs, speed, spawnMs, rockChance]);
+  }, [onDone, durationMs, speed, spawnMs, rockChance, genome]);
 
   return (
     <div>

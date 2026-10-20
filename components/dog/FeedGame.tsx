@@ -1,15 +1,21 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type { DogGenome } from '@/lib/dog';
+import { generateGenome } from '@/lib/dog';
+import { drawDogSprite, paintPorchCanvas } from './drawSprite';
 
 const DROPS = 8;
+const FALLBACK_GENOME = generateGenome('feed-sprite');
 
 export default function FeedGame({
   onDone,
   drops = DROPS,
+  genome,
 }: {
   onDone: (score: number, durationMs: number) => void;
   drops?: number;
+  genome?: DogGenome;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const started = useRef(performance.now());
@@ -56,8 +62,8 @@ export default function FeedGame({
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = '#16120f';
-      ctx.fillRect(0, 0, w, h);
+      paintPorchCanvas(ctx, w, h, false, 0);
+      drawDogSprite(ctx, 58, h - 58, genome ?? FALLBACK_GENOME, { scale: 1.2, phase: now / 400 });
 
       state.bowlX += state.dir * 120 * dt;
       if (state.bowlX < 20 || state.bowlX > w - 70) state.dir *= -1;
@@ -75,15 +81,19 @@ export default function FeedGame({
         }
       }
 
-      ctx.fillStyle = '#e8a87c';
+      ctx.fillStyle = '#c46a3a';
       ctx.beginPath();
       ctx.ellipse(state.bowlX + 28, h - 28, 28, 10, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.fillStyle = '#7a3418';
+      ctx.beginPath();
+      ctx.ellipse(state.bowlX + 28, h - 30, 18, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
 
       if (state.falling) {
-        ctx.fillStyle = '#f0d8c8';
+        ctx.fillStyle = '#e8c4a0';
         ctx.beginPath();
-        ctx.arc(state.kibbleX, state.kibbleY, 6, 0, Math.PI * 2);
+        ctx.ellipse(state.kibbleX, state.kibbleY, 5, 3.5, 0.4, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -117,7 +127,7 @@ export default function FeedGame({
       canvas.removeEventListener('pointerdown', drop);
       window.removeEventListener('keydown', onKey);
     };
-  }, [onDone, drops]);
+  }, [onDone, drops, genome]);
 
   return (
     <div>

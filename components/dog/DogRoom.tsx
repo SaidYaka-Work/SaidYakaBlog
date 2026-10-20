@@ -11,9 +11,11 @@ import {
   type DogSnapshot,
   type Memorial,
 } from '@/lib/dog';
+import { reactionFromEvent } from './look';
 import { englishPath } from '@/lib/site';
 import CatchGame from './CatchGame';
 import DogPortrait from './DogPortrait';
+import DogStudio from './DogStudio';
 import FeedGame from './FeedGame';
 import NamePicker from './NamePicker';
 import WalkGame from './WalkGame';
@@ -48,7 +50,12 @@ export default function DogRoom() {
   const [reaction, setReaction] = useState<Reaction>('idle');
   const [canName, setCanName] = useState(false);
   const [nameStatus, setNameStatus] = useState('');
+  const [studio, setStudio] = useState(false);
   const socket = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    setStudio(new URLSearchParams(window.location.search).has('studio'));
+  }, []);
 
   const apply = useCallback((data: DogSnapshot) => {
     setSnapshot(data);
@@ -98,7 +105,14 @@ export default function DogRoom() {
           setStatus(text);
           if (message.code === 'invalid' || message.code === 'not_catcher') setNameStatus(text);
         }
-        if (message.type === 'event') setStatus(message.text);
+        if (message.type === 'event') {
+          setStatus(message.text);
+          const next = reactionFromEvent(message.text);
+          if (next) {
+            setReaction(next);
+            window.setTimeout(() => setReaction('idle'), next === 'feed' || next === 'walk' ? 1600 : 1200);
+          }
+        }
       };
       ws.onclose = () => {
         setConnected(false);
@@ -143,6 +157,8 @@ export default function DogRoom() {
   const awaitingName = Boolean(snapshot?.awaitingName);
   const shownName = dog?.profile.name || (awaitingName ? 'A new dog' : memorial ? `${memorial.profile.name} left` : 'Biscuit');
 
+  if (studio) return <DogStudio />;
+
   return (
     <section className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
       <p className="hero-kicker text-xs uppercase tracking-[0.18em] text-[var(--accent)]">The porch</p>
@@ -164,7 +180,7 @@ export default function DogRoom() {
       <div className="mt-6 overflow-hidden rounded-[1.6rem] border border-[var(--line)] bg-[var(--bg-elevated)]">
         {napping && !dog ? (
           <div className="px-6 py-16 text-center">
-            <DogPortrait genome={generateGenome('napping-biscuit')} asleep reaction="sleep" night={false} stage="puppy" />
+            <DogPortrait genome={generateGenome('napping-biscuit')} asleep reaction="sleep" night={false} stage="puppy" compact />
             <p className="mt-6 font-serif text-2xl">The dog is napping</p>
             <p className="mx-auto mt-3 max-w-md text-[var(--muted)]">
               The shared kennel is not connected yet. The rug stays warm until the Worker wakes up.
@@ -172,7 +188,7 @@ export default function DogRoom() {
           </div>
         ) : play === 'feed' ? (
           <div className="p-4">
-            <FeedGame onDone={(score) => finish(score)} drops={dog?.care.feedDrops} />
+            <FeedGame onDone={(score) => finish(score)} drops={dog?.care.feedDrops} genome={dog?.genome} />
           </div>
         ) : play === 'walk' ? (
           <div className="p-4">
@@ -183,6 +199,7 @@ export default function DogRoom() {
               spawnMs={dog?.care.walkSpawnMs}
               rockChance={dog?.care.walkRockChance}
               caption={dog?.care.walkCaption}
+              genome={dog?.genome}
             />
           </div>
         ) : play === 'catch' ? (
@@ -198,6 +215,8 @@ export default function DogRoom() {
                 reaction="idle"
                 night={dog.night}
                 stage={dog.stage}
+                happiness={dog.happiness}
+                interactive
               />
             )}
             <NamePicker
@@ -214,6 +233,10 @@ export default function DogRoom() {
             reaction={dog.asleep ? 'sleep' : reaction}
             night={dog.night}
             stage={dog.stage}
+            happiness={dog.happiness}
+            hungry={dog.care.feedOverdue || dog.care.hunger > 70}
+            sad={dog.happiness < 40}
+            interactive
           />
         ) : (
           <div className="px-6 py-12 text-center">
@@ -324,7 +347,14 @@ function Pill({ children }: { children: React.ReactNode }) {
 export function MemorialCard({ record }: { record: Memorial }) {
   return (
     <div className="mx-auto mt-6 max-w-md text-left">
-      <DogPortrait genome={record.genome} asleep={false} reaction="idle" night={false} stage={record.furthestStage} />
+      <DogPortrait
+        genome={record.genome}
+        asleep={false}
+        reaction="idle"
+        night={false}
+        stage={record.furthestStage}
+        compact
+      />
       <p className="mt-4 text-sm text-[var(--muted)]">
         {record.profile.name} made it to {stageWord(record.furthestStage)} · {record.daysSurvived} days · {record.totals.walks} walks · peak happiness {record.peakHappiness}
         {record.namedByCatcher ? ' · named by the catcher' : ''}
