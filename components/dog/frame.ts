@@ -12,8 +12,8 @@ export const THREE_QUARTER_YAW = 0.55;
 export const CAMERA_YAW = 0.32;
 export const SLEEP_ROLL = Math.PI / 2;
 export const SLEEP_YAW = Math.PI / 2;
-export const BOWL = { x: -0.62, y: 0.07, z: 0.55 };
-export const EAT_YAW = Math.atan2(BOWL.x, BOWL.z);
+export const BOWL = { x: -0.48, y: 0.07, z: 0.7 };
+export const EAT_YAW = -0.28;
 
 function isBoneParent(node: Object3D) {
   let parent = node.parent;

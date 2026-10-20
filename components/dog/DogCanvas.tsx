@@ -5,7 +5,7 @@ import { Suspense, useEffect, useRef, useState, type RefObject } from 'react';
 import { PerspectiveCamera, Vector3, type Group } from 'three';
 import type { DogGenome, LifeStage } from '@/lib/dog';
 import type { PortraitReaction } from './look';
-import { CAMERA_YAW, frameCamera, projectMeshBounds } from './frame';
+import { CAMERA_YAW, projectMeshBounds } from './frame';
 import DogRig from './DogRig';
 import PorchWorld from './PorchWorld';
 
@@ -44,19 +44,23 @@ function FramedCamera({
     if (!object) return;
     camera.aspect = size.width / Math.max(1, size.height);
     from.current.copy(camera.position);
-    const info = frameCamera(camera, object, {
-      pad: fill ? 1.4 : compact ? 1.4 : 1.42,
-      yaw: CAMERA_YAW,
-      pitch: asleep ? 0.22 : 0.2,
-      aspect: camera.aspect,
-      lift: 0,
-      minDist: asleep ? 4.2 : fill ? 4 : 3.7,
-    });
-    if (!info) return;
+    const dist = asleep ? 4.8 : fill ? 4.4 : compact ? 4 : 4.2;
+    const pitch = asleep ? 0.3 : 0.18;
+    const lookY = asleep ? 0.16 : 0.32;
+    camera.position.set(
+      dist * Math.sin(CAMERA_YAW) * Math.cos(pitch),
+      lookY + dist * Math.sin(pitch),
+      dist * Math.cos(CAMERA_YAW) * Math.cos(pitch),
+    );
+    camera.up.set(0, 1, 0);
+    camera.near = 0.2;
+    camera.far = 80;
+    camera.lookAt(0, lookY, 0.08);
+    camera.updateProjectionMatrix();
     if (ready.current) {
-      camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 4));
+      camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 5));
       camera.up.set(0, 1, 0);
-      camera.lookAt(info.center.x, info.center.y - (fill ? 0.1 : 0), info.center.z);
+      camera.lookAt(0, lookY, 0.08);
       camera.updateProjectionMatrix();
     } else {
       ready.current = true;

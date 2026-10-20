@@ -4,7 +4,7 @@
   overflow: hidden;
   aspect-ratio: 460 / 360;
   border-radius: inherit;
-  background: linear-gradient(180deg, #f7f1e6 0%, #f3d2b0 100%);
+  background: linear-gradient(180deg, #eef3f8 0%, #f7f1e6 46%, #f3d2b0 100%);
 }
 
 .biscuit-scene.is-night {
@@ -129,7 +129,7 @@
   min-height: 100dvh;
   height: 100dvh;
   overflow: hidden;
-  background: linear-gradient(180deg, #f7f1e6 0%, #f3d2b0 100%);
+  background: linear-gradient(180deg, #eef3f8 0%, #f7f1e6 46%, #f3d2b0 100%);
 }
 
 .dog-game > .biscuit-scene,

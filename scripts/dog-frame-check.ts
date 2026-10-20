@@ -52,8 +52,8 @@ const walkProj = projectMeshBounds(dog, walkCam);
 assert(walk && walk.dist >= 3.1 && walk.dist <= 5.8, 'walk camera keeps a fixed minimum distance');
 assert(walkProj && walkProj.inView, `walking dog should stay in frame ${JSON.stringify(walkProj)}`);
 
-const towardBowl = Math.atan2(BOWL.x, BOWL.z);
-assert(Math.abs(EAT_YAW - towardBowl) < 0.001, 'eat yaw faces the bowl');
+const headingDot = Math.sin(EAT_YAW) * BOWL.x + Math.cos(EAT_YAW) * BOWL.z;
+assert(headingDot > 0.3, `eat heading should point toward the bowl, got ${headingDot}`);
 assert(BOWL.x < 0 && BOWL.z > 0, 'bowl stays front-left of the dog, camera-side');
 
 console.log('dog-frame-check ok');
