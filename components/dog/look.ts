@@ -56,10 +56,10 @@ export function extrasFromGenome(genome: DogGenome): CoatExtras {
 
 export function stageLook(stage: LifeStage) {
   return {
-    puppy: { head: 1.18, eye: 1.28, leg: 0.78, body: 0.86, droop: 0 },
-    young: { head: 1.06, eye: 1.1, leg: 0.94, body: 0.94, droop: 0 },
+    puppy: { head: 1.24, eye: 1.4, leg: 0.7, body: 0.8, droop: 0 },
+    young: { head: 1.08, eye: 1.12, leg: 0.92, body: 0.92, droop: 0 },
     adult: { head: 1, eye: 1, leg: 1, body: 1, droop: 0 },
-    senior: { head: 0.98, eye: 0.92, leg: 0.96, body: 1.04, droop: 1 },
+    senior: { head: 0.96, eye: 0.86, leg: 0.9, body: 1.08, droop: 1 },
   }[stage];
 }
 

@@ -150,19 +150,20 @@ export default function DogPortrait({
           <ellipse cx="360" cy="202" rx="130" ry="40" fill="var(--porch-hill-deep)" />
         </g>
         <g className="porch-parallax">
-          <rect x="0" y="208" width="440" height="132" fill={`url(#${uid}-floor)`} />
-          <path d="M0 208h440" stroke="var(--porch-rail)" strokeWidth="3" />
-          <rect x="28" y="132" width="10" height="78" rx="3" fill="var(--porch-post)" />
-          <rect x="402" y="128" width="10" height="82" rx="3" fill="var(--porch-post)" />
-          <path d="M28 150h384" stroke="var(--porch-rail)" strokeWidth="4" strokeLinecap="round" />
-          <path d="M38 168h364" stroke="var(--porch-rail)" strokeWidth="2" opacity="0.55" />
-          <rect x="48" y="96" width="46" height="54" rx="6" fill="var(--porch-window)" />
-          <rect x="54" y="102" width="16" height="20" rx="2" fill="var(--porch-pane)" />
-          <rect x="74" y="102" width="14" height="20" rx="2" fill="var(--porch-pane)" />
-          <rect x="54" y="126" width="34" height="18" rx="2" fill="var(--porch-pane)" />
+          <rect x="0" y="198" width="440" height="142" fill={`url(#${uid}-floor)`} />
+          <path d="M18 220h404M18 242h404M18 264h404M18 286h404" stroke="var(--porch-rail)" strokeWidth="1" opacity="0.18" />
+          <path d="M0 198h440" stroke="var(--porch-rail)" strokeWidth="3" />
+          <rect x="24" y="118" width="12" height="82" rx="3" fill="var(--porch-post)" />
+          <rect x="404" y="114" width="12" height="86" rx="3" fill="var(--porch-post)" />
+          <path d="M24 138h392" stroke="var(--porch-rail)" strokeWidth="5" strokeLinecap="round" />
+          <path d="M36 158h368" stroke="var(--porch-rail)" strokeWidth="2" opacity="0.5" />
+          <rect x="44" y="78" width="58" height="64" rx="8" fill="var(--porch-window)" />
+          <rect x="50" y="84" width="20" height="24" rx="3" fill="var(--porch-pane)" />
+          <rect x="76" y="84" width="20" height="24" rx="3" fill="var(--porch-pane)" />
+          <rect x="50" y="112" width="46" height="22" rx="3" fill="var(--porch-pane)" />
         </g>
-        <ellipse className="porch-rug" cx="232" cy="292" rx="118" ry="18" fill="var(--porch-rug)" />
-        <ellipse cx="232" cy="292" rx="86" ry="10" fill="var(--porch-rug-deep)" opacity="0.45" />
+        <ellipse className="porch-rug" cx="220" cy="304" rx="132" ry="20" fill="var(--porch-rug)" />
+        <ellipse cx="220" cy="304" rx="92" ry="10" fill="var(--porch-rug-deep)" opacity="0.4" />
         {(hungry || pose === 'feed') && (
           <g className="porch-bowl">
             <ellipse cx="86" cy="286" rx="22" ry="8" fill={colors.accessory} />
@@ -185,101 +186,93 @@ export default function DogPortrait({
         <g
           className="dog-root"
           style={{
-            transform: `translate(${pose === 'lie' || pose === 'sleep' ? 8 : 0}px, ${pose === 'lie' || pose === 'sleep' ? 10 : 0}px) scale(${0.92 * stageScale.body * build.bodyY})`,
-            transformOrigin: '232px 292px',
+            transform: `translate(${pose === 'lie' || pose === 'sleep' ? 6 : 0}px, ${pose === 'lie' || pose === 'sleep' ? 12 : 0}px) scale(${1.08 * stageScale.body * build.bodyY})`,
+            transformOrigin: '220px 304px',
           }}
         >
-          <ellipse className="dog-shadow" cx="236" cy="286" rx="78" ry="12" fill="#16120f" />
-          <g className="dog-tail" style={{ transformOrigin: '292px 188px' }}>
+          <ellipse className="dog-shadow" cx="220" cy="298" rx="88" ry="14" fill="#16120f" />
+          <g className="dog-tail" style={{ transformOrigin: '300px 210px' }}>
             <Tail genes={genes} colors={colors} extras={extras} />
           </g>
           <g className="dog-hind">
-            <ellipse cx="286" cy="238" rx={24 * build.bodyX} ry={28 * stageScale.leg} fill={`url(#${uid}-body)`} stroke={colors.outline} strokeWidth="1.6" />
-            <ellipse cx="292" cy="262" rx="14" ry="9" fill={genes.marking === 'socks' ? colors.belly : colors.bodyDeep} stroke={colors.outline} strokeWidth="1.2" />
+            <ellipse cx="152" cy="236" rx={28 * build.bodyX} ry={32 * stageScale.leg} fill={colors.bodyDeep} stroke={colors.outline} strokeWidth="1.7" />
+            <ellipse cx="288" cy="236" rx={28 * build.bodyX} ry={32 * stageScale.leg} fill={colors.bodyDeep} stroke={colors.outline} strokeWidth="1.7" />
           </g>
-          <g className="dog-torso" style={{ transformOrigin: '236px 210px' }}>
+          <g className="dog-torso" style={{ transformOrigin: '220px 220px' }}>
             <ellipse
-              cx="236"
-              cy="208"
-              rx={72 * build.length}
-              ry={46 * build.bodyY}
+              cx="220"
+              cy="222"
+              rx={82 * build.length}
+              ry={56 * build.bodyY}
               fill={`url(#${uid}-body)`}
               stroke={colors.outline}
-              strokeWidth="1.8"
+              strokeWidth="2"
             />
-            <ellipse cx="214" cy="218" rx="42" ry="28" fill={`url(#${uid}-belly)`} opacity="0.95" />
-            {extras.ruff && (
-              <path
-                d="M176 198c8 16 28 26 48 18 12-4 18-14 16-24"
-                fill={colors.bodyLite}
-                stroke={colors.outline}
-                strokeWidth="1.1"
-                opacity="0.9"
-              />
-            )}
-            {extras.fluff > 0.55 && (
+            <ellipse cx="220" cy="236" rx="48" ry="30" fill={`url(#${uid}-belly)`} />
+            {extras.ruff && <ellipse cx="220" cy="196" rx="40" ry="16" fill={colors.bodyLite} opacity="0.8" />}
+            {extras.fluff > 0.5 && (
               <>
-                <ellipse cx="188" cy="196" rx="14" ry="10" fill={colors.bodyLite} opacity="0.7" />
-                <ellipse cx="268" cy="190" rx="16" ry="11" fill={colors.bodyDeep} opacity="0.35" />
+                <ellipse cx="168" cy="210" rx="16" ry="12" fill={colors.bodyLite} opacity="0.7" />
+                <ellipse cx="272" cy="210" rx="16" ry="12" fill={colors.bodyLite} opacity="0.7" />
               </>
             )}
             <Pattern genes={genes} colors={colors} />
+            {genes.marking === 'bib' && <ellipse cx="220" cy="214" rx="22" ry="18" fill={colors.belly} />}
           </g>
           <g className="dog-fore">
-            <ellipse className="dog-leg-l" cx="188" cy="248" rx="11" ry={22 * stageScale.leg} fill={`url(#${uid}-body)`} stroke={colors.outline} strokeWidth="1.3" />
-            <ellipse className="dog-leg-r" cx="222" cy="252" rx="11" ry={20 * stageScale.leg} fill={colors.bodyDeep} stroke={colors.outline} strokeWidth="1.3" />
-            <ellipse cx="186" cy="268" rx="13" ry="8" fill={genes.marking === 'socks' ? colors.belly : colors.body} stroke={colors.outline} strokeWidth="1.1" />
-            <ellipse cx="222" cy="270" rx="13" ry="8" fill={genes.marking === 'socks' ? colors.belly : colors.bodyDeep} stroke={colors.outline} strokeWidth="1.1" />
+            <ellipse className="dog-leg-l" cx="176" cy="256" rx="17" ry={18 * stageScale.leg} fill={`url(#${uid}-body)`} stroke={colors.outline} strokeWidth="1.5" />
+            <ellipse className="dog-leg-r" cx="264" cy="256" rx="17" ry={18 * stageScale.leg} fill={`url(#${uid}-body)`} stroke={colors.outline} strokeWidth="1.5" />
+            <ellipse cx="174" cy="274" rx="20" ry="11" fill={genes.marking === 'socks' ? colors.belly : colors.body} stroke={colors.outline} strokeWidth="1.3" />
+            <ellipse cx="266" cy="274" rx="20" ry="11" fill={genes.marking === 'socks' ? colors.belly : colors.body} stroke={colors.outline} strokeWidth="1.3" />
           </g>
-          {genes.marking === 'bib' && <ellipse cx="196" cy="200" rx="18" ry="16" fill={colors.belly} />}
           <g
             className="dog-head"
             style={{
-              transform: `translate(${headTurn * 0.4}px, ${headTilt * 0.2}px) rotate(${headTurn}deg)`,
-              transformOrigin: `${168}px ${132}px`,
+              transform: `translate(${headTurn * 0.35}px, ${headTilt * 0.15}px) rotate(${headTurn}deg)`,
+              transformOrigin: '220px 138px',
             }}
           >
-            <g className="dog-ears">
-              <Ears genes={genes} colors={colors} floppy={genes.earFloppy} droop={stageScale.droop} />
+            <g className="dog-ears dog-ears-back">
+              <Ears genes={genes} colors={colors} floppy={genes.earFloppy} droop={stageScale.droop} layer="back" />
             </g>
             <ellipse
-              cx="168"
-              cy="132"
-              rx={48 * stageScale.head}
-              ry={44 * stageScale.head}
+              cx="220"
+              cy="138"
+              rx={62 * stageScale.head}
+              ry={56 * stageScale.head}
               fill={`url(#${uid}-head)`}
               stroke={colors.outline}
-              strokeWidth="1.8"
+              strokeWidth="2"
             />
             {genes.pattern === 'mask' && (
-              <ellipse cx="160" cy="128" rx={34 * stageScale.head} ry={28 * stageScale.head} fill={colors.ear} opacity="0.55" />
+              <ellipse cx="220" cy="136" rx={42 * stageScale.head} ry={34 * stageScale.head} fill={colors.ear} opacity="0.5" />
             )}
             {extras.cheekTuft && (
               <>
-                <ellipse cx="132" cy="150" rx="12" ry="9" fill={colors.bodyLite} opacity="0.85" />
-                <ellipse cx="198" cy="148" rx="11" ry="8" fill={colors.bodyLite} opacity="0.75" />
+                <ellipse cx="168" cy="158" rx="14" ry="11" fill={colors.bodyLite} />
+                <ellipse cx="272" cy="158" rx="14" ry="11" fill={colors.bodyLite} />
               </>
             )}
             {genes.marking === 'blaze' && (
-              <path d="M168 96c3 16 3 34 0 48" stroke={colors.belly} strokeWidth="7" strokeLinecap="round" fill="none" />
+              <path d="M220 96c4 18 4 40 0 56" stroke={colors.belly} strokeWidth="8" strokeLinecap="round" fill="none" />
             )}
             <ellipse
-              cx={168 - muzzle.length * 0.15}
-              cy={148 + muzzle.drop * 0.2}
-              rx={muzzle.length}
-              ry={18}
+              cx="220"
+              cy={158 + muzzle.drop * 0.15}
+              rx={muzzle.length + 8}
+              ry="20"
               fill={`url(#${uid}-belly)`}
               stroke={colors.outline}
-              strokeWidth="1.3"
+              strokeWidth="1.4"
             />
             {stage === 'senior' && (
-              <ellipse cx={168 - muzzle.length * 0.12} cy={150} rx={muzzle.length * 0.78} ry="12" fill={colors.grey} opacity="0.7" />
+              <ellipse cx="220" cy="160" rx={muzzle.length} ry="14" fill={colors.grey} opacity="0.75" />
             )}
-            <ellipse cx={142 - muzzle.length * 0.35} cy={154 + muzzle.drop * 0.15} rx="7.5" ry="6" fill={colors.nose} />
-            <ellipse cx={140 - muzzle.length * 0.35} cy={152} rx="2.2" ry="1.4" fill="#fff" opacity="0.45" />
+            <ellipse cx="220" cy="154" rx="8" ry="6.5" fill={colors.nose} />
+            <ellipse cx="217" cy="152" rx="2.4" ry="1.5" fill="#fff" opacity="0.5" />
             <g className="dog-mouth">
-              <path d="M150 160c8 8 18 8 26 1" fill="none" stroke={colors.outline} strokeWidth="1.6" strokeLinecap="round" />
-              <path className="dog-tongue" d="M160 164c6 10 16 10 18 0" fill="#d36a6a" />
+              <path d="M204 166c10 10 22 10 32 0" fill="none" stroke={colors.outline} strokeWidth="1.8" strokeLinecap="round" />
+              <path className="dog-tongue" d="M214 168c8 12 20 12 22 0" fill="#d36a6a" />
             </g>
             <Eyes
               colors={colors}
@@ -291,6 +284,9 @@ export default function DogPortrait({
               brow={genes.marking === 'brow'}
               droop={stageScale.droop}
             />
+            <g className="dog-ears">
+              <Ears genes={genes} colors={colors} floppy={genes.earFloppy} droop={stageScale.droop} layer="front" />
+            </g>
             <Accessory genes={genes} colors={colors} />
           </g>
         </g>
@@ -309,23 +305,23 @@ export default function DogPortrait({
 
 function Pattern({ genes, colors }: { genes: DogGenome; colors: ReturnType<typeof palette> }) {
   if (genes.pattern === 'saddle') {
-    return <ellipse cx="258" cy="188" rx="40" ry="24" fill={colors.spot} opacity="0.72" />;
+    return <ellipse cx="220" cy="200" rx="48" ry="26" fill={colors.spot} opacity="0.72" />;
   }
   if (genes.pattern === 'patches') {
     return (
       <>
-        <ellipse cx="206" cy="190" rx="18" ry="14" fill={colors.spot} />
-        <ellipse cx="268" cy="214" rx="16" ry="12" fill={colors.spot} />
+        <ellipse cx="176" cy="210" rx="20" ry="16" fill={colors.spot} />
+        <ellipse cx="268" cy="228" rx="18" ry="14" fill={colors.spot} />
       </>
     );
   }
   if (genes.pattern === 'spots') {
     return (
       <>
-        <circle cx="214" cy="200" r="7" fill={colors.spot} />
-        <circle cx="252" cy="186" r="5.5" fill={colors.spot} />
-        <circle cx="238" cy="226" r="4.5" fill={colors.spot} />
-        <circle cx="274" cy="206" r="4" fill={colors.spot} />
+        <circle cx="186" cy="214" r="8" fill={colors.spot} />
+        <circle cx="248" cy="200" r="6" fill={colors.spot} />
+        <circle cx="226" cy="238" r="5" fill={colors.spot} />
+        <circle cx="270" cy="220" r="4.5" fill={colors.spot} />
       </>
     );
   }
@@ -337,74 +333,80 @@ function Ears({
   colors,
   floppy,
   droop,
+  layer,
 }: {
   genes: DogGenome;
   colors: ReturnType<typeof palette>;
   floppy: number;
   droop: number;
+  layer: 'back' | 'front';
 }) {
   const inner = colors.earDeep;
+  if (layer === 'back' && genes.earShape !== 'prick') return null;
+  if (layer === 'front' && genes.earShape === 'prick') return null;
   if (genes.earShape === 'prick') {
     return (
       <>
-        <path className="dog-ear-l" d="M138 104c-8-38 28-44 28-10" fill={colors.ear} stroke={colors.outline} strokeWidth="1.4" />
-        <path d="M146 100c0-18 12-20 14-4" fill={inner} opacity="0.55" />
-        <path className="dog-ear-r" d="M196 100c10-40 36-22 18 12" fill={colors.ear} stroke={colors.outline} strokeWidth="1.4" />
+        <path className="dog-ear-l" d="M178 112c-8-52 40-56 34-6" fill={colors.ear} stroke={colors.outline} strokeWidth="1.7" />
+        <path d="M190 104c2-24 16-26 15 0" fill={inner} opacity="0.5" />
+        <path className="dog-ear-r" d="M262 112c8-52-40-56-34-6" fill={colors.ear} stroke={colors.outline} strokeWidth="1.7" />
+        <path d="M250 104c-2-24-16-26-15 0" fill={inner} opacity="0.5" />
       </>
     );
   }
   if (genes.earShape === 'rose') {
     return (
       <>
-        <path className="dog-ear-l" d="M136 112c-18-12-6-28 12-14" fill={colors.ear} stroke={colors.outline} strokeWidth="1.3" />
-        <path className="dog-ear-r" d="M198 108c18-16 28-2 10 12" fill={colors.ear} stroke={colors.outline} strokeWidth="1.3" />
+        <path className="dog-ear-l" d="M160 120c-24-8-14-34 14-20" fill={colors.ear} stroke={colors.outline} strokeWidth="1.6" />
+        <path className="dog-ear-r" d="M280 120c24-8 14-34-14-20" fill={colors.ear} stroke={colors.outline} strokeWidth="1.6" />
       </>
     );
   }
   if (genes.earShape === 'button') {
     return (
       <>
-        <ellipse className="dog-ear-l" cx="138" cy="108" rx="13" ry="11" fill={colors.ear} stroke={colors.outline} strokeWidth="1.3" />
-        <ellipse className="dog-ear-r" cx="198" cy="106" rx="13" ry="11" fill={colors.ear} stroke={colors.outline} strokeWidth="1.3" />
+        <ellipse className="dog-ear-l" cx="162" cy="118" rx="18" ry="15" fill={colors.ear} stroke={colors.outline} strokeWidth="1.6" />
+        <ellipse className="dog-ear-r" cx="278" cy="118" rx="18" ry="15" fill={colors.ear} stroke={colors.outline} strokeWidth="1.6" />
       </>
     );
   }
-  const drop = 14 + floppy * 18 + droop * 8;
+  const drop = 24 + floppy * 18 + droop * 10;
   return (
     <>
-      <ellipse className="dog-ear-l" cx="134" cy={112 + drop / 5} rx="13" ry={12 + drop / 3} fill={colors.ear} stroke={colors.outline} strokeWidth="1.3" />
-      <ellipse cx="134" cy={116 + drop / 5} rx="7" ry={7 + drop / 5} fill={inner} opacity="0.45" />
-      <ellipse className="dog-ear-r" cx="202" cy={110 + drop / 5} rx="13" ry={12 + drop / 3} fill={colors.ear} stroke={colors.outline} strokeWidth="1.3" />
+      <ellipse className="dog-ear-l" cx="150" cy={128 + drop / 8} rx="20" ry={18 + drop / 3} fill={colors.ear} stroke={colors.outline} strokeWidth="1.7" />
+      <ellipse cx="154" cy={134 + drop / 8} rx="8" ry={9 + drop / 6} fill={inner} opacity="0.45" />
+      <ellipse className="dog-ear-r" cx="290" cy={128 + drop / 8} rx="20" ry={18 + drop / 3} fill={colors.ear} stroke={colors.outline} strokeWidth="1.7" />
+      <ellipse cx="286" cy={134 + drop / 8} rx="8" ry={9 + drop / 6} fill={inner} opacity="0.45" />
     </>
   );
 }
 
 function Tail({ genes, colors, extras }: { genes: DogGenome; colors: ReturnType<typeof palette>; extras: ReturnType<typeof extrasFromGenome> }) {
   if (genes.tail === 'nub') {
-    return <ellipse cx="304" cy="196" rx="11" ry="8" fill={colors.ear} stroke={colors.outline} strokeWidth="1.2" />;
+    return <ellipse cx="304" cy="214" rx="12" ry="9" fill={colors.ear} stroke={colors.outline} strokeWidth="1.3" />;
   }
   if (genes.tail === 'curl') {
-    return <path d="M296 192c28-22 16-40-6-28" fill="none" stroke={colors.ear} strokeWidth="9" strokeLinecap="round" />;
+    return <path d="M298 214c30-24 18-42-6-30" fill="none" stroke={colors.ear} strokeWidth="10" strokeLinecap="round" />;
   }
   if (genes.tail === 'plume') {
     return (
       <ellipse
-        cx="318"
-        cy="176"
-        rx={26 + extras.fluff * 6}
-        ry={16 + extras.fluff * 4}
+        cx="324"
+        cy="196"
+        rx={28 + extras.fluff * 6}
+        ry={18 + extras.fluff * 4}
         fill={colors.ear}
         stroke={colors.outline}
-        strokeWidth="1.3"
+        strokeWidth="1.4"
       />
     );
   }
   return (
     <path
-      d="M294 190c28-6 40 8 36 24"
+      d="M300 214c32-8 44 10 38 26"
       fill="none"
       stroke={colors.ear}
-      strokeWidth={9 + extras.fluff * 3}
+      strokeWidth={10 + extras.fluff * 3}
       strokeLinecap="round"
     />
   );
@@ -429,9 +431,9 @@ function Eyes({
   brow: boolean;
   droop: number;
 }) {
-  const r = 7.2 * scale;
-  const left = { x: 154, y: 126 + droop };
-  const right = { x: 180, y: 124 + droop };
+  const r = 8.6 * scale;
+  const left = { x: 198, y: 130 + droop * 2 };
+  const right = { x: 242, y: 130 + droop * 2 };
   if (asleep || yawn) {
     return (
       <>
@@ -462,18 +464,24 @@ function Eyes({
 
 function Accessory({ genes, colors }: { genes: DogGenome; colors: ReturnType<typeof palette> }) {
   if (genes.accessory === 'bandana') {
-    return <path d="M142 168l22 20 28-8-10-16z" fill={colors.accessory} stroke={colors.outline} strokeWidth="1" />;
+    return <path d="M186 176l18 22 32-8-12-18z" fill={colors.accessory} stroke={colors.outline} strokeWidth="1.1" />;
   }
   if (genes.accessory === 'collar') {
     return (
       <>
-        <rect x="142" y="168" width="54" height="8" rx="4" fill={colors.accessory} />
-        <circle cx="194" cy="172" r="4.5" fill="#e8c36a" stroke={colors.outline} strokeWidth="0.8" />
+        <rect x="184" y="176" width="72" height="10" rx="5" fill={colors.accessory} />
+        <circle cx="250" cy="181" r="5" fill="#e8c36a" stroke={colors.outline} strokeWidth="0.8" />
       </>
     );
   }
   if (genes.accessory === 'bow') {
-    return <path d="M164 96l-14-10 14 4 14-4z" fill={colors.accessory} stroke={colors.outline} strokeWidth="1" />;
+    return (
+      <g>
+        <ellipse cx="208" cy="88" rx="12" ry="8" fill={colors.accessory} stroke={colors.outline} strokeWidth="1" />
+        <ellipse cx="232" cy="88" rx="12" ry="8" fill={colors.accessory} stroke={colors.outline} strokeWidth="1" />
+        <circle cx="220" cy="88" r="4" fill={colors.accessory} stroke={colors.outline} strokeWidth="1" />
+      </g>
+    );
   }
   return null;
 }
