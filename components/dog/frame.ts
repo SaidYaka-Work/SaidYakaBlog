@@ -12,8 +12,9 @@ export const THREE_QUARTER_YAW = 0.55;
 export const CAMERA_YAW = 0.32;
 export const SLEEP_ROLL = Math.PI / 2;
 export const SLEEP_YAW = Math.PI / 2;
-export const BOWL = { x: -0.48, y: 0.07, z: 0.7 };
-export const EAT_YAW = -0.28;
+export const BOWL = { x: -1.62, y: 0.07, z: 1.38 };
+export const EAT_STAND = { x: -1, z: 1.38 };
+export const EAT_YAW = Math.atan2(BOWL.x - EAT_STAND.x, BOWL.z - EAT_STAND.z);
 
 function isBoneParent(node: Object3D) {
   let parent = node.parent;
@@ -117,7 +118,7 @@ export function frameCamera(
     ) {
       break;
     }
-    dist = Math.min(5.8, dist * 1.1);
+    dist = Math.min(7.2, dist * 1.1);
   }
   return { center: _center.clone(), radius, dist, desired: _desired.clone() };
 }

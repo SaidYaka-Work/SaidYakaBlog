@@ -8,7 +8,9 @@ import { AnimationMixer, LoopOnce, LoopRepeat, Mesh, MeshStandardMaterial, Torus
 import type { AnimationAction, Group, Object3D } from 'three';
 import { generateGenome, type DogGenome, type LifeStage } from '@/lib/dog';
 import { wagMs, type PortraitReaction } from './look';
-import { EAT_YAW, SLEEP_ROLL, SLEEP_YAW, THREE_QUARTER_YAW, groundToFloor } from './frame';
+import type { DogGait, DogPose } from '@/lib/dog';
+import { applyDrive as stepDrive, createYard } from '../../workers/dog/src/room';
+import { EAT_STAND, EAT_YAW, SLEEP_ROLL, SLEEP_YAW, THREE_QUARTER_YAW, groundToFloor } from './frame';
 import {
   applyDogLook,
   applyMoodBones,
@@ -26,6 +28,24 @@ useGLTF.preload('/dog/Husky.glb');
 
 type Wander = { mode: 'idle' | 'look' | 'turn' | 'step'; t: number; next: number; yaw: number; x: number; z: number; look: number };
 
+export type DriveControl = {
+  input: { ax: number; az: number; run: boolean };
+  server: DogPose | null;
+  youHold: boolean;
+  localOnly: boolean;
+  onPose?: (pose: DogPose) => void;
+};
+
+function clipForGait(gait: DogGait, sad: boolean, asleep: boolean) {
+  if (asleep || gait === 'lie') return 'lie';
+  if (gait === 'eat') return 'eat';
+  if (gait === 'run') return 'trot';
+  if (gait === 'walk') return 'walk';
+  if (gait === 'sit') return 'idleAlt';
+  if (gait === 'sniff' || sad) return 'sad';
+  return 'idle';
+}
+
 const DogRig = forwardRef<Group, {
   genome?: DogGenome | null;
   stage: LifeStage;
@@ -36,6 +56,7 @@ const DogRig = forwardRef<Group, {
   look?: { x: number; y: number };
   reduced?: boolean;
   interactive?: boolean;
+  drive?: DriveControl | null;
 }>(function DogRig(
   {
     genome,
@@ -47,6 +68,7 @@ const DogRig = forwardRef<Group, {
     look = { x: 0, y: 0 },
     reduced = false,
     interactive = false,
+    drive = null,
   },
   ref,
 ) {
@@ -63,6 +85,9 @@ const DogRig = forwardRef<Group, {
   const lookRef = useRef(look);
   lookRef.current = look;
   const wander = useRef<Wander>({ mode: 'idle', t: 0, next: 3.5, yaw: THREE_QUARTER_YAW, x: 0, z: 0, look: 0 });
+  const localYard = useRef(createYard(Date.now()));
+  const driveRef = useRef(drive);
+  driveRef.current = drive;
   useImperativeHandle(ref, () => group.current as Group);
 
   useEffect(() => {
@@ -110,6 +135,7 @@ const DogRig = forwardRef<Group, {
   }, [figure.timeScale, sad]);
 
   useEffect(() => {
+    if (driveRef.current && (driveRef.current.localOnly || driveRef.current.server)) return;
     const key = clipForReaction(reaction, sad, asleep);
     play(key, key === 'pet');
     if (key === 'pet') {
@@ -126,34 +152,78 @@ const DogRig = forwardRef<Group, {
 
   useFrame((_, dt) => {
     const mixer = mixerRef.current;
-    const eating = reaction === 'feed';
-    const walking = reaction === 'walk';
+    const control = driveRef.current;
+    const driving = Boolean(control && (control.localOnly || control.server || control.youHold));
+    const eating = !driving && reaction === 'feed';
+    const walking = !driving && reaction === 'walk';
     const eatAction = actions.current.eat;
-    if (eating && eatAction) {
+    const w = wander.current;
+
+    if (driving && control) {
+      const now = Date.now();
+      if (control.server && Math.hypot(localYard.current.pose.x - control.server.x, localYard.current.pose.z - control.server.z) > 2.4) {
+        localYard.current.pose.x = control.server.x;
+        localYard.current.pose.z = control.server.z;
+        localYard.current.pose.yaw = control.server.yaw;
+      }
+      if (control.youHold || control.localOnly) {
+        localYard.current = stepDrive(localYard.current, control.input.ax, control.input.az, control.input.run, dt, now);
+        if (control.server) {
+          const drift = Math.hypot(localYard.current.pose.x - control.server.x, localYard.current.pose.z - control.server.z);
+          if (drift > 0.55) {
+            localYard.current.pose.x += (control.server.x - localYard.current.pose.x) * 0.18;
+            localYard.current.pose.z += (control.server.z - localYard.current.pose.z) * 0.18;
+            localYard.current.pose.yaw = control.server.yaw;
+          }
+        }
+        w.x = localYard.current.pose.x;
+        w.z = localYard.current.pose.z;
+        w.yaw = localYard.current.pose.yaw;
+        const gait = control.server?.gait === 'eat' ? 'eat' : localYard.current.pose.gait;
+        play(clipForGait(gait, sad, asleep && gait !== 'walk' && gait !== 'run'));
+        control.onPose?.({ x: w.x, z: w.z, yaw: w.yaw, gait });
+      } else if (control.server) {
+        w.x += (control.server.x - w.x) * Math.min(1, 8 * dt);
+        w.z += (control.server.z - w.z) * Math.min(1, 8 * dt);
+        let diff = control.server.yaw - w.yaw;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        w.yaw += diff * Math.min(1, 8 * dt);
+        play(clipForGait(control.server.gait, sad, asleep && control.server.gait === 'lie'));
+        control.onPose?.(control.server);
+      }
+    }
+
+    if (eating && eatAction && !driving) {
       const duration = eatAction.getClip().duration;
       eatAction.time = duration * 0.48;
       eatAction.paused = true;
-    } else if (mixer && !reduced && !asleep) {
+    } else if (mixer && !reduced && !(asleep && !driving)) {
       mixer.update(dt);
     }
     const node = group.current;
     if (!node) return;
-    const idle = reaction === 'idle' && !asleep && !sad && !reduced;
-    const w = wander.current;
+    const idle = !driving && reaction === 'idle' && !asleep && !sad && !reduced;
     const homeYaw = asleep ? SLEEP_YAW : eating ? EAT_YAW : THREE_QUARTER_YAW;
 
-    if (walking) {
+    if (!driving && walking) {
       const t = performance.now() / 1000;
       w.x = Math.sin(t * 0.7) * 0.32;
       w.z = Math.cos(t * 0.7) * 0.22;
       w.yaw = THREE_QUARTER_YAW + t * 0.7 + Math.PI / 2;
-    } else if (eating || asleep) {
-      w.x += (0 - w.x) * 0.18;
-      w.z += (0 - w.z) * 0.18;
-      w.yaw = homeYaw;
+    } else if (!driving && (eating || asleep)) {
+      if (eating) {
+        w.x += (EAT_STAND.x - w.x) * 0.18;
+        w.z += (EAT_STAND.z - w.z) * 0.18;
+        w.yaw = EAT_YAW;
+      } else {
+        w.x += (0 - w.x) * 0.18;
+        w.z += (0 - w.z) * 0.18;
+        w.yaw = homeYaw;
+      }
       w.look = 0;
       w.mode = 'idle';
-    } else if (sad || reaction !== 'idle') {
+    } else if (!driving && (sad || reaction !== 'idle')) {
       w.x += (0 - w.x) * 0.1;
       w.z += (0 - w.z) * 0.1;
       w.yaw += (THREE_QUARTER_YAW - w.yaw) * 0.12;
@@ -200,18 +270,19 @@ const DogRig = forwardRef<Group, {
       }
     }
 
-    const breathe = asleep && !reduced ? Math.sin((performance.now() / 1000) * 1.7) * 0.03 : 0;
+    const lieDown = (asleep && !driving) || (driving && (localYard.current.pose.gait === 'lie' || control?.server?.gait === 'lie'));
+    const breathe = lieDown && !reduced ? Math.sin((performance.now() / 1000) * 1.7) * 0.03 : 0;
     node.position.set(w.x, 0, w.z);
-    node.rotation.set(0, w.yaw, asleep ? SLEEP_ROLL : 0);
+    node.rotation.set(0, w.yaw, lieDown ? SLEEP_ROLL : 0);
     node.scale.set(figure.body * (1 + breathe), figure.body, figure.body * figure.length);
 
-    const wag = asleep || sad ? 0 : (performance.now() / 1000) * (1000 / Math.max(180, wagMs(happiness, asleep, sad))) * Math.PI * 2;
+    const wag = asleep || sad || lieDown ? 0 : (performance.now() / 1000) * (1000 / Math.max(180, wagMs(happiness, asleep, sad))) * Math.PI * 2;
     applyMoodBones(scene, {
-      sad,
-      asleep,
+      sad: sad || control?.server?.gait === 'sniff',
+      asleep: lieDown,
       lookX: lookRef.current.x + w.look,
       lookY: lookRef.current.y,
-      eat: eating,
+      eat: eating || control?.server?.gait === 'eat' || localYard.current.pose.gait === 'eat',
       wag,
     });
     scene.traverse((child) => {

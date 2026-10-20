@@ -331,6 +331,63 @@
   animation: toast-in 2.8s ease forwards;
 }
 
+.dog-leash {
+  position: absolute;
+  left: 50%;
+  top: calc(52px + env(safe-area-inset-top));
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-elevated) 90%, transparent);
+  backdrop-filter: blur(10px);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.dog-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--ink) 72%, transparent);
+  pointer-events: none;
+  animation: hint-fade 8s ease forwards;
+}
+
+.dog-stick {
+  position: absolute;
+  left: 16px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
+  backdrop-filter: blur(8px);
+  touch-action: none;
+}
+
+.dog-stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink) 78%, transparent);
+  pointer-events: none;
+}
+
 .dog-actions {
   left: 0;
   right: 0;
@@ -339,6 +396,13 @@
   justify-content: center;
   gap: 0.7rem;
   padding: 16px 16px calc(18px + env(safe-area-inset-bottom));
+}
+
+.dog-hud.is-touch .dog-actions {
+  left: auto;
+  right: 12px;
+  justify-content: flex-end;
+  width: auto;
 }
 
 .dog-action {
@@ -510,9 +574,28 @@
     top: calc(52px + env(safe-area-inset-top));
   }
 
+  .dog-leash {
+    top: calc(88px + env(safe-area-inset-top));
+    font-size: 0.72rem;
+  }
+
   .dog-action {
     min-width: 5.6rem;
     font-size: 0.98rem;
+  }
+
+  .dog-hint {
+    bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+}
+
+@keyframes hint-fade {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
   }
 }
 

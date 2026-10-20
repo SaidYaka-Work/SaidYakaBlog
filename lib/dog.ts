@@ -116,6 +116,26 @@ export type HistoryPage = {
   };
 };
 
+export type DogGait = 'idle' | 'walk' | 'run' | 'sit' | 'lie' | 'eat' | 'sniff';
+
+export type DogPose = {
+  x: number;
+  z: number;
+  yaw: number;
+  gait: DogGait;
+};
+
+export type DogLeash = {
+  held: boolean;
+  holderId: string | null;
+};
+
+export type DogFeeder = {
+  hasFood: boolean;
+  eating: boolean;
+  near: boolean;
+};
+
 export type DogSnapshot = {
   type: 'state';
   dog: PublicDog | null;
@@ -126,6 +146,9 @@ export type DogSnapshot = {
   usedNameIds: string[];
   memorial: Memorial | null;
   history: Memorial[];
+  pose?: DogPose;
+  leash?: DogLeash;
+  feeder?: DogFeeder;
 };
 
 export function stageWord(stage: LifeStage) {

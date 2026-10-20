@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRef, type PointerEvent } from 'react';
 import { englishPath } from '@/lib/site';
 
 export type Toast = { id: number; emote: string; text: string };
@@ -18,12 +19,15 @@ export default function DogHud({
   empty,
   busy,
   toasts,
+  visitorWalking,
+  hint,
+  touch,
   onMute,
   onPet,
   onFeed,
-  onWalk,
   onHall,
   onCatch,
+  onStick,
 }: {
   name: string;
   stageLabel: string;
@@ -37,15 +41,18 @@ export default function DogHud({
   empty: boolean;
   busy: boolean;
   toasts: Toast[];
+  visitorWalking?: boolean;
+  hint?: boolean;
+  touch?: boolean;
   onMute: () => void;
   onPet: () => void;
   onFeed: () => void;
-  onWalk: () => void;
   onHall: () => void;
   onCatch: () => void;
+  onStick?: (ax: number, az: number) => void;
 }) {
   return (
-    <div className="dog-hud">
+    <div className={`dog-hud ${touch ? 'is-touch' : ''}`}>
       <Link href={englishPath('/')} className="dog-back">
         ← saidyaka.com
       </Link>
@@ -76,6 +83,12 @@ export default function DogHud({
         </button>
       </div>
 
+      {visitorWalking && (
+        <p className="dog-leash" role="status">
+          🐾 a visitor is walking {name}
+        </p>
+      )}
+
       {(hungry || wantsWalk) && !empty && (
         <div className="dog-thought" role="status">
           {hungry && <span>hungry</span>}
@@ -92,6 +105,12 @@ export default function DogHud({
         ))}
       </div>
 
+      {hint && !empty && (
+        <p className="dog-hint">{touch ? 'Joystick to walk · Feed at the bowl' : 'WASD to walk · E to feed'}</p>
+      )}
+
+      {touch && !empty && onStick && <Joystick onStick={onStick} />}
+
       <div className="dog-actions">
         {empty ? (
           <button type="button" className="dog-action is-primary" onClick={onCatch} disabled={busy}>
@@ -104,9 +123,6 @@ export default function DogHud({
             </button>
             <button type="button" className="dog-action" onClick={onFeed} disabled={busy}>
               Feed
-            </button>
-            <button type="button" className="dog-action" onClick={onWalk} disabled={busy}>
-              Walk
             </button>
           </>
         )}
@@ -126,6 +142,60 @@ function Meter({ icon, label, value }: { icon: string; label: string; value: num
           <i style={{ width: `${width}%` }} />
         </b>
       </div>
+    </div>
+  );
+}
+
+function Joystick({ onStick }: { onStick: (ax: number, az: number) => void }) {
+  const pad = useRef<HTMLDivElement>(null);
+  const knob = useRef<HTMLSpanElement>(null);
+  const pointer = useRef<number | null>(null);
+
+  function point(event: PointerEvent<HTMLDivElement>) {
+    const node = pad.current;
+    if (!node) return;
+    const box = node.getBoundingClientRect();
+    const cx = box.left + box.width / 2;
+    const cy = box.top + box.height / 2;
+    const dx = event.clientX - cx;
+    const dy = event.clientY - cy;
+    const max = box.width * 0.36;
+    const mag = Math.hypot(dx, dy);
+    const scale = mag > max ? max / mag : 1;
+    const x = (dx * scale) / max;
+    const y = (dy * scale) / max;
+    if (knob.current) {
+      knob.current.style.transform = `translate(${dx * scale}px, ${dy * scale}px)`;
+    }
+    onStick(x, y);
+  }
+
+  return (
+    <div
+      ref={pad}
+      className="dog-stick"
+      onPointerDown={(event) => {
+        pointer.current = event.pointerId;
+        event.currentTarget.setPointerCapture(event.pointerId);
+        point(event);
+      }}
+      onPointerMove={(event) => {
+        if (pointer.current !== event.pointerId) return;
+        point(event);
+      }}
+      onPointerUp={(event) => {
+        pointer.current = null;
+        if (knob.current) knob.current.style.transform = 'translate(0, 0)';
+        onStick(0, 0);
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }}
+      onPointerCancel={() => {
+        pointer.current = null;
+        if (knob.current) knob.current.style.transform = 'translate(0, 0)';
+        onStick(0, 0);
+      }}
+    >
+      <span ref={knob} className="dog-stick-knob" />
     </div>
   );
 }

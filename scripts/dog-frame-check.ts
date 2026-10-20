@@ -1,5 +1,5 @@
 import { Bone, BoxGeometry, Group, Mesh, PerspectiveCamera } from 'three';
-import { BOWL, EAT_YAW, frameCamera, groundToFloor, meshBounds, projectMeshBounds, SLEEP_ROLL } from '../components/dog/frame.ts';
+import { BOWL, EAT_STAND, EAT_YAW, frameCamera, groundToFloor, meshBounds, projectMeshBounds, SLEEP_ROLL } from '../components/dog/frame.ts';
 
 function assert(cond: unknown, message: string) {
   if (!cond) throw new Error(message);
@@ -34,7 +34,7 @@ assert(slept && slept.maxY < 0.85, `sleeping dog should be low, max y ${slept?.m
 
 const camera = new PerspectiveCamera(32, 16 / 9, 0.1, 80);
 const framed = frameCamera(camera, dog, { pad: 1.55, minDist: 2.7, aspect: 16 / 9 });
-assert(framed && framed.dist >= 2.7 && framed.dist <= 5.8, `camera should stay close, dist ${framed?.dist}`);
+assert(framed && framed.dist >= 2.7 && framed.dist <= 7.2, `camera should stay close, dist ${framed?.dist}`);
 assert(Math.abs(camera.up.y - 1) < 0.001 && Math.abs(camera.up.x) < 0.001, 'camera stays level');
 const projected = projectMeshBounds(dog, camera);
 assert(
@@ -49,11 +49,12 @@ dog.position.set(0.32, 0, 0.22);
 groundToFloor(dog, 0);
 const walk = frameCamera(walkCam, dog, { pad: 1.62, minDist: 3.1, aspect: 16 / 9 });
 const walkProj = projectMeshBounds(dog, walkCam);
-assert(walk && walk.dist >= 3.1 && walk.dist <= 5.8, 'walk camera keeps a fixed minimum distance');
+assert(walk && walk.dist >= 3.1 && walk.dist <= 7.2, 'walk camera keeps a fixed minimum distance');
 assert(walkProj && walkProj.inView, `walking dog should stay in frame ${JSON.stringify(walkProj)}`);
 
-const headingDot = Math.sin(EAT_YAW) * BOWL.x + Math.cos(EAT_YAW) * BOWL.z;
+const headingDot =
+  Math.sin(EAT_YAW) * (BOWL.x - EAT_STAND.x) + Math.cos(EAT_YAW) * (BOWL.z - EAT_STAND.z);
 assert(headingDot > 0.3, `eat heading should point toward the bowl, got ${headingDot}`);
-assert(BOWL.x < 0 && BOWL.z > 0, 'bowl stays front-left of the dog, camera-side');
+assert(BOWL.x < 0 && BOWL.z > 0, 'bowl stays front-left of the room, camera-side');
 
 console.log('dog-frame-check ok');

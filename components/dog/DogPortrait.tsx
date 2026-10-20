@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import type { DogGenome, LifeStage } from '@/lib/dog';
+import type { DriveControl } from './DogRig';
 import type { PortraitReaction } from './look';
 
 const Poster = () => <div className="biscuit-poster" />;
@@ -22,6 +23,8 @@ export default function DogPortrait({
   interactive = false,
   fill = false,
   empty = false,
+  drive = null,
+  food = false,
   onReady,
 }: {
   genome?: DogGenome | null;
@@ -36,6 +39,8 @@ export default function DogPortrait({
   interactive?: boolean;
   fill?: boolean;
   empty?: boolean;
+  drive?: DriveControl | null;
+  food?: boolean;
   onReady?: () => void;
 }) {
   if (compact) {
@@ -52,9 +57,11 @@ export default function DogPortrait({
       hungry={hungry}
       sad={sad}
       interactive={interactive}
-      fill={fill}
-      empty={empty}
-      onReady={onReady}
+          fill={fill}
+          empty={empty}
+          drive={drive}
+          food={food}
+          onReady={onReady}
     />
   );
 }
