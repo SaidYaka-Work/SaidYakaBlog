@@ -53,16 +53,13 @@ function FramedCamera({
       minDist: asleep ? 4.6 : fill ? 4.1 : 3.8,
     });
     if (!info) return;
-    const lookX = info.center.x * 0.3;
-    const lookY = info.center.y;
-    const lookZ = info.center.z * 0.3;
     camera.up.set(0, 1, 0);
-    camera.lookAt(lookX, lookY, lookZ);
+    camera.lookAt(info.center.x, info.center.y, info.center.z);
     camera.updateProjectionMatrix();
     if (ready.current) {
       camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 4));
       camera.up.set(0, 1, 0);
-      camera.lookAt(lookX, lookY, lookZ);
+      camera.lookAt(info.center.x, info.center.y, info.center.z);
       camera.updateProjectionMatrix();
     } else {
       ready.current = true;
