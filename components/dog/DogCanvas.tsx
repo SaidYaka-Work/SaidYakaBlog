@@ -1,11 +1,62 @@
 'use client';
 
-import { Canvas } from '@react-three/fiber';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Suspense, useEffect, useRef, useState, type RefObject } from 'react';
+import { PerspectiveCamera, Vector3, type Group } from 'three';
 import type { DogGenome, LifeStage } from '@/lib/dog';
 import type { PortraitReaction } from './look';
+import { CAMERA_YAW, frameCamera } from './frame';
 import DogRig from './DogRig';
 import PorchWorld from './PorchWorld';
+
+function EmptyReady({ onReady }: { onReady?: () => void }) {
+  const notified = useRef(false);
+  useFrame(() => {
+    if (notified.current) return;
+    notified.current = true;
+    onReady?.();
+  });
+  return null;
+}
+
+function FramedCamera({
+  target,
+  compact,
+  fill,
+  onReady,
+}: {
+  target: RefObject<Group | null>;
+  compact?: boolean;
+  fill?: boolean;
+  onReady?: () => void;
+}) {
+  const camera = useThree((state) => state.camera) as PerspectiveCamera;
+  const size = useThree((state) => state.size);
+  const from = useRef(new Vector3());
+  const ready = useRef(false);
+
+  useFrame((_, dt) => {
+    const object = target.current;
+    if (!object) return;
+    camera.aspect = size.width / Math.max(1, size.height);
+    from.current.copy(camera.position);
+    const info = frameCamera(camera, object, {
+      pad: fill ? 1.52 : compact ? 1.48 : 1.46,
+      yaw: CAMERA_YAW,
+      pitch: fill ? 0.18 : 0.2,
+      aspect: camera.aspect,
+    });
+    if (!info) return;
+    if (ready.current) {
+      camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 5));
+      camera.updateProjectionMatrix();
+    } else {
+      ready.current = true;
+      onReady?.();
+    }
+  });
+  return null;
+}
 
 export default function DogCanvas({
   genome,
@@ -18,6 +69,9 @@ export default function DogCanvas({
   sad = false,
   compact = false,
   interactive = false,
+  fill = false,
+  empty = false,
+  onReady,
 }: {
   genome?: DogGenome | null;
   stage?: LifeStage;
@@ -29,8 +83,12 @@ export default function DogCanvas({
   sad?: boolean;
   compact?: boolean;
   interactive?: boolean;
+  fill?: boolean;
+  empty?: boolean;
+  onReady?: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
+  const dogRef = useRef<Group>(null);
   const [look, setLook] = useState({ x: 0, y: 0 });
   const [frameloop, setFrameloop] = useState<'always' | 'never'>('always');
   const [reduced, setReduced] = useState(false);
@@ -47,8 +105,9 @@ export default function DogCanvas({
     const node = host.current;
     if (!node) return;
     const update = () => {
-      const visible = !document.hidden && node.getBoundingClientRect().height > 0;
-      const onscreen = node.getBoundingClientRect().bottom > 0 && node.getBoundingClientRect().top < window.innerHeight;
+      const box = node.getBoundingClientRect();
+      const visible = !document.hidden && box.height > 0;
+      const onscreen = box.bottom > 0 && box.top < window.innerHeight;
       setFrameloop(visible && onscreen ? 'always' : 'never');
     };
     update();
@@ -81,36 +140,50 @@ export default function DogCanvas({
   }, [interactive]);
 
   return (
-    <div ref={host} className={`biscuit-scene ${night ? 'is-night' : ''} ${compact ? 'is-compact' : ''} is-${reaction}`}>
+    <div
+      ref={host}
+      className={`biscuit-scene ${night ? 'is-night' : ''} ${compact ? 'is-compact' : ''} ${fill ? 'is-fill' : ''} is-${reaction}`}
+    >
       <Canvas
         dpr={[1, 1.6]}
-        camera={{ position: [3.35, 2.05, 4.15], fov: compact ? 38 : 34, near: 0.1, far: 40 }}
+        camera={{ position: [2.4, 1.9, 5.4], fov: fill ? 32 : compact ? 38 : 34, near: 0.1, far: 50 }}
         shadows
         frameloop={frameloop}
         gl={{ antialias: true, alpha: false, powerPreference: 'default' }}
       >
         <Suspense fallback={null}>
-          <PorchWorld night={night} showBowl={hungry || reaction === 'feed'} compact={compact} />
-          <DogRig
-            genome={genome}
-            stage={stage}
-            reaction={reaction}
-            asleep={asleep}
-            sad={sad}
-            happiness={happiness}
-            look={look}
-            reduced={reduced}
+          <PorchWorld
+            night={night}
+            showBowl={hungry || reaction === 'feed'}
+            compact={compact}
+            walking={reaction === 'walk'}
           />
+          {!empty && (
+            <DogRig
+              ref={dogRef}
+              genome={genome}
+              stage={stage}
+              reaction={reaction}
+              asleep={asleep}
+              sad={sad}
+              happiness={happiness}
+              look={look}
+              reduced={reduced}
+              interactive={interactive}
+            />
+          )}
+          {!empty && <FramedCamera target={dogRef} compact={compact} fill={fill} onReady={onReady} />}
+          {empty && <EmptyReady onReady={onReady} />}
         </Suspense>
       </Canvas>
-      {reaction === 'pet' && (
+      {!empty && reaction === 'pet' && (
         <span className="biscuit-hearts">
           <i />
           <i />
           <i />
         </span>
       )}
-      {(asleep || reaction === 'sleep') && <span className="biscuit-zzz">Zzz</span>}
+      {!empty && (asleep || reaction === 'sleep') && <span className="biscuit-zzz">Zzz</span>}
     </div>
   );
 }

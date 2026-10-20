@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import { SkeletonUtils } from 'three-stdlib';
@@ -8,8 +8,10 @@ import { AnimationMixer, LoopOnce, LoopRepeat, Mesh, MeshStandardMaterial, Torus
 import type { AnimationAction, Group, Object3D } from 'three';
 import { generateGenome, type DogGenome, type LifeStage } from '@/lib/dog';
 import { wagMs, type PortraitReaction } from './look';
+import { THREE_QUARTER_YAW } from './frame';
 import {
   applyDogLook,
+  applyMoodBones,
   breedFromGenome,
   clipForReaction,
   clipName,
@@ -22,16 +24,9 @@ import {
 useGLTF.preload('/dog/ShibaInu.glb');
 useGLTF.preload('/dog/Husky.glb');
 
-export default function DogRig({
-  genome,
-  stage,
-  reaction,
-  asleep,
-  sad = false,
-  happiness = 70,
-  look = { x: 0, y: 0 },
-  reduced = false,
-}: {
+type Wander = { mode: 'idle' | 'look' | 'turn' | 'step'; t: number; next: number; yaw: number; x: number; z: number; look: number };
+
+const DogRig = forwardRef<Group, {
   genome?: DogGenome | null;
   stage: LifeStage;
   reaction: PortraitReaction;
@@ -40,7 +35,21 @@ export default function DogRig({
   happiness?: number;
   look?: { x: number; y: number };
   reduced?: boolean;
-}) {
+  interactive?: boolean;
+}>(function DogRig(
+  {
+    genome,
+    stage,
+    reaction,
+    asleep,
+    sad = false,
+    happiness = 70,
+    look = { x: 0, y: 0 },
+    reduced = false,
+    interactive = false,
+  },
+  ref,
+) {
   const genes = useMemo(() => genome ?? generateGenome('napping-biscuit'), [genome]);
   const breed = breedFromGenome(genes);
   const url = modelUrl(breed);
@@ -53,9 +62,11 @@ export default function DogRig({
   const actions = useRef<Record<string, AnimationAction>>({});
   const lookRef = useRef(look);
   lookRef.current = look;
+  const wander = useRef<Wander>({ mode: 'idle', t: 0, next: 3.5, yaw: THREE_QUARTER_YAW, x: 0, z: 0, look: 0 });
+  useImperativeHandle(ref, () => group.current as Group, []);
 
   useEffect(() => {
-    const colors = applyDogLook(scene, genes, stage).colors;
+    const colors = applyDogLook(scene, genes, stage, { asleep }).colors;
     const neck = findBone(scene, 'Neck1');
     if (neck && !neck.getObjectByName('Collar')) {
       const collar = new Mesh(new TorusGeometry(0.16, 0.03, 8, 18), new MeshStandardMaterial({ color: colors.accessory, roughness: 0.45 }));
@@ -78,69 +89,123 @@ export default function DogRig({
       mixer.stopAllAction();
       mixerRef.current = null;
     };
-  }, [genes, gltf.animations, scene, stage]);
+  }, [asleep, genes, gltf.animations, scene, stage]);
 
-  useEffect(() => {
-    const key = clipForReaction(reaction, sad, asleep);
+  const play = useCallback((key: string, once = false) => {
     const mixer = mixerRef.current;
     const next = actions.current[key] ?? actions.current.idle;
     const prev = actions.current[current.current];
     if (!mixer || !next || current.current === key) return;
-    prev?.fadeOut(0.28);
+    prev?.fadeOut(0.24);
     next.reset();
-    next.setEffectiveTimeScale(figure.timeScale * (sad ? 0.7 : 1));
-    if (key === 'pet') {
+    next.setEffectiveTimeScale(figure.timeScale * (sad ? 0.7 : key === 'walk' ? 1.05 : 1));
+    if (once || key === 'pet' || key === 'sleep' || key === 'lie') {
       next.setLoop(LoopOnce, 1);
       next.clampWhenFinished = true;
     } else {
       next.setLoop(LoopRepeat, Infinity);
     }
-    next.fadeIn(0.28).play();
+    next.fadeIn(0.24).play();
     current.current = key;
+  }, [figure.timeScale, sad]);
+
+  useEffect(() => {
+    const key = clipForReaction(reaction, sad, asleep);
+    play(key, key === 'pet' || key === 'sleep');
     if (key === 'pet') {
-      const recover = actions.current.recover;
+      const mixer = mixerRef.current;
+      if (!mixer) return;
       const onDone = () => {
         mixer.removeEventListener('finished', onDone);
-        recover?.reset().fadeIn(0.2).setLoop(LoopOnce, 1).play();
+        play('recover', true);
       };
       mixer.addEventListener('finished', onDone);
       return () => mixer.removeEventListener('finished', onDone);
     }
-  }, [asleep, figure.timeScale, reaction, sad]);
+  }, [asleep, play, reaction, sad]);
 
   useFrame((_, dt) => {
     const mixer = mixerRef.current;
     if (mixer && !reduced) mixer.update(dt);
-    const wagSpeed = 1000 / Math.max(160, wagMs(happiness, asleep, sad));
-    const amp = asleep || reduced ? 0.05 : sad ? 0.12 : 0.38;
-    const t = performance.now() / 1000;
-    const tail = ['Tail1', 'Tail2', 'Tail3', 'Tail4'].map((name) => findBone(scene, name));
-    tail.forEach((bone, i) => {
-      if (!bone) return;
-      bone.rotation.z += Math.sin(t * wagSpeed * Math.PI * 2 + i * 0.45) * amp * (1 - i * 0.12);
+    const node = group.current;
+    if (!node) return;
+    const idle = reaction === 'idle' && !asleep && !sad && !reduced;
+    const walking = reaction === 'walk';
+    const w = wander.current;
+
+    if (walking) {
+      const t = performance.now() / 1000;
+      w.x = Math.sin(t * 0.85) * 0.55;
+      w.z = Math.cos(t * 0.85) * 0.4;
+      w.yaw = THREE_QUARTER_YAW + t * 0.85 + Math.PI / 2;
+    } else if (asleep || sad || reaction !== 'idle') {
+      w.x += (0 - w.x) * 0.08;
+      w.z += (0 - w.z) * 0.08;
+      w.yaw += (THREE_QUARTER_YAW - w.yaw) * 0.08;
+      w.look = 0;
+      w.mode = 'idle';
+    } else if (idle && interactive) {
+      w.t += dt;
+      if (w.mode === 'idle' && w.t > w.next) {
+        const pick = Math.random();
+        w.mode = pick < 0.35 ? 'look' : pick < 0.65 ? 'turn' : 'step';
+        w.t = 0;
+        if (w.mode === 'step') play('walk');
+      }
+      if (w.mode === 'look') {
+        w.look = Math.sin(w.t * 2.2) * 0.7;
+        if (w.t > 1.6) {
+          w.mode = 'idle';
+          w.t = 0;
+          w.next = 3 + Math.random() * 3;
+          w.look = 0;
+        }
+      } else if (w.mode === 'turn') {
+        w.yaw = THREE_QUARTER_YAW + Math.sin(w.t * 1.4) * 0.55;
+        if (w.t > 1.8) {
+          w.mode = 'idle';
+          w.t = 0;
+          w.next = 3 + Math.random() * 3;
+          w.yaw = THREE_QUARTER_YAW;
+        }
+      } else if (w.mode === 'step') {
+        w.x += Math.sin(w.yaw) * dt * 0.55;
+        w.z += Math.cos(w.yaw) * dt * 0.55;
+        const reach = Math.hypot(w.x, w.z);
+        if (reach > 0.7) {
+          w.x *= 0.7 / reach;
+          w.z *= 0.7 / reach;
+        }
+        if (w.t > 1.5) {
+          play('idle');
+          w.mode = 'idle';
+          w.t = 0;
+          w.next = 4 + Math.random() * 3;
+        }
+      }
+    }
+
+    node.position.set(w.x, asleep ? 0.02 : 0, w.z);
+    node.rotation.y = w.yaw;
+    node.scale.set(figure.body, figure.body, figure.body * figure.length);
+
+    const wag = asleep || sad ? 0 : (performance.now() / 1000) * (1000 / Math.max(180, wagMs(happiness, asleep, sad))) * Math.PI * 2;
+    applyMoodBones(scene, {
+      sad,
+      asleep,
+      lookX: lookRef.current.x + w.look,
+      lookY: lookRef.current.y,
+      eat: reaction === 'feed',
+      wag,
     });
-    const gaze = lookRef.current;
-    const head = findBone(scene, 'Head');
-    const neck = findBone(scene, 'Neck2');
-    if (head && !asleep) {
-      head.rotation.y += gaze.x * 0.45;
-      head.rotation.x += gaze.y * 0.28 + (sad ? 0.18 : 0);
-    }
-    if (neck && !asleep) neck.rotation.y += gaze.x * 0.22;
-    if (reaction === 'feed') {
-      const neck1 = findBone(scene, 'Neck1');
-      if (neck1) neck1.rotation.x += 0.35;
-    }
   });
 
   return (
-    <group
-      ref={group}
-      scale={[figure.body, figure.body, figure.body * figure.length]}
-      position={[0, 0, 0]}
-      rotation={[0, 0.55, 0]}
-    >
+    <group ref={group} rotation={[0, THREE_QUARTER_YAW, 0]}>
       <primitive object={scene as Object3D} />
     </group>
   );
-}
+});
+
+DogRig.displayName = 'DogRig';
+export default DogRig;

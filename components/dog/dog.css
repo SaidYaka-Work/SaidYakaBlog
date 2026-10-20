@@ -4,11 +4,19 @@
   overflow: hidden;
   aspect-ratio: 460 / 360;
   border-radius: inherit;
-  background: #f8ead6;
+  background: #f3d6bc;
 }
 
 .biscuit-scene.is-night {
-  background: #1c1816;
+  background: #141210;
+}
+
+.biscuit-scene.is-fill {
+  aspect-ratio: auto;
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  border-radius: 0;
 }
 
 .biscuit-scene canvas {
@@ -25,7 +33,7 @@
   object-fit: cover;
   background:
     radial-gradient(ellipse at 22% 18%, #ffe7c4 0%, transparent 42%),
-    linear-gradient(180deg, #f8ead6 0%, #edd0b4 100%);
+    linear-gradient(180deg, #e8eef6 0%, #f3d6bc 100%);
 }
 
 .biscuit-scene.is-night .biscuit-poster,
@@ -42,6 +50,12 @@
   color: var(--accent);
   font-family: var(--font-serif), Georgia, serif;
   letter-spacing: 0.08em;
+}
+
+.biscuit-scene.is-fill .biscuit-hearts,
+.biscuit-scene.is-fill .biscuit-zzz {
+  right: 18%;
+  top: 22%;
 }
 
 .biscuit-hearts i {
@@ -89,9 +103,341 @@
 }
 
 .dog-credit {
-  margin-top: 0.75rem;
-  font-size: 0.75rem;
+  position: absolute;
+  left: 16px;
+  bottom: 12px;
+  z-index: 4;
+  font-size: 0.68rem;
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  pointer-events: none;
+}
+
+.dog-credit a {
+  pointer-events: auto;
+}
+
+.dog-game {
+  position: relative;
+  width: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+  background: #f3d6bc;
+}
+
+.dog-game > .biscuit-scene,
+.dog-game > .biscuit-poster,
+.dog-start-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  aspect-ratio: auto;
+}
+
+.dog-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.dog-hud > * {
+  pointer-events: auto;
+}
+
+.dog-back,
+.dog-id,
+.dog-chips,
+.dog-meters,
+.dog-thought,
+.dog-toasts,
+.dog-actions {
+  position: absolute;
+}
+
+.dog-back {
+  top: calc(12px + env(safe-area-inset-top));
+  left: 14px;
+  font-size: 0.78rem;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--bg-elevated) 86%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  backdrop-filter: blur(10px);
+}
+
+.dog-id {
+  top: calc(48px + env(safe-area-inset-top));
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: min(70vw, 16rem);
+}
+
+.dog-id strong {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: clamp(1.7rem, 4vw, 2.4rem);
+  font-weight: 400;
+  line-height: 1;
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--bg) 70%, transparent);
+}
+
+.dog-id span {
+  align-self: flex-start;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--bg-elevated) 86%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+}
+
+.dog-chips {
+  top: calc(12px + env(safe-area-inset-top));
+  right: 14px;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.dog-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+  backdrop-filter: blur(10px);
+  font-size: 0.78rem;
+  color: var(--ink);
+}
+
+.dog-meters {
+  top: calc(108px + env(safe-area-inset-top));
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: min(11.5rem, 42vw);
+}
+
+.dog-meter {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dog-meter span {
+  width: 1.1rem;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.dog-meter b {
+  flex: 1;
+  height: 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  overflow: hidden;
+}
+
+.dog-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.dog-thought {
+  left: 50%;
+  top: 26%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.45rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 1.2rem;
+  background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 28px -22px rgba(22, 20, 18, 0.55);
+  font-size: 0.82rem;
+  color: var(--ink);
+}
+
+.dog-thought span + span::before {
+  content: '·';
+  margin-right: 0.45rem;
   color: var(--faint);
+}
+
+.dog-toasts {
+  left: 50%;
+  top: calc(14px + env(safe-area-inset-top));
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: min(22rem, calc(100vw - 10rem));
+  pointer-events: none;
+}
+
+.dog-toast {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+  border: 1px solid var(--line);
+  font-size: 0.82rem;
+  animation: toast-in 2.8s ease forwards;
+}
+
+.dog-actions {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  gap: 0.7rem;
+  padding: 16px 16px calc(18px + env(safe-area-inset-bottom));
+}
+
+.dog-action {
+  min-height: 52px;
+  min-width: 6.4rem;
+  padding: 0 1.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+  backdrop-filter: blur(12px);
+  font-size: 1.02rem;
+  color: var(--ink);
+}
+
+.dog-action.is-primary {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: transparent;
+}
+
+.dog-action:disabled {
+  opacity: 0.45;
+}
+
+.dog-start {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background:
+    radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--bg) 20%, transparent), transparent 48%),
+    color-mix(in srgb, var(--bg) 28%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.dog-start-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.dog-start-title {
+  margin: 0;
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: clamp(3.2rem, 10vw, 6rem);
+  font-weight: 400;
+  line-height: 0.9;
+}
+
+.dog-start-bar {
+  width: min(16rem, 60vw);
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 12%, transparent);
+  overflow: hidden;
+}
+
+.dog-start-bar i {
+  display: block;
+  height: 100%;
+  width: 12%;
+  background: var(--accent);
+  transition: width 0.35s ease;
+}
+
+.dog-start-play {
+  min-height: 52px;
+  min-width: 10rem;
+  margin-top: 0.4rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 1.05rem;
+}
+
+.dog-start-play:disabled {
+  opacity: 0.4;
+}
+
+.dog-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--ink) 28%, transparent);
+}
+
+.dog-modal {
+  width: min(36rem, 100%);
+  max-height: min(82dvh, 40rem);
+  overflow: auto;
+  border-radius: 1.6rem;
+  border: 1px solid var(--line);
+  background: var(--bg-elevated);
+  box-shadow: 0 24px 60px -36px rgba(22, 20, 18, 0.65);
+}
+
+.dog-modal-wide {
+  width: min(52rem, 100%);
+}
+
+.dog-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.15rem 0.4rem;
+}
+
+.dog-modal-head h2 {
+  margin: 0;
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 1.7rem;
+  font-weight: 400;
+}
+
+.dog-modal-body {
+  padding: 0.4rem 1.15rem 1.2rem;
+}
+
+.dog-studio-page {
+  padding-top: 5rem;
 }
 
 @keyframes heart-float {
@@ -108,9 +454,42 @@
   }
 }
 
+@keyframes toast-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  12%,
+  70% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .dog-meters {
+    width: min(9.5rem, 38vw);
+  }
+
+  .dog-toasts {
+    top: calc(52px + env(safe-area-inset-top));
+  }
+
+  .dog-action {
+    min-width: 5.6rem;
+    font-size: 0.98rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .biscuit-hearts i,
-  .biscuit-zzz {
+  .biscuit-zzz,
+  .dog-toast,
+  .dog-start-bar i {
     animation: none !important;
+    transition: none !important;
   }
 }

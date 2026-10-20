@@ -18,7 +18,7 @@ const STAGES: LifeStage[] = ['puppy', 'young', 'adult', 'senior'];
 
 export default function DogStudio() {
   return (
-    <section className="mx-auto max-w-5xl px-5 py-10">
+    <section className="dog-studio-page mx-auto max-w-5xl px-5 py-10">
       <p className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Studio</p>
       <h1 className="mt-2 font-serif text-4xl">Lookbook</h1>
       <p className="mt-3 max-w-xl text-sm text-[var(--muted)]">

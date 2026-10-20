@@ -20,6 +20,9 @@ export default function DogPortrait({
   sad = false,
   compact = false,
   interactive = false,
+  fill = false,
+  empty = false,
+  onReady,
 }: {
   genome?: DogGenome | null;
   asleep: boolean;
@@ -31,6 +34,9 @@ export default function DogPortrait({
   sad?: boolean;
   compact?: boolean;
   interactive?: boolean;
+  fill?: boolean;
+  empty?: boolean;
+  onReady?: () => void;
 }) {
   if (compact) {
     return <DogStill genome={genome} stage={stage} reaction={reaction} asleep={asleep} night={night} sad={sad} />;
@@ -46,6 +52,9 @@ export default function DogPortrait({
       hungry={hungry}
       sad={sad}
       interactive={interactive}
+      fill={fill}
+      empty={empty}
+      onReady={onReady}
     />
   );
 }

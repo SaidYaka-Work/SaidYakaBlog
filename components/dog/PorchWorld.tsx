@@ -2,122 +2,154 @@
 
 import { useFrame, useThree } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei';
-import { useEffect, useRef } from 'react';
-import { Color } from 'three';
+import { useEffect, useMemo, useRef } from 'react';
+import { BackSide, Color, ShaderMaterial } from 'three';
 import type { Group } from 'three';
 import { localSky, type SkyMood } from './look';
 
-const SKY: Record<SkyMood, string> = {
-  dawn: '#f6c8b0',
-  day: '#f8ead6',
-  dusk: '#f0a878',
-  night: '#2a211c',
+const SKY: Record<SkyMood, { top: string; bot: string }> = {
+  dawn: { top: '#f3d8c6', bot: '#edd0b8' },
+  day: { top: '#e8eef6', bot: '#f3d6bc' },
+  dusk: { top: '#e8c4a8', bot: '#dca888' },
+  night: { top: '#1e1c22', bot: '#141210' },
 };
+
+function GradientSky({ mood }: { mood: SkyMood }) {
+  const material = useMemo(() => {
+    const colors = SKY[mood];
+    return new ShaderMaterial({
+      uniforms: {
+        uTop: { value: new Color(colors.top) },
+        uBot: { value: new Color(colors.bot) },
+      },
+      vertexShader: `
+        varying float vH;
+        void main() {
+          vH = normalize(position).y;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uTop;
+        uniform vec3 uBot;
+        varying float vH;
+        void main() {
+          float h = smoothstep(-0.25, 0.72, vH);
+          gl_FragColor = vec4(mix(uBot, uTop, h), 1.0);
+        }
+      `,
+      side: BackSide,
+      depthWrite: false,
+    });
+  }, [mood]);
+  return (
+    <mesh material={material} scale={[-1, 1, 1]}>
+      <sphereGeometry args={[22, 24, 16]} />
+    </mesh>
+  );
+}
 
 export default function PorchWorld({
   night,
   showBowl,
   compact = false,
+  walking = false,
 }: {
   night: boolean;
   showBowl: boolean;
   compact?: boolean;
+  walking?: boolean;
 }) {
-  const sky = night ? 'night' : localSky();
-  const sway = useRef<Group>(null);
+  const mood = night ? 'night' : localSky();
+  const hills = useRef<Group>(null);
   const { scene, gl } = useThree();
+  const sky = SKY[mood];
 
   useEffect(() => {
-    const hex = SKY[sky];
-    scene.background = new Color(hex);
-    gl.setClearColor(hex, 1);
-  }, [gl, scene, sky]);
+    scene.background = new Color(sky.bot);
+    gl.setClearColor(sky.bot, 1);
+  }, [gl, scene, sky.bot]);
 
-  useFrame((state) => {
-    if (compact) return;
-    const t = state.clock.elapsedTime;
-    state.camera.position.x = 3.35 + Math.sin(t * 0.16) * 0.14;
-    state.camera.position.y = 2.05 + Math.sin(t * 0.12) * 0.06;
-    state.camera.position.z = 4.15 + Math.cos(t * 0.1) * 0.08;
-    state.camera.lookAt(0.1, 1.15, 0.2);
-    if (sway.current) sway.current.position.x = Math.sin(t * 0.2) * 0.03;
+  useFrame((_, dt) => {
+    if (!hills.current) return;
+    if (walking) {
+      hills.current.position.x -= dt * 0.7;
+      if (hills.current.position.x < -2.4) hills.current.position.x += 2.4;
+    } else {
+      hills.current.position.x += (0 - hills.current.position.x) * 0.04;
+    }
   });
 
   return (
-    <group ref={sway}>
-      <color attach="background" args={[SKY[sky]]} />
-      <hemisphereLight args={[night ? '#6a4a3a' : '#fff4e6', night ? '#2a221c' : '#c4a888', night ? 0.7 : 1.05]} />
+    <group>
+      <GradientSky mood={mood} />
+      <hemisphereLight args={[night ? '#7a5a48' : '#fff6ea', night ? '#2a221c' : '#d4b496', night ? 0.75 : 1.1]} />
       <directionalLight
-        position={[4.5, 6.5, 3]}
-        intensity={night ? 0.55 : 1.25}
-        color={night ? '#e8a87c' : '#ffe7c4'}
+        position={[5, 7, 3.5]}
+        intensity={night ? 0.5 : 1.05}
+        color={night ? '#e8a87c' : '#ffe6c4'}
         castShadow
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
+        shadow-camera-far={18}
+        shadow-bias={-0.0004}
       />
-      <directionalLight position={[-3, 2.4, -2]} intensity={night ? 0.08 : 0.28} color="#c47848" />
-      {!compact && <pointLight position={[-2.6, 1.8, 0.2]} intensity={night ? 3.2 : 0.6} color="#fbe8c8" distance={6} />}
+      <directionalLight position={[-3.5, 2.2, 1.5]} intensity={night ? 0.12 : 0.32} color="#e08a5a" />
+      {!compact && <pointLight position={[1.4, 1.6, 1.2]} intensity={night ? 1.6 : 0.35} color="#fbe8c8" distance={7} />}
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-        <planeGeometry args={[18, 18]} />
-        <meshStandardMaterial color={night ? '#2a221c' : '#f3e6d4'} />
+        <circleGeometry args={[7.5, 48]} />
+        <meshStandardMaterial color={night ? '#2a221c' : '#f0e0cc'} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.15, 0.01, 0.35]} receiveShadow>
-        <circleGeometry args={[1.55, 32]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.1, 0.012, 0.15]} receiveShadow>
+        <circleGeometry args={[1.45, 40]} />
         <meshStandardMaterial color={night ? '#8a3a18' : '#c46a3a'} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.15, 0.015, 0.35]}>
-        <ringGeometry args={[1.15, 1.28, 32]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.1, 0.016, 0.15]}>
+        <ringGeometry args={[1.08, 1.22, 40]} />
         <meshStandardMaterial color="#e08a5a" />
       </mesh>
 
+      <group ref={hills}>
+        <mesh position={[-2.6, 0.18, -3.4]} rotation={[-0.1, 0.2, 0]}>
+          <sphereGeometry args={[1.6, 16, 12]} />
+          <meshStandardMaterial color={night ? '#3d2c22' : '#e2c4a8'} />
+        </mesh>
+        <mesh position={[2.2, 0.12, -3.8]}>
+          <sphereGeometry args={[2.1, 16, 12]} />
+          <meshStandardMaterial color={night ? '#32261e' : '#d8b496'} />
+        </mesh>
+      </group>
+
       {!compact && (
         <>
-          <mesh position={[-3.1, 1.4, -0.4]} castShadow>
-            <boxGeometry args={[0.28, 2.8, 4.2]} />
-            <meshStandardMaterial color={night ? '#2a221c' : '#f7efe4'} />
-          </mesh>
-          <mesh position={[-2.94, 1.55, 0.15]}>
-            <boxGeometry args={[0.08, 1.1, 1.3]} />
-            <meshStandardMaterial color="#c46a3a" emissive={night ? '#e8a87c' : '#fbe8c8'} emissiveIntensity={night ? 0.8 : 0.15} />
-          </mesh>
-          <mesh position={[-2.2, 0.85, -2.2]} castShadow>
-            <boxGeometry args={[0.14, 1.7, 0.14]} />
-            <meshStandardMaterial color="#e8d4bc" />
-          </mesh>
-          <mesh position={[2.4, 0.85, -2.2]} castShadow>
-            <boxGeometry args={[0.14, 1.7, 0.14]} />
-            <meshStandardMaterial color="#e8d4bc" />
-          </mesh>
-          <mesh position={[0.1, 1.55, -2.2]}>
-            <boxGeometry args={[4.6, 0.08, 0.08]} />
-            <meshStandardMaterial color="#c47848" />
-          </mesh>
-          <mesh position={[2.7, 0.28, -1.3]} castShadow>
-            <cylinderGeometry args={[0.18, 0.22, 0.36, 10]} />
+          <mesh position={[-2.4, 0.34, -1.6]} castShadow>
+            <cylinderGeometry args={[0.16, 0.2, 0.32, 10]} />
             <meshStandardMaterial color="#c46a3a" />
           </mesh>
-          <mesh position={[2.7, 0.7, -1.3]}>
-            <sphereGeometry args={[0.28, 10, 10]} />
+          <mesh position={[-2.4, 0.78, -1.6]} castShadow>
+            <sphereGeometry args={[0.32, 12, 12]} />
             <meshStandardMaterial color="#4a6a48" />
+          </mesh>
+          <mesh position={[-2.55, 0.92, -1.45]}>
+            <sphereGeometry args={[0.2, 10, 10]} />
+            <meshStandardMaterial color="#3d5a42" />
           </mesh>
         </>
       )}
 
-      {showBowl && (
-        <group position={[1.15, 0.08, 1.05]}>
-          <mesh castShadow>
-            <cylinderGeometry args={[0.22, 0.18, 0.1, 16]} />
-            <meshStandardMaterial color="#c46a3a" />
-          </mesh>
-          <mesh position={[0, 0.04, 0]}>
-            <cylinderGeometry args={[0.16, 0.16, 0.02, 16]} />
-            <meshStandardMaterial color="#e8c4a0" />
-          </mesh>
-        </group>
-      )}
+      <group position={[1.05, 0.07, 0.95]} visible={showBowl || !compact}>
+        <mesh castShadow>
+          <cylinderGeometry args={[0.2, 0.16, 0.09, 16]} />
+          <meshStandardMaterial color="#c46a3a" />
+        </mesh>
+        <mesh position={[0, 0.035, 0]}>
+          <cylinderGeometry args={[0.14, 0.14, 0.02, 16]} />
+          <meshStandardMaterial color="#e8c4a0" />
+        </mesh>
+      </group>
 
-      <ContactShadows position={[0, 0.002, 0]} opacity={night ? 0.45 : 0.28} scale={6} blur={2.2} far={2.8} />
+      <ContactShadows position={[0, 0.003, 0]} opacity={night ? 0.4 : 0.22} scale={7} blur={2.6} far={3} />
     </group>
   );
 }

@@ -36,7 +36,7 @@ export const CLIPS: Record<string, string[]> = {
   idle: ['Idle'],
   idleAlt: ['Idle_2'],
   sad: ['Idle_2_HeadLow'],
-  sleep: ['Idle_2_HeadLow', 'Death'],
+  sleep: ['Death'],
   lie: ['Death'],
   eat: ['Eating', 'Eat'],
   walk: ['Walk', 'Walking'],
@@ -60,6 +60,7 @@ export type Figure = {
   head: number;
   ear: number;
   leg: number;
+  paw: number;
   timeScale: number;
 };
 
@@ -72,18 +73,19 @@ export function figureFromGenome(genome: DogGenome, stage: LifeStage): Figure {
     long: { body: 0.96, length: 1.18, leg: 1.08 },
   }[genome.build];
   const life = {
-    puppy: { body: 0.58, head: 1.48, ear: 1.18, leg: 0.78, timeScale: 1.12 },
-    young: { body: 0.86, head: 1.08, ear: 1, leg: 1.18, timeScale: 1.04 },
-    adult: { body: 1, head: 1, ear: 1, leg: 1, timeScale: 1 },
-    senior: { body: 1.04, head: 0.96, ear: 0.94, leg: 0.86, timeScale: 0.72 },
+    puppy: { body: 0.68, head: 1.72, ear: 1.28, leg: 0.68, paw: 1.68, timeScale: 1.12 },
+    young: { body: 0.88, head: 1.1, ear: 1.02, leg: 1.2, paw: 1.02, timeScale: 1.04 },
+    adult: { body: 1, head: 1, ear: 1, leg: 1, paw: 1, timeScale: 1 },
+    senior: { body: 1.02, head: 0.98, ear: 0.96, leg: 0.88, paw: 1.04, timeScale: 0.72 },
   }[stage];
   const ear = genome.earShape === 'prick' ? 1.12 : genome.earShape === 'flop' ? 0.92 + genome.earFloppy * 0.2 : 0.88;
   return {
     body: build.body * life.body * (extras.fur === 'fluffy' ? 1.04 : 1),
     length: build.length,
-    head: life.head * (genome.snout === 'short' ? 1.06 : genome.snout === 'long' ? 0.96 : 1),
+    head: life.head * (genome.snout === 'short' ? 1.08 : genome.snout === 'long' ? 0.96 : 1),
     ear: life.ear * ear,
     leg: build.leg * life.leg,
+    paw: life.paw,
     timeScale: life.timeScale,
   };
 }
@@ -101,7 +103,7 @@ function isBone(node: Object3D): node is Object3D & { isBone: true } {
   return (node as { isBone?: boolean }).isBone === true;
 }
 
-export function applyDogLook(root: Object3D, genome: DogGenome, stage: LifeStage) {
+export function applyDogLook(root: Object3D, genome: DogGenome, stage: LifeStage, opts: { asleep?: boolean } = {}) {
   const colors = palette(genome);
   const extras = extrasFromGenome(genome);
   const figure = figureFromGenome(genome, stage);
@@ -114,7 +116,8 @@ export function applyDogLook(root: Object3D, genome: DogGenome, stage: LifeStage
       const mat = src.clone();
       const label = `${src.name || ''} ${node.name}`.toLowerCase();
       if (label.includes('eye') || label.includes('pupil')) {
-        if (label.includes('pupil') || label.includes('black')) mat.color.set(colors.eye);
+        if (opts.asleep) mat.color.set('#1a1410');
+        else if (label.includes('pupil') || label.includes('black')) mat.color.set(colors.eye);
       } else if (label.includes('black') || label.includes('006')) {
         mat.color.set(colors.nose);
       } else if (label.includes('light') || label.includes('001')) {
@@ -129,12 +132,48 @@ export function applyDogLook(root: Object3D, genome: DogGenome, stage: LifeStage
     if (isBone(node)) {
       if (node.name === 'Head') node.scale.setScalar(figure.head);
       if (node.name.startsWith('Ear')) node.scale.setScalar(figure.ear);
-      if (node.name.includes('UpperLeg') || node.name.includes('LowerLeg')) {
-        node.scale.set(1, figure.leg, 1);
+      if (node.name.includes('UpperLeg')) node.scale.set(1, figure.leg, 1);
+      if (node.name.includes('LowerLeg') || node.name.startsWith('FF') || node.name.startsWith('IK')) {
+        node.scale.set(figure.paw, figure.leg * (node.name.includes('Lower') ? 0.92 : 1), figure.paw);
       }
     }
   });
   return { colors, extras, figure };
+}
+
+export function applyMoodBones(
+  root: Object3D,
+  opts: { sad?: boolean; asleep?: boolean; lookX?: number; lookY?: number; eat?: boolean; wag?: number },
+) {
+  const head = findBone(root, 'Head');
+  const neck = findBone(root, 'Neck2');
+  const neck1 = findBone(root, 'Neck1');
+  const tail = ['Tail1', 'Tail2', 'Tail3', 'Tail4'].map((name) => findBone(root, name));
+  if (opts.asleep) {
+    if (head) head.rotation.x += 0.15;
+    tail.forEach((bone) => {
+      if (bone) bone.rotation.z -= 0.18;
+    });
+    return;
+  }
+  if (opts.sad) {
+    if (head) head.rotation.x += 0.42;
+    if (neck) neck.rotation.x += 0.18;
+    tail.forEach((bone, i) => {
+      if (bone) bone.rotation.x -= 0.35 - i * 0.04;
+    });
+  }
+  if (head && opts.lookX) head.rotation.y += opts.lookX * 0.45;
+  if (head && opts.lookY) head.rotation.x += opts.lookY * 0.28;
+  if (neck && opts.lookX) neck.rotation.y += opts.lookX * 0.22;
+  if (opts.eat && neck1) neck1.rotation.x += 0.32;
+  if (opts.wag) {
+    const wag = opts.wag;
+    tail.forEach((bone, i) => {
+      if (!bone) return;
+      bone.rotation.z += Math.sin(wag + i * 0.45) * 0.32 * (1 - i * 0.12);
+    });
+  }
 }
 
 export function findBone(root: Object3D, name: string): Object3D | null {

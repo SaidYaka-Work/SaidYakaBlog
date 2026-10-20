@@ -6,11 +6,15 @@ import {
   AnimationMixer,
   CircleGeometry,
   Color,
+  CylinderGeometry,
   DirectionalLight,
+  HemisphereLight,
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
+  RingGeometry,
   Scene,
+  SphereGeometry,
   WebGLRenderer,
 } from 'three';
 import type { AnimationClip } from 'three';
@@ -19,7 +23,8 @@ import { SkeletonUtils } from 'three-stdlib';
 import type { DogGenome, LifeStage } from '@/lib/dog';
 import { generateGenome } from '@/lib/dog';
 import type { PortraitReaction } from './look';
-import { applyDogLook, breedFromGenome, clipForReaction, clipName, CLIPS, figureFromGenome, modelUrl } from './model';
+import { CAMERA_YAW, THREE_QUARTER_YAW, clipPreviewTime, frameCamera } from './frame';
+import { applyDogLook, applyMoodBones, breedFromGenome, clipForReaction, clipName, CLIPS, figureFromGenome, modelUrl } from './model';
 
 type StillKey = {
   genome?: DogGenome | null;
@@ -61,6 +66,31 @@ function getRenderer() {
   return renderer;
 }
 
+function addStillPorch(scene: Scene, night: boolean, showBowl: boolean) {
+  const ground = new Mesh(new CircleGeometry(6.5, 40), new MeshStandardMaterial({ color: night ? '#2a221c' : '#f0e0cc' }));
+  ground.rotation.x = -Math.PI / 2;
+  scene.add(ground);
+  const mat = new Mesh(new CircleGeometry(1.4, 36), new MeshStandardMaterial({ color: night ? '#8a3a18' : '#c46a3a' }));
+  mat.rotation.x = -Math.PI / 2;
+  mat.position.set(0.08, 0.012, 0.12);
+  scene.add(mat);
+  const ring = new Mesh(new RingGeometry(1.05, 1.18, 36), new MeshStandardMaterial({ color: '#e08a5a' }));
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(0.08, 0.016, 0.12);
+  scene.add(ring);
+  const pot = new Mesh(new CylinderGeometry(0.14, 0.18, 0.28, 10), new MeshStandardMaterial({ color: '#c46a3a' }));
+  pot.position.set(-1.7, 0.3, -1.1);
+  scene.add(pot);
+  const leaf = new Mesh(new SphereGeometry(0.28, 10, 10), new MeshStandardMaterial({ color: '#4a6a48' }));
+  leaf.position.set(-1.7, 0.68, -1.1);
+  scene.add(leaf);
+  if (showBowl) {
+    const bowl = new Mesh(new CylinderGeometry(0.18, 0.14, 0.08, 14), new MeshStandardMaterial({ color: '#c46a3a' }));
+    bowl.position.set(1.05, 0.06, 0.85);
+    scene.add(bowl);
+  }
+}
+
 export async function renderDogStill(opts: StillKey) {
   const key = keyOf(opts);
   const hit = cache.get(key);
@@ -68,21 +98,19 @@ export async function renderDogStill(opts: StillKey) {
   const genes = opts.genome ?? generateGenome('napping-biscuit');
   const gltf = await loadGltf(modelUrl(breedFromGenome(genes)));
   const scene = new Scene();
-  const sky = opts.night ? '#2a211c' : '#f8ead6';
+  const sky = opts.night ? '#1a1612' : '#f3d6bc';
   scene.background = new Color(sky);
-  scene.add(new AmbientLight(opts.night ? '#4a3a32' : '#fff4e6', opts.night ? 0.55 : 1.05));
-  const keyLight = new DirectionalLight(opts.night ? '#e8a87c' : '#ffe7c4', opts.night ? 0.55 : 1.25);
+  scene.add(new AmbientLight(opts.night ? '#4a3a32' : '#fff4e6', opts.night ? 0.55 : 1.02));
+  scene.add(new HemisphereLight(opts.night ? '#7a5a48' : '#e8eef6', opts.night ? '#2a221c' : '#d4b496', opts.night ? 0.7 : 1));
+  const keyLight = new DirectionalLight(opts.night ? '#e8a87c' : '#ffe7c4', opts.night ? 0.55 : 1.15);
   keyLight.position.set(4.2, 6, 3);
   scene.add(keyLight);
-  const rug = new Mesh(new CircleGeometry(1.55, 32), new MeshStandardMaterial({ color: opts.night ? '#8a3a18' : '#c46a3a' }));
-  rug.rotation.x = -Math.PI / 2;
-  rug.position.set(0.15, 0.01, 0.35);
-  scene.add(rug);
+  addStillPorch(scene, opts.night, opts.reaction === 'feed');
   const dog = SkeletonUtils.clone(gltf.scene);
-  applyDogLook(dog, genes, opts.stage);
+  applyDogLook(dog, genes, opts.stage, { asleep: opts.asleep || opts.reaction === 'sleep' });
   const figure = figureFromGenome(genes, opts.stage);
   dog.scale.set(figure.body, figure.body, figure.body * figure.length);
-  dog.rotation.y = 0.55;
+  dog.rotation.y = THREE_QUARTER_YAW;
   scene.add(dog);
   const mixer = new AnimationMixer(dog);
   const names = gltf.animations.map((clip: { name: string }) => clip.name);
@@ -91,11 +119,19 @@ export async function renderDogStill(opts: StillKey) {
   if (clip) {
     const action = mixer.clipAction(clip);
     action.play();
-    mixer.update(opts.reaction === 'pet' ? 0.35 : opts.asleep ? 1.2 : 0.45);
+    mixer.update(clipPreviewTime(want, clip.duration));
   }
-  const camera = new PerspectiveCamera(36, 640 / 500, 0.1, 40);
-  camera.position.set(3.35, 2.05, 4.15);
-  camera.lookAt(0.1, 1.15, 0.2);
+  applyMoodBones(dog, {
+    sad: Boolean(opts.sad),
+    asleep: opts.asleep || opts.reaction === 'sleep',
+    eat: opts.reaction === 'feed',
+    wag: opts.sad || opts.asleep ? 0 : 1.2,
+  });
+  if (opts.reaction === 'walk') {
+    dog.position.set(0.35, 0, 0.12);
+  }
+  const camera = new PerspectiveCamera(36, 640 / 500, 0.1, 50);
+  frameCamera(camera, dog, { pad: 1.5, yaw: CAMERA_YAW, pitch: 0.2, aspect: 640 / 500 });
   const gl = getRenderer();
   gl.render(scene, camera);
   const url = gl.domElement.toDataURL('image/jpeg', 0.82);
