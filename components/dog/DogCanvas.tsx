@@ -5,7 +5,7 @@ import { Suspense, useEffect, useRef, useState, type RefObject } from 'react';
 import { PerspectiveCamera, Vector3, type Group } from 'three';
 import type { DogGenome, LifeStage } from '@/lib/dog';
 import type { PortraitReaction } from './look';
-import { CAMERA_YAW, projectMeshBounds } from './frame';
+import { CAMERA_YAW, frameCamera, projectMeshBounds } from './frame';
 import DogRig from './DogRig';
 import PorchWorld from './PorchWorld';
 
@@ -44,23 +44,22 @@ function FramedCamera({
     if (!object) return;
     camera.aspect = size.width / Math.max(1, size.height);
     from.current.copy(camera.position);
-    const dist = asleep ? 4.8 : fill ? 4.4 : compact ? 4 : 4.2;
-    const pitch = asleep ? 0.3 : 0.18;
-    const lookY = asleep ? 0.16 : 0.32;
-    camera.position.set(
-      dist * Math.sin(CAMERA_YAW) * Math.cos(pitch),
-      lookY + dist * Math.sin(pitch),
-      dist * Math.cos(CAMERA_YAW) * Math.cos(pitch),
-    );
+    const info = frameCamera(camera, object, {
+      pad: fill ? 1.38 : compact ? 1.4 : 1.42,
+      yaw: CAMERA_YAW,
+      pitch: asleep ? 0.26 : 0.2,
+      aspect: camera.aspect,
+      lift: asleep ? 0.04 : 0,
+      minDist: asleep ? 5 : fill ? 4.1 : 3.8,
+    });
+    if (!info) return;
     camera.up.set(0, 1, 0);
-    camera.near = 0.2;
-    camera.far = 80;
-    camera.lookAt(0, lookY, 0.08);
+    camera.lookAt(info.center.x, asleep ? info.center.y * 0.45 : info.center.y, info.center.z);
     camera.updateProjectionMatrix();
     if (ready.current) {
-      camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 5));
+      camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 4));
       camera.up.set(0, 1, 0);
-      camera.lookAt(0, lookY, 0.08);
+      camera.lookAt(info.center.x, asleep ? info.center.y * 0.45 : info.center.y, info.center.z);
       camera.updateProjectionMatrix();
     } else {
       ready.current = true;
@@ -164,7 +163,7 @@ export default function DogCanvas({
     >
       <Canvas
         dpr={[1, 1.6]}
-        camera={{ position: [2.1, 1.5, 3.6], fov: fill ? 30 : compact ? 36 : 32, near: 0.1, far: 80 }}
+        camera={{ position: [2.1, 1.5, 3.6], fov: fill ? 34 : compact ? 36 : 32, near: 0.1, far: 80 }}
         shadows
         frameloop={frameloop}
         gl={{ antialias: true, alpha: true, powerPreference: 'default' }}
