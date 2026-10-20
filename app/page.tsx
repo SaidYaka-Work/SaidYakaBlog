@@ -1,7 +1,7 @@
-import { redirect } from 'next/navigation';
-import { defaultLocale } from '@/lib/i18n/config';
+import LocaleRedirect, { localeRedirectMetadata } from '@/components/LocaleRedirect';
 
-// Root redirect page - redirects to default locale
+export const metadata = localeRedirectMetadata('/en/');
+
 export default function RootPage() {
-  redirect(`/${defaultLocale}`);
+  return <LocaleRedirect to="/en/" />;
 }

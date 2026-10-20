@@ -1,21 +1,25 @@
-import { redirect } from 'next/navigation';
-import { defaultLocale } from '@/lib/i18n/config';
 import { getAllPosts } from '@/lib/posts';
+import LocaleRedirect, { localeRedirectMetadata } from '@/components/LocaleRedirect';
 
 export async function generateStaticParams() {
-  const posts = await getAllPosts({ locale: defaultLocale });
-  return posts.map(post => ({
-    slug: post.slug,
-  }));
+  const posts = await getAllPosts({ includeFuture: true });
+  return posts.map((post) => ({ slug: post.slug }));
 }
 
-// Redirect old post URLs without locale to English version
-export default async function OldPostRedirect({
+export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  redirect(`/${defaultLocale}/posts/${slug}`);
+  return localeRedirectMetadata(`/en/posts/${slug}/`);
 }
 
+export default async function PostAlias({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  return <LocaleRedirect to={`/en/posts/${slug}/`} />;
+}

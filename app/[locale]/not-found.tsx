@@ -2,30 +2,15 @@ import Link from 'next/link';
 
 export default function NotFound() {
   return (
-    <main className="grid min-h-screen place-items-center bg-white px-6 py-24 sm:py-32 lg:px-8">
-      <div className="text-center">
-        <p className="text-base font-semibold text-gray-600">404</p>
-        <h1 className="mt-4 text-5xl font-semibold tracking-tight text-balance text-gray-900 sm:text-7xl">
-          Page not found
-        </h1>
-        <p className="mt-6 text-lg font-medium text-pretty text-gray-500 sm:text-xl/8">
-          Sorry, we couldn&apos;t find the page you&apos;re looking for.
-        </p>
-        <div className="mt-10 flex items-center justify-center gap-x-6">
-          <Link
-            href="/"
-            className="rounded-md bg-gray-800 px-3.5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-800"
-          >
-            Go back home
-          </Link>
-          <Link
-            href="/posts"
-            className="text-sm font-semibold text-gray-900 hover:text-gray-600"
-          >
-            View all posts <span aria-hidden="true">&rarr;</span>
-          </Link>
-        </div>
-      </div>
+    <main className="mx-auto flex min-h-[70vh] max-w-xl flex-col justify-center px-6">
+      <p className="text-sm uppercase tracking-[0.18em] text-[var(--faint)]">404</p>
+      <h1 className="mt-3 font-serif text-5xl tracking-tight">Page not found</h1>
+      <p className="mt-4 text-[var(--muted)]">
+        This localized URL is gone. The English site is still here.
+      </p>
+      <Link href="/en/" className="mt-8 text-[var(--ink)] underline underline-offset-4">
+        Go to the English home page
+      </Link>
     </main>
   );
-} 
+}

@@ -1,9 +1,7 @@
-import { redirect } from 'next/navigation';
-import { defaultLocale } from '@/lib/i18n/config';
+import LocaleRedirect, { localeRedirectMetadata } from '@/components/LocaleRedirect';
 
-// Redirect old about URL without locale to English version
-export default function OldAboutRedirect() {
-  redirect(`/${defaultLocale}/about`);
+export const metadata = localeRedirectMetadata('/en/about/');
+
+export default function AboutAlias() {
+  return <LocaleRedirect to="/en/about/" />;
 }
-
-
