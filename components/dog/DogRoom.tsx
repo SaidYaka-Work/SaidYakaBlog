@@ -316,6 +316,11 @@ export default function DogRoom() {
           </button>
         </div>
       )}
+      {!studio && (
+        <p className="dog-credit">
+          3D Shiba Inu and Husky by <a className="link-underline" href="https://quaternius.com/packs/ultimateanimatedanimals.html">Quaternius</a>, CC0.
+        </p>
+      )}
     </section>
   );
 }

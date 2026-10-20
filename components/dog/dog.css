@@ -1,285 +1,36 @@
 .biscuit-scene {
-  --porch-sky-top: #f8ead6;
-  --porch-sky-mid: #f3d8c0;
-  --porch-sky-bot: #edd0b4;
-  --porch-sun: #ffe7c4;
-  --porch-floor-top: #f3e6d4;
-  --porch-floor-bot: #e4d0b8;
-  --porch-plank: #c4a888;
-  --porch-hill: #e2c8ae;
-  --porch-hill-deep: #d4b496;
-  --porch-tree: #6d8a62;
-  --porch-tree-deep: #4f6b48;
-  --porch-wall: #f7efe4;
-  --porch-wall-deep: #ead9c6;
-  --porch-rail: #c47848;
-  --porch-post: #e8d4bc;
-  --porch-window: #c46a3a;
-  --porch-pane: #fbe8c8;
-  --porch-rug: #c46a3a;
-  --porch-rug-lite: #e08a5a;
-  --porch-rug-deep: #8a3a18;
-  --porch-leaf: #4a6a48;
-  --porch-leaf-deep: #2f4a32;
-  --porch-pot: #c46a3a;
-  --porch-pot-rim: #e08a5a;
   --wag: 520ms;
-  --look-x: 0;
-  --look-y: 0;
   position: relative;
   overflow: hidden;
   aspect-ratio: 460 / 360;
   border-radius: inherit;
-  background: var(--bg-elevated);
-}
-
-.biscuit-svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.biscuit-scene.is-dawn {
-  --porch-sky-top: #f6c8b0;
-  --porch-sky-mid: #f3d4bc;
-  --porch-sky-bot: #efd0b8;
-  --porch-sun: #ffd2a8;
-  --porch-pane: #ffe2bc;
-}
-
-.biscuit-scene.is-dusk {
-  --porch-sky-top: #f0a878;
-  --porch-sky-mid: #f0c09a;
-  --porch-sky-bot: #e8b898;
-  --porch-sun: #ffc090;
-  --porch-pane: #f6c48a;
-  --porch-hill: #d4a888;
-  --porch-hill-deep: #c49070;
+  background: #f8ead6;
 }
 
 .biscuit-scene.is-night {
-  --porch-sky-top: #1c1816;
-  --porch-sky-mid: #2a211c;
-  --porch-sky-bot: #241c18;
-  --porch-sun: #e8a87c;
-  --porch-floor-top: #2a221c;
-  --porch-floor-bot: #1a1612;
-  --porch-plank: #3d2c22;
-  --porch-hill: #241c18;
-  --porch-hill-deep: #1a1410;
-  --porch-tree: #243028;
-  --porch-tree-deep: #1a221c;
-  --porch-wall: #2a221c;
-  --porch-wall-deep: #1f1914;
-  --porch-rail: #8a4a28;
-  --porch-post: #3d2c22;
-  --porch-window: #7a3418;
-  --porch-pane: #e8a87c;
-  --porch-rug: #8a3a18;
-  --porch-rug-lite: #c46a3a;
-  --porch-rug-deep: #4a1c0c;
-  --porch-leaf: #2a4a3a;
-  --porch-leaf-deep: #1f2a1c;
-  --porch-pot: #7a3418;
-  --porch-pot-rim: #c46a3a;
+  background: #1c1816;
 }
 
-.dog-shadow {
-  opacity: 0.16;
+.biscuit-scene canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
 }
 
-.biscuit-scene.is-night .dog-shadow {
-  opacity: 0.34;
+.biscuit-still,
+.biscuit-poster {
+  display: block;
+  width: 100%;
+  aspect-ratio: 460 / 360;
+  object-fit: cover;
+  background:
+    radial-gradient(ellipse at 22% 18%, #ffe7c4 0%, transparent 42%),
+    linear-gradient(180deg, #f8ead6 0%, #edd0b4 100%);
 }
 
-.porch-far,
-.porch-mid,
-.porch-plant,
-.porch-rug {
-  transform-box: fill-box;
-}
-
-.dog-torso,
-.dog-chest,
-.dog-haunch {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.dog-body {
-  animation: dog-breathe 2.8s ease-in-out infinite;
-}
-
-.biscuit-scene.is-puppy .dog-body {
-  animation-duration: 1.6s;
-}
-
-.biscuit-scene.is-young .dog-body {
-  animation-duration: 2.2s;
-}
-
-.biscuit-scene.is-senior .dog-body,
-.biscuit-scene.is-asleep .dog-body,
-.biscuit-scene.is-sleep .dog-body {
-  animation-duration: 4.4s;
-}
-
-.dog-tail {
-  transform-box: fill-box;
-  transform-origin: right center;
-  animation: dog-wag var(--wag) ease-in-out infinite;
-}
-
-.biscuit-scene.is-curl .dog-tail {
-  animation-name: dog-wag-curl;
-}
-
-.dog-ear-l,
-.dog-ear-r {
-  transform-box: fill-box;
-  transform-origin: center bottom;
-  animation: dog-ear 4.8s ease-in-out infinite;
-}
-
-.dog-ear-r {
-  animation-delay: 1.1s;
-}
-
-.dog-open-eye {
-  transform-box: fill-box;
-  animation: dog-blink 4.6s steps(1, end) infinite;
-}
-
-.dog-head {
-  transform-box: fill-box;
-  animation: dog-idle-tilt 7s ease-in-out infinite;
-}
-
-.dog-tongue {
-  transform-origin: 336px 188px;
-  transform-box: fill-box;
-  opacity: 0;
-}
-
-.biscuit-scene.is-pet .dog-tongue,
-.biscuit-scene.is-yawn .dog-tongue,
-.biscuit-scene.is-feed .dog-tongue {
-  opacity: 1;
-}
-
-.biscuit-scene.is-pet .dog-root {
-  animation: dog-hop 0.62s ease;
-}
-
-.biscuit-scene.is-walk .dog-root {
-  animation: dog-trot-body 0.38s ease-in-out infinite;
-}
-
-.biscuit-scene.is-walk .dog-leg-ff,
-.biscuit-scene.is-walk .dog-leg-nf,
-.biscuit-scene.is-walk .dog-leg-fh,
-.biscuit-scene.is-walk .dog-leg-nh {
-  transform-box: fill-box;
-  transform-origin: center top;
-  animation: dog-trot-leg 0.38s ease-in-out infinite;
-}
-
-.biscuit-scene.is-walk .dog-leg-nf,
-.biscuit-scene.is-walk .dog-leg-fh {
-  animation-delay: 0.19s;
-}
-
-.biscuit-scene.is-walk .porch-far {
-  animation: porch-drift 7s linear infinite;
-}
-
-.biscuit-scene.is-walk .porch-rug {
-  animation: porch-scroll 1s linear infinite;
-}
-
-.biscuit-scene.is-feed .dog-head {
-  animation: dog-eat 0.48s ease-in-out 4;
-}
-
-.biscuit-scene.is-hungry .dog-head {
-  animation: dog-bowl 2.2s ease-in-out infinite;
-}
-
-.biscuit-scene.is-stretch .dog-root {
-  animation: dog-stretch 2.1s ease;
-}
-
-.biscuit-scene.is-scratch .dog-leg-nh {
-  transform-box: fill-box;
-  transform-origin: center top;
-  animation: dog-scratch 0.2s ease-in-out 10;
-}
-
-.biscuit-scene.is-yawn .dog-head {
-  animation: dog-yawn 1.8s ease;
-}
-
-.biscuit-scene.is-look .dog-head {
-  animation: dog-look 2.2s ease;
-}
-
-.biscuit-scene.is-sleep .dog-root,
-.biscuit-scene.is-asleep .dog-root,
-.biscuit-scene.is-lie .dog-root {
-  animation: none;
-  transform: translate(18px, 36px) rotate(-72deg);
-  transform-origin: 220px 280px;
-}
-
-.biscuit-scene.is-sleep .dog-head,
-.biscuit-scene.is-asleep .dog-head,
-.biscuit-scene.is-lie .dog-head {
-  animation: none;
-  transform: rotate(38deg) translate(8px, 12px);
-}
-
-.biscuit-scene.is-sleep .dog-tail,
-.biscuit-scene.is-asleep .dog-tail {
-  animation-duration: 2800ms;
-}
-
-.biscuit-scene.is-sleep .dog-legs,
-.biscuit-scene.is-asleep .dog-legs,
-.biscuit-scene.is-lie .dog-legs {
-  opacity: 0.15;
-}
-
-.biscuit-scene.is-sad .dog-tail {
-  --wag: 1800ms;
-}
-
-.biscuit-scene.is-sad .dog-head-anchor {
-  transform: rotate(-7deg) translateY(6px);
-}
-
-.porch-mote {
-  fill: color-mix(in srgb, var(--accent) 55%, white);
-  opacity: 0.38;
-  animation: porch-mote 9s ease-in-out infinite;
-}
-
-.porch-mote.mote-b {
-  animation-delay: -2s;
-  animation-duration: 11s;
-}
-
-.porch-mote.mote-c {
-  animation-delay: -5s;
-  animation-duration: 8s;
-}
-
-.porch-mote.mote-d {
-  animation-delay: -3s;
-}
-
-.biscuit-scene.is-night .porch-mote {
-  fill: #e8a87c;
-  opacity: 0.72;
+.biscuit-scene.is-night .biscuit-poster,
+.biscuit-scene.is-night + .biscuit-poster {
+  background: linear-gradient(180deg, #1c1816 0%, #2a211c 100%);
 }
 
 .biscuit-hearts,
@@ -337,156 +88,10 @@
   animation: zzz-drift 2.4s ease-in-out infinite;
 }
 
-.biscuit-scene.is-compact .porch-plant,
-.biscuit-scene.is-compact .porch-motes,
-.biscuit-scene.is-compact .porch-bowl {
-  display: none;
-}
-
-@keyframes dog-breathe {
-  50% {
-    transform: translateY(2px) scale(1.025, 0.97);
-  }
-}
-
-@keyframes dog-wag {
-  0%,
-  100% {
-    transform: rotate(8deg);
-  }
-  50% {
-    transform: rotate(-28deg);
-  }
-}
-
-@keyframes dog-wag-curl {
-  50% {
-    transform: rotate(-16deg);
-  }
-}
-
-@keyframes dog-ear {
-  0%,
-  78%,
-  100% {
-    transform: rotate(0);
-  }
-  84% {
-    transform: rotate(-16deg);
-  }
-  90% {
-    transform: rotate(12deg);
-  }
-}
-
-@keyframes dog-blink {
-  0%,
-  88%,
-  100% {
-    transform: scaleY(1);
-  }
-  91% {
-    transform: scaleY(0.08);
-  }
-}
-
-@keyframes dog-idle-tilt {
-  0%,
-  100% {
-    transform: rotate(0);
-  }
-  40% {
-    transform: rotate(-4deg);
-  }
-  70% {
-    transform: rotate(3deg);
-  }
-}
-
-@keyframes dog-hop {
-  18% {
-    transform: translate(-3px, -16px) rotate(-5deg);
-  }
-  48% {
-    transform: translate(6px, -8px) rotate(6deg);
-  }
-  78% {
-    transform: translate(-2px, -2px) rotate(-2deg);
-  }
-}
-
-@keyframes dog-trot-body {
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-@keyframes dog-trot-leg {
-  0%,
-  100% {
-    transform: rotate(12deg);
-  }
-  50% {
-    transform: rotate(-18deg);
-  }
-}
-
-@keyframes dog-eat {
-  50% {
-    transform: translate(14px, 10px) rotate(10deg);
-  }
-}
-
-@keyframes dog-stretch {
-  40% {
-    transform: scaleX(1.08) translateX(10px);
-  }
-}
-
-@keyframes dog-scratch {
-  50% {
-    transform: rotate(22deg) translateY(-6px);
-  }
-}
-
-@keyframes dog-yawn {
-  40% {
-    transform: translateY(-5px) rotate(-8deg) scale(1.04);
-  }
-}
-
-@keyframes dog-look {
-  40% {
-    transform: rotate(10deg) translateX(6px);
-  }
-}
-
-@keyframes dog-bowl {
-  40% {
-    transform: translate(12px, 8px) rotate(8deg);
-  }
-}
-
-@keyframes porch-drift {
-  50% {
-    transform: translateX(-10px);
-  }
-}
-
-@keyframes porch-scroll {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-26px);
-  }
-}
-
-@keyframes porch-mote {
-  50% {
-    transform: translate(10px, -16px);
-    opacity: 0.16;
-  }
+.dog-credit {
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--faint);
 }
 
 @keyframes heart-float {
@@ -504,26 +109,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dog-body,
-  .dog-tail,
-  .dog-ear-l,
-  .dog-ear-r,
-  .dog-open-eye,
-  .dog-root,
-  .dog-head,
-  .dog-leg-ff,
-  .dog-leg-nf,
-  .dog-leg-fh,
-  .dog-leg-nh,
-  .porch-far,
-  .porch-rug,
-  .porch-mote,
   .biscuit-hearts i,
   .biscuit-zzz {
     animation: none !important;
-  }
-
-  .dog-tongue {
-    opacity: 0;
   }
 }

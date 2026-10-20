@@ -22,7 +22,7 @@ export default function DogStudio() {
       <p className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Studio</p>
       <h1 className="mt-2 font-serif text-4xl">Lookbook</h1>
       <p className="mt-3 max-w-xl text-sm text-[var(--muted)]">
-        Local preview of genomes and life stages. Not linked from the porch.
+        Local preview of genomes and life stages on the Quaternius CC0 Shiba/Husky rig. Not linked from the porch.
       </p>
       {SEEDS.map((seed) => (
         <div key={seed} className="mt-10">

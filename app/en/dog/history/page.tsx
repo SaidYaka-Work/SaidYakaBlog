@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import HistoryBoard from '@/components/dog/HistoryBoard';
+import HistoryPlayer from '@/components/dog/HistoryPlayer';
 import { SOCIAL, defaultOgImage, englishPath, englishUrl } from '@/lib/site';
 
 const title = 'Past dogs';
@@ -41,7 +41,7 @@ export default function DogHistoryPage() {
       <p className="hero-copy mt-4 max-w-xl text-[var(--muted)] leading-relaxed">
         Every dog who claimed this rug, rendered at the life stage they reached.
       </p>
-      <HistoryBoard />
+      <HistoryPlayer />
     </section>
   );
 }
