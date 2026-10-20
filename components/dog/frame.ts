@@ -95,7 +95,6 @@ export function frameCamera(
   opts: { pad?: number; yaw?: number; pitch?: number; aspect?: number; lift?: number; minDist?: number } = {},
 ) {
   if (!meshBounds(object)) return null;
-  _box.min.y = Math.min(_box.min.y, 0);
   _box.getBoundingSphere(_sphere);
   _box.getCenter(_center);
   const pad = opts.pad ?? 1.42;
@@ -118,7 +117,7 @@ export function frameCamera(
     ) {
       break;
     }
-    dist = Math.min(5.1, dist * 1.1);
+    dist = Math.min(5.8, dist * 1.1);
   }
   return { center: _center.clone(), radius, dist, desired: _desired.clone() };
 }
