@@ -121,7 +121,7 @@ const DogRig = forwardRef<Group, {
       mixer.stopAllAction();
       mixerRef.current = null;
     };
-  }, [asleep, genes, gltf.animations, scene, stage]);
+  }, [asleep, genes, gltf.animations, roomy, scene, stage]);
 
   const play = useCallback((key: string, once = false) => {
     const mixer = mixerRef.current;
