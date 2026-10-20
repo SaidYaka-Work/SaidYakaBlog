@@ -1,0 +1,90 @@
+.biscuit-scene {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.4rem;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(232, 168, 124, 0.18), transparent 36%),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 70%, var(--bg)) 0%, var(--bg-elevated) 100%);
+}
+
+.biscuit-scene.is-night {
+  background:
+    radial-gradient(circle at 80% 12%, rgba(240, 216, 200, 0.16), transparent 28%),
+    linear-gradient(180deg, #16120f 0%, #2a211c 100%);
+}
+
+.biscuit-body {
+  transform-origin: 160px 150px;
+  animation: biscuit-breathe 3.2s ease-in-out infinite;
+}
+
+.biscuit-body.is-puppy {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  scale: 0.72;
+  animation-duration: 1.6s;
+}
+
+.biscuit-body.is-young {
+  scale: 0.88;
+  animation-duration: 2.2s;
+}
+
+.biscuit-body.is-senior {
+  scale: 1.04;
+  animation-duration: 4.4s;
+}
+
+.biscuit-tail {
+  transform-origin: 198px 132px;
+  animation: biscuit-wag 0.7s ease-in-out infinite;
+}
+
+.biscuit-scene.is-asleep .biscuit-tail,
+.biscuit-scene.is-asleep .biscuit-body {
+  animation-duration: 4.8s;
+}
+
+.biscuit-scene.is-pet .biscuit-body {
+  animation: biscuit-bounce 0.45s ease;
+}
+
+.biscuit-hearts,
+.biscuit-zzz {
+  position: absolute;
+  right: 18%;
+  top: 16%;
+  color: var(--accent);
+  font-family: var(--font-serif), Georgia, serif;
+  letter-spacing: 0.12em;
+}
+
+.biscuit-game {
+  touch-action: none;
+  user-select: none;
+}
+
+@keyframes biscuit-breathe {
+  50% {
+    transform: translateY(3px) scale(1.015, 0.985);
+  }
+}
+
+@keyframes biscuit-wag {
+  50% {
+    transform: rotate(-18deg);
+  }
+}
+
+@keyframes biscuit-bounce {
+  40% {
+    transform: translateY(-10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .biscuit-body,
+  .biscuit-tail {
+    animation: none;
+  }
+}

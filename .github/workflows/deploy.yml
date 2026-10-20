@@ -57,6 +57,7 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
+          NEXT_PUBLIC_DOG_WORKER_URL: ${{ vars.NEXT_PUBLIC_DOG_WORKER_URL }}
 
       - name: Verify out directory
         run: |

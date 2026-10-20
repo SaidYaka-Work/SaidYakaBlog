@@ -13,7 +13,7 @@ export default function GameCard({ game, index }: { game: GameMeta; index: numbe
         <p className="text-xs uppercase tracking-[0.16em] text-[var(--accent)]">{game.genre}</p>
         <h2 className="mt-3 font-serif text-3xl tracking-tight">{game.title}</h2>
         <p className="mt-3 leading-relaxed text-[var(--muted)]">{game.tagline}</p>
-        <p className="mt-4 text-sm text-[var(--ink)]">Play →</p>
+        <p className="mt-4 text-sm text-[var(--ink)]">{game.slug === 'biscuit' ? 'Visit →' : 'Play →'}</p>
       </div>
     </>
   );
@@ -78,6 +78,13 @@ function GamePreview({ tone }: { tone: GameMeta['tone'] }) {
       )}
       {tone === 'rush' && (
         <span className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_30%_30%,#fde68a,#fb7185_40%,#7c3aed)] shadow-[0_0_28px_rgba(244,114,182,0.55)]" />
+      )}
+      {tone === 'dog' && (
+        <>
+          <span className="absolute bottom-8 left-1/2 h-10 w-16 -translate-x-1/2 rounded-full bg-[#f0d8c8]" />
+          <span className="absolute bottom-14 left-[42%] h-8 w-8 rounded-full bg-[#f0d8c8]" />
+          <span className="absolute bottom-16 left-[40%] h-3 w-4 rounded-full bg-[#b4532a]" />
+        </>
       )}
       {tone === 'market' && (
         <>

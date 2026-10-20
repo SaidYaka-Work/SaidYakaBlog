@@ -2,7 +2,7 @@ import { englishPath } from '@/lib/site';
 
 export type GameKind = 'react' | 'external';
 
-export type GameTone = 'rush' | 'market' | 'orbit' | 'lantern' | 'pulse' | 'glyph' | 'shade';
+export type GameTone = 'rush' | 'market' | 'orbit' | 'lantern' | 'pulse' | 'glyph' | 'shade' | 'dog';
 
 export type GameMeta = {
   slug: string;
@@ -105,6 +105,17 @@ export const games: GameMeta[] = [
     href: englishPath('/games/shade-shift'),
     tone: 'shade',
   },
+  {
+    slug: 'biscuit',
+    title: 'Biscuit',
+    tagline: 'The internet’s only dog. Pet, feed, walk, grow.',
+    description: 'A shared Tamagotchi-style dog that everyone on the site looks after together.',
+    howTo: 'Visit the porch. Pet him, feed him, or take him for a walk.',
+    genre: 'Companion',
+    kind: 'react',
+    href: englishPath('/dog'),
+    tone: 'dog',
+  },
 ];
 
 export function getListedGames(): GameMeta[] {
@@ -112,7 +123,7 @@ export function getListedGames(): GameMeta[] {
 }
 
 export function getPlayableGames(): GameMeta[] {
-  return games.filter((game) => game.kind === 'react' && game.slug !== 'click-rush');
+  return games.filter((game) => game.kind === 'react' && game.slug !== 'click-rush' && game.slug !== 'biscuit');
 }
 
 export function getGameBySlug(slug: string): GameMeta | undefined {
