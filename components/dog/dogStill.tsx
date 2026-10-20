@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import {
   AmbientLight,
   AnimationMixer,
-  CircleGeometry,
   Color,
   CylinderGeometry,
   DirectionalLight,
@@ -12,6 +11,7 @@ import {
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
+  PlaneGeometry,
   RingGeometry,
   Scene,
   SphereGeometry,
@@ -78,17 +78,16 @@ function getRenderer() {
 }
 
 function addStillPorch(scene: Scene, night: boolean, showBowl: boolean) {
-  const ground = new Mesh(new CircleGeometry(4.8, 48), new MeshStandardMaterial({ color: night ? '#1c1a18' : '#efe2d0' }));
+  const ground = new Mesh(new PlaneGeometry(90, 90), new MeshStandardMaterial({ color: night ? '#141820' : '#f0d4b4' }));
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.02;
   scene.add(ground);
-  const mat = new Mesh(new CircleGeometry(1.32, 36), new MeshStandardMaterial({ color: night ? '#8a3a18' : '#c46a3a' }));
-  mat.rotation.x = -Math.PI / 2;
-  mat.position.set(0.02, 0.012, 0.08);
+  const mat = new Mesh(new CylinderGeometry(1.12, 1.12, 0.02, 48), new MeshStandardMaterial({ color: night ? '#8a3a18' : '#c46a3a' }));
+  mat.position.set(0.02, 0.01, 0.08);
   scene.add(mat);
-  const ring = new Mesh(new RingGeometry(1, 1.14, 36), new MeshStandardMaterial({ color: '#e08a5a' }));
+  const ring = new Mesh(new RingGeometry(0.92, 1.04, 48), new MeshStandardMaterial({ color: '#e08a5a' }));
   ring.rotation.x = -Math.PI / 2;
-  ring.position.set(0.02, 0.016, 0.08);
+  ring.position.set(0.02, 0.021, 0.08);
   scene.add(ring);
   const pot = new Mesh(new CylinderGeometry(0.14, 0.18, 0.28, 10), new MeshStandardMaterial({ color: '#c46a3a' }));
   pot.position.set(1.5, 0.28, -0.8);
@@ -116,7 +115,7 @@ async function renderDogStillNow(opts: StillKey, key: string) {
   const genes = opts.genome ?? generateGenome('napping-biscuit');
   const gltf = await loadGltf(modelUrl(breedFromGenome(genes)));
   const scene = new Scene();
-  const sky = opts.night ? '#0b1220' : '#f4ead8';
+  const sky = opts.night ? '#0b1220' : '#f7f1e6';
   scene.background = new Color(sky);
   scene.add(new AmbientLight(opts.night ? '#4a3a32' : '#fff4e6', opts.night ? 0.55 : 1.02));
   scene.add(new HemisphereLight(opts.night ? '#6a7a98' : '#f4ead8', opts.night ? '#1a1814' : '#d4b496', opts.night ? 0.7 : 1));
@@ -161,7 +160,7 @@ async function renderDogStillNow(opts: StillKey, key: string) {
     yaw: CAMERA_YAW,
     pitch: asleep ? 0.2 : 0.2,
     aspect: 640 / 500,
-    minDist: asleep ? 5.2 : 4.2,
+    minDist: asleep ? 4.1 : 3.6,
   });
   const gl = getRenderer();
   gl.render(scene, camera);

@@ -257,14 +257,26 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
 
   const napping = !worker || !connected;
   const dog = snapshot?.dog ?? null;
+  const previewing = Boolean(preview) && preview !== 'start' && preview !== 'hall';
   const awaitingName = Boolean(snapshot?.awaitingName);
   const shownName = dog?.profile.name || (awaitingName ? 'A new dog' : snapshot?.memorial?.profile.name || 'Biscuit');
   const hungry = preview === 'hungry' || preview === 'eat' || Boolean(dog?.care.feedOverdue) || (dog?.care.hunger ?? 0) > 70;
   const wantsWalk = preview === 'hungry' || Boolean(dog?.care.walkOverdue) || (dog?.care.walkNeed ?? 0) > 70;
-  const poseAsleep = preview === 'sleep' || Boolean(dog?.asleep);
+  const poseAsleep = preview === 'sleep' || (!previewing && Boolean(dog?.asleep));
   const poseReaction =
-    preview === 'sleep' ? 'sleep' : preview === 'eat' ? 'feed' : preview === 'pose-walk' ? 'walk' : dog?.asleep ? 'sleep' : reaction;
-  const poseSad = preview === 'sad' || (dog?.happiness ?? 100) < 40;
+    preview === 'sleep'
+      ? 'sleep'
+      : preview === 'eat'
+        ? 'feed'
+        : preview === 'pose-walk'
+          ? 'walk'
+          : dog?.asleep
+            ? 'sleep'
+            : reaction;
+  const poseSad = preview === 'sad' || (!previewing && (dog?.happiness ?? 100) < 40);
+  const fallbackAsleep = preview === 'sleep' || preview === 'start' || !preview;
+  const fallbackReaction: Reaction =
+    preview === 'eat' ? 'feed' : preview === 'pose-walk' ? 'walk' : preview === 'sleep' ? 'sleep' : preview === 'sad' || preview === 'hungry' ? 'idle' : 'sleep';
   const overlay = play || (awaitingName && canName) || panel;
   const canTap = ready || progress >= 88 || napping;
 
@@ -296,13 +308,17 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         />
       ) : (
         <DogPortrait
-          genome={generateGenome('napping-biscuit')}
-          asleep
-          reaction="sleep"
+          genome={generateGenome(previewing ? 'biscuit-porch-1' : 'napping-biscuit')}
+          asleep={fallbackAsleep}
+          reaction={fallbackReaction}
           night={false}
           stage="puppy"
+          happiness={72}
+          hungry={hungry}
+          sad={preview === 'sad'}
+          interactive={previewing}
           fill
-          empty={!napping}
+          empty={!napping && !previewing}
           onReady={() => setReady(true)}
         />
       )}
@@ -312,13 +328,13 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           name={shownName}
           stageLabel={dog?.stageLabel || (awaitingName ? 'new' : napping ? 'napping' : 'away')}
           presence={snapshot?.presence ?? 0}
-          happiness={dog?.happiness ?? 0}
-          energy={dog?.energy ?? 0}
-          fullness={dog?.fullness ?? 0}
-          hungry={hungry && Boolean(dog)}
-          wantsWalk={wantsWalk && Boolean(dog)}
+          happiness={dog?.happiness ?? (previewing ? 72 : 0)}
+          energy={dog?.energy ?? (previewing ? 64 : 0)}
+          fullness={dog?.fullness ?? (previewing ? 38 : 0)}
+          hungry={hungry && Boolean(dog || previewing)}
+          wantsWalk={wantsWalk && Boolean(dog || previewing)}
           muted={muted}
-          empty={!dog}
+          empty={!dog && !previewing}
           busy={Boolean(overlay)}
           toasts={toasts}
           onMute={toggleMute}

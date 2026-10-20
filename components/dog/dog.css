@@ -8,7 +8,14 @@
 }
 
 .biscuit-scene.is-night {
-  background: #141210;
+  background:
+    radial-gradient(1px 1px at 12% 18%, rgba(255, 255, 255, 0.72), transparent),
+    radial-gradient(1px 1px at 28% 32%, rgba(255, 255, 255, 0.48), transparent),
+    radial-gradient(1.4px 1.4px at 46% 14%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1px 1px at 63% 24%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 78% 12%, rgba(255, 255, 255, 0.66), transparent),
+    radial-gradient(1.2px 1.2px at 88% 30%, rgba(255, 255, 255, 0.5), transparent),
+    linear-gradient(180deg, #0b1220 0%, #1a2438 100%);
 }
 
 .biscuit-scene.is-fill {
@@ -122,7 +129,7 @@
   min-height: 100dvh;
   height: 100dvh;
   overflow: hidden;
-  background: #f4ead8;
+  background: linear-gradient(180deg, #f7f1e6 0%, #f3d2b0 100%);
 }
 
 .dog-game > .biscuit-scene,

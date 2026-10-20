@@ -45,12 +45,12 @@ function FramedCamera({
     camera.aspect = size.width / Math.max(1, size.height);
     from.current.copy(camera.position);
     const info = frameCamera(camera, object, {
-      pad: fill ? 1.38 : compact ? 1.4 : 1.42,
+      pad: fill ? 1.34 : compact ? 1.38 : 1.4,
       yaw: CAMERA_YAW,
-      pitch: asleep ? 0.28 : fill ? 0.18 : 0.2,
+      pitch: asleep ? 0.22 : fill ? 0.16 : 0.18,
       aspect: camera.aspect,
-      lift: fill ? 0.06 : 0,
-      minDist: asleep ? 6.1 : fill ? 3.5 : 3.3,
+      lift: fill ? 0.04 : 0,
+      minDist: asleep ? 3.9 : fill ? 3.25 : 3.15,
     });
     if (!info) return;
     if (ready.current) {
@@ -163,7 +163,7 @@ export default function DogCanvas({
         camera={{ position: [2.1, 1.5, 3.6], fov: fill ? 30 : compact ? 36 : 32, near: 0.1, far: 80 }}
         shadows
         frameloop={frameloop}
-        gl={{ antialias: true, alpha: false, powerPreference: 'default' }}
+        gl={{ antialias: true, alpha: true, powerPreference: 'default' }}
       >
         <Suspense fallback={null}>
           <PorchWorld

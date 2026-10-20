@@ -214,6 +214,10 @@ const DogRig = forwardRef<Group, {
       eat: eating,
       wag,
     });
+    scene.traverse((child) => {
+      const skinned = child as { isSkinnedMesh?: boolean; skeleton?: { update: () => void } };
+      if (skinned.isSkinnedMesh) skinned.skeleton?.update();
+    });
     groundToFloor(node, 0.012);
   });
 

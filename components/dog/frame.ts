@@ -117,7 +117,7 @@ export function frameCamera(
     ) {
       break;
     }
-    dist = Math.min(7.4, dist * 1.12);
+    dist = Math.min(5.1, dist * 1.1);
   }
   return { center: _center.clone(), radius, dist, desired: _desired.clone() };
 }

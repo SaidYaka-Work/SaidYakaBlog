@@ -1,16 +1,9 @@
 'use client';
 
 import { useFrame, useThree } from '@react-three/fiber';
-import { ContactShadows } from '@react-three/drei';
 import { useEffect, useRef } from 'react';
-import { Color } from 'three';
 import type { Group } from 'three';
 import { BOWL } from './frame';
-
-const SKY = {
-  day: { top: '#f4ead8', bot: '#f0c9a4' },
-  night: { top: '#0b1220', bot: '#1a2438' },
-};
 
 function HorizonFence({ night }: { night: boolean }) {
   const wood = night ? '#3a2a20' : '#8a6a48';
@@ -46,15 +39,13 @@ export default function PorchWorld({
   compact?: boolean;
   walking?: boolean;
 }) {
-  const mood = night ? 'night' : 'day';
   const hills = useRef<Group>(null);
   const { scene, gl } = useThree();
-  const sky = SKY[mood];
 
   useEffect(() => {
-    scene.background = new Color(sky.top);
-    gl.setClearColor(sky.top, 1);
-  }, [gl, scene, sky.top]);
+    scene.background = null;
+    gl.setClearColor(0x000000, 0);
+  }, [gl, scene]);
 
   useFrame((_, dt) => {
     if (!hills.current) return;
@@ -82,24 +73,28 @@ export default function PorchWorld({
       <directionalLight position={[-3.5, 2.2, 1.5]} intensity={night ? 0.08 : 0.16} color="#f0d0b0" />
       {!compact && <pointLight position={[1.4, 1.6, 1.2]} intensity={night ? 1.2 : 0.3} color="#fbe8c8" distance={7} />}
 
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.02, 0.012, 0.08]} receiveShadow>
-        <circleGeometry args={[1.32, 40]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
+        <planeGeometry args={[90, 90]} />
+        <meshStandardMaterial color={night ? '#141820' : '#f0d4b4'} />
+      </mesh>
+      <mesh position={[0.02, 0.01, 0.08]} receiveShadow>
+        <cylinderGeometry args={[1.12, 1.12, 0.02, 48]} />
         <meshStandardMaterial color={night ? '#8a3a18' : '#c46a3a'} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.02, 0.016, 0.08]}>
-        <ringGeometry args={[1, 1.14, 40]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.02, 0.021, 0.08]}>
+        <ringGeometry args={[0.92, 1.04, 48]} />
         <meshStandardMaterial color="#e08a5a" />
       </mesh>
 
       {!compact && <HorizonFence night={night} />}
 
       <group ref={hills}>
-        <mesh position={[-2.4, 0.08, -3.9]}>
-          <sphereGeometry args={[0.55, 12, 10]} />
+        <mesh position={[-2.4, 0.04, -3.9]} scale={[1, 0.38, 1]}>
+          <sphereGeometry args={[0.7, 12, 10]} />
           <meshStandardMaterial color={night ? '#243044' : '#d8c8b0'} />
         </mesh>
-        <mesh position={[2.1, 0.06, -4.1]}>
-          <sphereGeometry args={[0.7, 12, 10]} />
+        <mesh position={[2.1, 0.03, -4.1]} scale={[1, 0.34, 1]}>
+          <sphereGeometry args={[0.86, 12, 10]} />
           <meshStandardMaterial color={night ? '#1e2838' : '#d0bea4'} />
         </mesh>
       </group>
@@ -131,8 +126,6 @@ export default function PorchWorld({
           <meshStandardMaterial color="#e8c4a0" />
         </mesh>
       </group>
-
-      <ContactShadows position={[0, 0.003, 0]} opacity={night ? 0.4 : 0.22} scale={7} blur={2.6} far={3} />
     </group>
   );
 }
