@@ -5,7 +5,7 @@
  * `https://saidyaka-dog.<subdomain>.workers.dev` URL here (no trailing slash).
  * `NEXT_PUBLIC_DOG_WORKER_URL` overrides this at build time if set.
  */
-export const PRODUCTION_DOG_WORKER_URL = '';
+export const PRODUCTION_DOG_WORKER_URL = 'https://saidyaka-dog.saidyaka.workers.dev';
 
 export function dogWorkerUrl() {
   const fromEnv = process.env.NEXT_PUBLIC_DOG_WORKER_URL?.trim();
