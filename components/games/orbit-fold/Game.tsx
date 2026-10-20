@@ -32,15 +32,19 @@ function freshSim(): Sim {
   return {
     ring: 1,
     angle: 0,
-    sparks: [],
-    rocks: [],
+    sparks: [
+      { id: 1, ring: 0, angle: 1.2, life: 6 },
+      { id: 2, ring: 2, angle: 3.4, life: 6 },
+      { id: 3, ring: 1, angle: 4.8, life: 6 },
+    ],
+    rocks: [{ id: 4, ring: 2, angle: 5.6 }],
     score: 0,
     alive: true,
     elapsed: 0,
-    sparkIn: 0.6,
-    rockIn: 1.8,
+    sparkIn: 1.1,
+    rockIn: 2.2,
     fold: 0,
-    nextId: 1,
+    nextId: 5,
   };
 }
 
