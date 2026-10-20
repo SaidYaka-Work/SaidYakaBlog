@@ -8,7 +8,7 @@ import { AnimationMixer, LoopOnce, LoopRepeat, Mesh, MeshStandardMaterial, Torus
 import type { AnimationAction, Group, Object3D } from 'three';
 import { generateGenome, type DogGenome, type LifeStage } from '@/lib/dog';
 import { wagMs, type PortraitReaction } from './look';
-import { THREE_QUARTER_YAW } from './frame';
+import { EAT_YAW, SLEEP_ROLL, THREE_QUARTER_YAW, groundToFloor } from './frame';
 import {
   applyDogLook,
   applyMoodBones,
@@ -131,17 +131,19 @@ const DogRig = forwardRef<Group, {
     if (!node) return;
     const idle = reaction === 'idle' && !asleep && !sad && !reduced;
     const walking = reaction === 'walk';
+    const eating = reaction === 'feed';
     const w = wander.current;
+    const homeYaw = eating ? EAT_YAW : THREE_QUARTER_YAW;
 
     if (walking) {
       const t = performance.now() / 1000;
-      w.x = Math.sin(t * 0.85) * 0.55;
-      w.z = Math.cos(t * 0.85) * 0.4;
-      w.yaw = THREE_QUARTER_YAW + t * 0.85 + Math.PI / 2;
+      w.x = Math.sin(t * 0.7) * 0.32;
+      w.z = Math.cos(t * 0.7) * 0.22;
+      w.yaw = THREE_QUARTER_YAW + t * 0.7 + Math.PI / 2;
     } else if (asleep || sad || reaction !== 'idle') {
-      w.x += (0 - w.x) * 0.08;
-      w.z += (0 - w.z) * 0.08;
-      w.yaw += (THREE_QUARTER_YAW - w.yaw) * 0.08;
+      w.x += (0 - w.x) * 0.1;
+      w.z += (0 - w.z) * 0.1;
+      w.yaw += (homeYaw - w.yaw) * 0.12;
       w.look = 0;
       w.mode = 'idle';
     } else if (idle && interactive) {
@@ -169,12 +171,12 @@ const DogRig = forwardRef<Group, {
           w.yaw = THREE_QUARTER_YAW;
         }
       } else if (w.mode === 'step') {
-        w.x += Math.sin(w.yaw) * dt * 0.55;
-        w.z += Math.cos(w.yaw) * dt * 0.55;
+        w.x += Math.sin(w.yaw) * dt * 0.45;
+        w.z += Math.cos(w.yaw) * dt * 0.45;
         const reach = Math.hypot(w.x, w.z);
-        if (reach > 0.7) {
-          w.x *= 0.7 / reach;
-          w.z *= 0.7 / reach;
+        if (reach > 0.55) {
+          w.x *= 0.55 / reach;
+          w.z *= 0.55 / reach;
         }
         if (w.t > 1.5) {
           play('idle');
@@ -185,10 +187,10 @@ const DogRig = forwardRef<Group, {
       }
     }
 
-    node.position.set(w.x, asleep ? 0.42 : 0, w.z);
-    node.rotation.x = asleep ? 1.2 : 0;
-    node.rotation.y = w.yaw;
-    node.scale.set(figure.body, figure.body, figure.body * figure.length);
+    const breathe = asleep && !reduced ? Math.sin((performance.now() / 1000) * 1.7) * 0.03 : 0;
+    node.position.set(w.x, 0, w.z);
+    node.rotation.set(0, w.yaw, asleep ? SLEEP_ROLL : 0);
+    node.scale.set(figure.body * (1 + breathe), figure.body, figure.body * figure.length);
 
     const wag = asleep || sad ? 0 : (performance.now() / 1000) * (1000 / Math.max(180, wagMs(happiness, asleep, sad))) * Math.PI * 2;
     applyMoodBones(scene, {
@@ -196,9 +198,10 @@ const DogRig = forwardRef<Group, {
       asleep,
       lookX: lookRef.current.x + w.look,
       lookY: lookRef.current.y,
-      eat: reaction === 'feed',
+      eat: eating,
       wag,
     });
+    groundToFloor(node, 0.012);
   });
 
   return (

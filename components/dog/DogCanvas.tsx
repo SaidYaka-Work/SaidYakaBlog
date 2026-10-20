@@ -5,7 +5,7 @@ import { Suspense, useEffect, useRef, useState, type RefObject } from 'react';
 import { PerspectiveCamera, Vector3, type Group } from 'three';
 import type { DogGenome, LifeStage } from '@/lib/dog';
 import type { PortraitReaction } from './look';
-import { CAMERA_YAW, frameCamera } from './frame';
+import { CAMERA_YAW, frameCamera, projectMeshBounds } from './frame';
 import DogRig from './DogRig';
 import PorchWorld from './PorchWorld';
 
@@ -21,15 +21,17 @@ function EmptyReady({ onReady }: { onReady?: () => void }) {
 
 function FramedCamera({
   target,
+  host,
   compact,
   fill,
-  walking,
+  asleep,
   onReady,
 }: {
   target: RefObject<Group | null>;
+  host: RefObject<HTMLDivElement | null>;
   compact?: boolean;
   fill?: boolean;
-  walking?: boolean;
+  asleep?: boolean;
   onReady?: () => void;
 }) {
   const camera = useThree((state) => state.camera) as PerspectiveCamera;
@@ -42,31 +44,27 @@ function FramedCamera({
     if (!object) return;
     camera.aspect = size.width / Math.max(1, size.height);
     from.current.copy(camera.position);
-    if (walking) {
-      const dist = fill ? 4.8 : 4.1;
-      camera.position.set(Math.sin(CAMERA_YAW) * dist * 0.85, 1.55, Math.cos(CAMERA_YAW) * dist);
-      camera.lookAt(0, 0.5, 0);
-      camera.updateProjectionMatrix();
-      if (!ready.current) {
-        ready.current = true;
-        onReady?.();
-      }
-      return;
-    }
     const info = frameCamera(camera, object, {
-      pad: fill ? 1.7 : compact ? 1.5 : 1.48,
+      pad: fill ? 1.62 : compact ? 1.52 : 1.56,
       yaw: CAMERA_YAW,
-      pitch: fill ? 0.13 : 0.18,
+      pitch: asleep ? 0.22 : fill ? 0.16 : 0.18,
       aspect: camera.aspect,
-      lift: fill ? 0.42 : 0.08,
+      lift: fill ? 0.28 : 0.04,
+      minDist: fill ? 3.1 : 2.7,
     });
     if (!info) return;
     if (ready.current) {
-      camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 5));
+      camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 4));
+      camera.up.set(0, 1, 0);
+      camera.lookAt(info.center.x, info.center.y + info.radius * 0.02 - (fill ? 0.28 : 0.04), info.center.z);
       camera.updateProjectionMatrix();
     } else {
       ready.current = true;
       onReady?.();
+    }
+    const bounds = projectMeshBounds(object, camera);
+    if (host.current && bounds) {
+      host.current.dataset.inView = bounds.inView ? '1' : '0';
     }
   });
   return null;
@@ -156,11 +154,12 @@ export default function DogCanvas({
   return (
     <div
       ref={host}
+      data-in-view="0"
       className={`biscuit-scene ${night ? 'is-night' : ''} ${compact ? 'is-compact' : ''} ${fill ? 'is-fill' : ''} is-${reaction}`}
     >
       <Canvas
         dpr={[1, 1.6]}
-        camera={{ position: [2.05, 1.45, 3.35], fov: fill ? 30 : compact ? 36 : 32, near: 0.1, far: 50 }}
+        camera={{ position: [2.1, 1.5, 3.6], fov: fill ? 30 : compact ? 36 : 32, near: 0.1, far: 80 }}
         shadows
         frameloop={frameloop}
         gl={{ antialias: true, alpha: false, powerPreference: 'default' }}
@@ -189,9 +188,10 @@ export default function DogCanvas({
           {!empty && (
             <FramedCamera
               target={dogRef}
+              host={host}
               compact={compact}
               fill={fill}
-              walking={reaction === 'walk'}
+              asleep={asleep || reaction === 'sleep'}
               onReady={onReady}
             />
           )}

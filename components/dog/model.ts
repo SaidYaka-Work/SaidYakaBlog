@@ -150,9 +150,9 @@ export function applyMoodBones(
   const neck1 = findBone(root, 'Neck1');
   const tail = ['Tail1', 'Tail2', 'Tail3', 'Tail4'].map((name) => findBone(root, name));
   if (opts.asleep) {
-    if (head) head.rotation.x += 0.15;
+    if (head) head.rotation.x += 0.08;
     tail.forEach((bone) => {
-      if (bone) bone.rotation.z -= 0.18;
+      if (bone) bone.rotation.z -= 0.12;
     });
     return;
   }

@@ -50,9 +50,18 @@ export default function DogHud({
         ← saidyaka.com
       </Link>
 
-      <div className="dog-id">
-        <strong>{name}</strong>
-        <span>{stageLabel}</span>
+      <div className="dog-left">
+        <div className="dog-id">
+          <strong>{name}</strong>
+          <span>{stageLabel}</span>
+        </div>
+        {!empty && (
+          <div className="dog-meters">
+            <Meter icon="♥" label="Happiness" value={happiness} />
+            <Meter icon="🦴" label="Fullness" value={fullness} />
+            <Meter icon="🐾" label="Energy" value={energy} />
+          </div>
+        )}
       </div>
 
       <div className="dog-chips">
@@ -66,14 +75,6 @@ export default function DogHud({
           {muted ? '🔇' : '🔊'}
         </button>
       </div>
-
-      {!empty && (
-        <div className="dog-meters" aria-hidden={false}>
-          <Meter icon="♥" label="Happiness" value={happiness} />
-          <Meter icon="🦴" label="Fullness" value={fullness} />
-          <Meter icon="🐾" label="Energy" value={energy} />
-        </div>
-      )}
 
       {(hungry || wantsWalk) && !empty && (
         <div className="dog-thought" role="status">
@@ -117,11 +118,14 @@ export default function DogHud({
 function Meter({ icon, label, value }: { icon: string; label: string; value: number }) {
   const width = Math.max(6, Math.min(100, value));
   return (
-    <div className="dog-meter" title={label} aria-label={label}>
-      <span>{icon}</span>
-      <b>
-        <i style={{ width: `${width}%` }} />
-      </b>
+    <div className="dog-meter" title={label} aria-label={`${label} ${Math.round(value)}`}>
+      <span aria-hidden="true">{icon}</span>
+      <div>
+        <em>{label}</em>
+        <b>
+          <i style={{ width: `${width}%` }} />
+        </b>
+      </div>
     </div>
   );
 }
