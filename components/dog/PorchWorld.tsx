@@ -2,7 +2,7 @@
 
 import { useThree } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
-import { CanvasTexture, SRGBColorSpace } from 'three';
+import { BackSide, CanvasTexture, Color, SRGBColorSpace } from 'three';
 import { BED, BLOCKERS, FEEDER, ROOM_HALF } from '../../workers/dog/src/room';
 
 function makeRugTexture(fill: string, ring: string) {
@@ -117,14 +117,19 @@ export default function PorchWorld({
   );
 
   useEffect(() => {
-    scene.background = null;
-    gl.setClearColor(0x000000, 0);
-  }, [gl, scene]);
+    const sky = night ? '#101828' : '#e8eef6';
+    scene.background = new Color(sky);
+    gl.setClearColor(sky, 1);
+  }, [gl, night, scene]);
 
-  const size = ROOM_HALF * 2 + 0.4;
+  const size = ROOM_HALF * 2 + 0.5;
 
   return (
     <group>
+      <mesh>
+        <sphereGeometry args={[28, 24, 16]} />
+        <meshBasicMaterial color={night ? '#101828' : '#e8eef6'} side={BackSide} />
+      </mesh>
       <hemisphereLight args={[night ? '#6a7a98' : '#fff6ea', night ? '#1a1814' : '#d4b496', night ? 0.7 : 1.05]} />
       <directionalLight
         position={[5, 7, 3.5]}

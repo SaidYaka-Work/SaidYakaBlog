@@ -44,26 +44,49 @@ function FramedCamera({
     if (!object) return;
     camera.aspect = size.width / Math.max(1, size.height);
     from.current.copy(camera.position);
-    const info = frameCamera(camera, object, {
-      pad: fill ? 1.38 : compact ? 1.4 : 1.42,
-      yaw: CAMERA_YAW,
-      pitch: 0.2,
-      aspect: camera.aspect,
-      lift: 0,
-      minDist: asleep ? 4.6 : fill ? 4.4 : 3.8,
-    });
-    if (!info) return;
-    camera.up.set(0, 1, 0);
-    camera.lookAt(info.center.x, info.center.y, info.center.z);
-    camera.updateProjectionMatrix();
-    if (ready.current) {
-      camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 4));
+    if (fill) {
+      const x = object.position.x * 0.82;
+      const z = object.position.z * 0.82;
+      const dist = asleep ? 6.4 : 7.1;
+      const pitch = 0.46;
+      camera.position.set(
+        x + dist * Math.sin(CAMERA_YAW) * Math.cos(pitch),
+        1.15 + dist * Math.sin(pitch),
+        z + dist * Math.cos(CAMERA_YAW) * Math.cos(pitch),
+      );
+      camera.up.set(0, 1, 0);
+      camera.lookAt(x, 0.28, z);
+      camera.updateProjectionMatrix();
+      if (ready.current) {
+        camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 3.2));
+        camera.up.set(0, 1, 0);
+        camera.lookAt(x, 0.28, z);
+      } else {
+        ready.current = true;
+        onReady?.();
+      }
+    } else {
+      const info = frameCamera(camera, object, {
+        pad: compact ? 1.4 : 1.42,
+        yaw: CAMERA_YAW,
+        pitch: 0.2,
+        aspect: camera.aspect,
+        lift: 0,
+        minDist: asleep ? 4.8 : 3.8,
+      });
+      if (!info) return;
       camera.up.set(0, 1, 0);
       camera.lookAt(info.center.x, info.center.y, info.center.z);
       camera.updateProjectionMatrix();
-    } else {
-      ready.current = true;
-      onReady?.();
+      if (ready.current) {
+        camera.position.lerpVectors(from.current, camera.position, 1 - Math.exp(-dt * 4));
+        camera.up.set(0, 1, 0);
+        camera.lookAt(info.center.x, info.center.y, info.center.z);
+        camera.updateProjectionMatrix();
+      } else {
+        ready.current = true;
+        onReady?.();
+      }
     }
     const bounds = projectMeshBounds(object, camera);
     if (host.current && bounds) {
@@ -170,7 +193,7 @@ export default function DogCanvas({
         camera={{ position: [2.1, 1.5, 3.6], fov: fill ? 34 : compact ? 36 : 32, near: 0.1, far: 80 }}
         shadows
         frameloop={frameloop}
-        gl={{ antialias: true, alpha: true, powerPreference: 'default' }}
+        gl={{ antialias: true, alpha: false, powerPreference: 'default' }}
       >
         <Suspense fallback={null}>
           <PorchWorld
