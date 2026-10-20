@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next';
+import { getPlayableGames } from '@/lib/games';
 import { getAllPosts, getAllTags } from '@/lib/posts';
 import { englishUrl } from '@/lib/site';
 
@@ -13,8 +14,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: englishUrl('/posts'), lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
     { url: englishUrl('/tags'), lastModified: new Date(), changeFrequency: 'weekly', priority: 0.5 },
     { url: englishUrl('/about'), lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
-    { url: englishUrl('/games'), lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
+    { url: englishUrl('/games'), lastModified: new Date(), changeFrequency: 'weekly', priority: 0.4 },
     { url: englishUrl('/play'), lastModified: new Date(), changeFrequency: 'monthly', priority: 0.2 },
+    ...getPlayableGames().map((game) => ({
+      url: englishUrl(`/games/${game.slug}`),
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.3,
+    })),
   ];
 
   const postRoutes = posts.map((post) => ({
