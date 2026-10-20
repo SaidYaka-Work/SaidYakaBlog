@@ -60,7 +60,7 @@ export default function useDogDrive({
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const coarse = window.matchMedia('(pointer: coarse)');
-    const update = () => setTouch(coarse.matches || 'ontouchstart' in window);
+    const update = () => setTouch(coarse.matches || 'ontouchstart' in window || window.innerWidth < 720);
     update();
     coarse.addEventListener('change', update);
     return () => coarse.removeEventListener('change', update);
