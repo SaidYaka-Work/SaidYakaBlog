@@ -4,11 +4,17 @@ import { useEffect, useRef, useState } from 'react';
 
 const DROPS = 8;
 
-export default function FeedGame({ onDone }: { onDone: (score: number, durationMs: number) => void }) {
+export default function FeedGame({
+  onDone,
+  drops = DROPS,
+}: {
+  onDone: (score: number, durationMs: number) => void;
+  drops?: number;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const started = useRef(performance.now());
   const [caught, setCaught] = useState(0);
-  const [left, setLeft] = useState(DROPS);
+  const [left, setLeft] = useState(drops);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -23,7 +29,7 @@ export default function FeedGame({ onDone }: { onDone: (score: number, durationM
       kibbleY: -20,
       falling: false,
       caught: 0,
-      remaining: DROPS,
+      remaining: drops,
       done: false,
     };
 
@@ -34,7 +40,7 @@ export default function FeedGame({ onDone }: { onDone: (score: number, durationM
     const finish = () => {
       if (state.done) return;
       state.done = true;
-      onDone(Math.round((state.caught / DROPS) * 100), performance.now() - started.current);
+      onDone(Math.round((state.caught / drops) * 100), performance.now() - started.current);
     };
 
     const loop = (now: number) => {
@@ -111,7 +117,7 @@ export default function FeedGame({ onDone }: { onDone: (score: number, durationM
       canvas.removeEventListener('pointerdown', drop);
       window.removeEventListener('keydown', onKey);
     };
-  }, [onDone]);
+  }, [onDone, drops]);
 
   return (
     <div>

@@ -7,7 +7,17 @@ import {
   type LifeStage,
 } from './stages';
 
-export { CARE_BY_STAGE, careFor, stageFromAge, STAGE_AT_MS, STAGES, type LifeStage } from './stages';
+export {
+  CARE_BY_STAGE,
+  careFor,
+  dailyMeals,
+  dailyWalkGameMs,
+  stageFromAge,
+  STAGE_AT_MS,
+  STAGES,
+  type LifeStage,
+  type StageCare,
+} from './stages';
 
 export const ACTIONS = ['pet', 'feed', 'walk', 'catch'] as const;
 
@@ -96,8 +106,8 @@ export const MAX_HISTORY = 500;
 export const HISTORY_PAGE = 12;
 export const DECAY_ALARM_MS = 60_000;
 
-export const FEED_GAME = { minMs: 5_000, maxMs: 40_000 };
-export const WALK_GAME = { minMs: 8_000, maxMs: 50_000 };
+export const FEED_GAME = { minMs: 4_000, maxMs: 40_000 };
+export const WALK_GAME = { minMs: 4_000, maxMs: 60_000 };
 export const CATCH_GAME = { minMs: 6_000, maxMs: 45_000 };
 export const CATCH_MIN_SCORE = 35;
 
@@ -160,8 +170,13 @@ export type CareView = {
   warning: string | null;
   walkHint: string;
   mealHint: string;
+  ageNote: string;
+  walkCaption: string;
   walkGameMs: number;
   walkSpeed: number;
+  walkSpawnMs: number;
+  walkRockChance: number;
+  feedDrops: number;
 };
 
 export type PublicDog = {
@@ -297,8 +312,13 @@ export function careView(dog: LivingDog, now: number): CareView {
     warning,
     walkHint: care.walkHint,
     mealHint: care.mealHint,
+    ageNote: care.ageNote,
+    walkCaption: care.walkCaption,
     walkGameMs: care.walkGameMs,
     walkSpeed: care.walkSpeed,
+    walkSpawnMs: care.walkSpawnMs,
+    walkRockChance: care.walkRockChance,
+    feedDrops: care.feedDrops,
   };
 }
 
@@ -604,8 +624,7 @@ export function applyCare(
   }
 
   const miles = Math.round((0.08 + quality * 0.16) * 100) / 100;
-  const overdue = now >= dog.lastWalkedAt + care.walkEveryMs;
-  const overwalked = score > care.overwalkScore && !overdue;
+  const overwalked = score > care.overwalkScore;
   const happinessDelta = overwalked
     ? -care.overwalkHappiness
     : 10 + quality * 14;

@@ -8,7 +8,9 @@ import {
   PROFILES,
   RUNAWAY_AFTER_MS,
   STAGE_AT_MS,
+  STAGES,
   WALK_EVERY_MS,
+  WALK_GAME,
   applyCare,
   applyCatch,
   applyDecay,
@@ -19,6 +21,8 @@ import {
   careView,
   createDog,
   createRoom,
+  dailyMeals,
+  dailyWalkGameMs,
   dogStage,
   fanout,
   listHistory,
@@ -29,6 +33,7 @@ import {
   takeRate,
   toRecord,
   validateFinish,
+  walkNeedFrom,
 } from '../src/logic.ts';
 
 const T0 = Date.parse('2026-10-20T12:00:00Z');
@@ -41,7 +46,7 @@ test('createRoom starts with Biscuit at home and clocks at now', () => {
   assert.equal(room.memorial, null);
 });
 
-test('feed becomes overdue after an hour and walk after three', () => {
+test('a new puppy is overdue on the puppy meal and walk clocks', () => {
   const dog = createDog(PROFILES[0], T0);
   const hour = careView(dog, T0 + FEED_EVERY_MS);
   assert.equal(hour.feedOverdue, true);
@@ -154,6 +159,7 @@ test('petting is a simple cooldown-gated action', () => {
 test('care games reject instant or overlong finishes', () => {
   assert.equal(validateFinish('feed', T0, 80, T0 + 1_000), 'invalid');
   assert.equal(validateFinish('walk', T0, 80, T0 + 9_000), null);
+  assert.equal(validateFinish('walk', T0, 80, T0 + 5_000), null);
   assert.equal(validateFinish('catch', T0, 101, T0 + 10_000), 'invalid');
   assert.equal(validateFinish('feed', T0, 50, T0 + 8_000), null);
 });
@@ -265,32 +271,123 @@ test('good care grows a dog faster than neglect', () => {
   assert.ok(cared.dog.biologicalAgeMs > neglected.dog.biologicalAgeMs);
 });
 
-test('care cadence is shorter for puppies than seniors', () => {
+test('care cadence and walk feel come from one stage config', () => {
   const puppy = createDog(PROFILES[0], T0);
   const senior = { ...puppy, biologicalAgeMs: STAGE_AT_MS.senior, furthestStage: 'senior' as const };
   const puppyCare = careView(puppy, T0);
   const seniorCare = careView(senior, T0);
+
   assert.ok(careFor('puppy').walkEveryMs < careFor('adult').walkEveryMs);
   assert.ok(careFor('puppy').feedEveryMs < careFor('senior').feedEveryMs);
+  assert.ok(careFor('puppy').walkGameMs < careFor('young').walkGameMs);
+  assert.ok(careFor('senior').walkGameMs < careFor('adult').walkGameMs);
   assert.ok(careFor('young').walkSpeed > careFor('senior').walkSpeed);
+  assert.ok(careFor('young').walkRockChance > careFor('senior').walkRockChance);
+  assert.ok(careFor('young').walkSpawnMs < careFor('puppy').walkSpawnMs);
+  assert.ok(careFor('puppy').feedDrops < careFor('adult').feedDrops);
   assert.equal(puppyCare.walkHint.includes('Puppies'), true);
   assert.equal(seniorCare.walkHint.includes('Seniors'), true);
+  assert.match(puppyCare.ageNote, /Puppies need short walks often/);
+  assert.match(seniorCare.ageNote, /Seniors need fewer/);
+  assert.equal(puppyCare.walkGameMs, careFor('puppy').walkGameMs);
+  assert.equal(puppyCare.walkSpeed, careFor('puppy').walkSpeed);
+  assert.equal(puppyCare.walkSpawnMs, careFor('puppy').walkSpawnMs);
+  assert.equal(puppyCare.feedDrops, careFor('puppy').feedDrops);
   assert.equal(careView(puppy, T0 + careFor('puppy').walkEveryMs).walkOverdue, true);
   assert.equal(careView(senior, T0 + careFor('puppy').walkEveryMs).walkOverdue, false);
 });
 
-test('over-walking a senior costs energy and happiness', () => {
+test('young and adult dogs ask for the most total exercise', () => {
+  assert.ok(dailyWalkGameMs('young') > dailyWalkGameMs('adult'));
+  assert.ok(dailyWalkGameMs('adult') > dailyWalkGameMs('puppy'));
+  assert.ok(dailyWalkGameMs('puppy') > dailyWalkGameMs('senior'));
+  assert.ok(dailyMeals('puppy') > dailyMeals('adult'));
+  assert.ok(dailyMeals('adult') > dailyMeals('senior'));
+  assert.ok(careFor('young').walkEnergyDrainPerHour > careFor('adult').walkEnergyDrainPerHour);
+  assert.ok(careFor('adult').walkEnergyDrainPerHour > careFor('puppy').walkEnergyDrainPerHour);
+  assert.ok(careFor('puppy').walkEnergyDrainPerHour > careFor('senior').walkEnergyDrainPerHour);
+});
+
+test('puppy walk need rises faster than a senior on the same clock', () => {
+  const puppy = createDog(PROFILES[0], T0);
+  const senior = { ...puppy, biologicalAgeMs: STAGE_AT_MS.senior, furthestStage: 'senior' as const };
+  const later = T0 + careFor('puppy').walkEveryMs;
+  assert.ok(walkNeedFrom(puppy, later) > walkNeedFrom(senior, later));
+});
+
+test('young dogs lose waking energy faster than seniors', () => {
+  const room = createRoom(T0);
+  assert.ok(room.dog);
+  const later = T0 + 3 * 60 * 60 * 1000;
+  const young = applyDecay(
+    {
+      ...room,
+      dog: { ...room.dog, biologicalAgeMs: STAGE_AT_MS.young, furthestStage: 'young', energy: 80, asleep: false },
+    },
+    later,
+  );
+  const senior = applyDecay(
+    {
+      ...room,
+      dog: { ...room.dog, biologicalAgeMs: STAGE_AT_MS.senior, furthestStage: 'senior', energy: 80, asleep: false },
+    },
+    later,
+  );
+  assert.ok(young.dog && senior.dog);
+  assert.ok(young.dog.energy < senior.dog.energy);
+});
+
+test('over-walking a senior costs energy and happiness even when a walk is due', () => {
   const room = createRoom(T0);
   assert.ok(room.dog);
   room.dog.biologicalAgeMs = STAGE_AT_MS.senior;
   room.dog.furthestStage = 'senior';
-  room.dog.lastWalkedAt = T0 - 30 * 60 * 1000;
-  const before = room.dog.happiness;
-  const result = applyCare(room, 'walk', 95, T0 + careFor('senior').walkMinGapMs);
+  room.dog.lastWalkedAt = T0 - careFor('senior').walkEveryMs;
+  const before = { happiness: room.dog.happiness, energy: room.dog.energy };
+  const result = applyCare(room, 'walk', 95, T0);
   assert.equal(result.ok, true);
   if (!result.ok || !result.room.dog) throw new Error('expected walk');
-  assert.ok(result.room.dog.happiness < before);
+  assert.ok(result.room.dog.happiness < before.happiness);
+  assert.ok(result.room.dog.energy < before.energy);
   assert.match(result.event.text, /too much|tired/i);
+});
+
+test('a gentle senior walk still helps', () => {
+  const room = createRoom(T0);
+  assert.ok(room.dog);
+  room.dog.biologicalAgeMs = STAGE_AT_MS.senior;
+  room.dog.furthestStage = 'senior';
+  room.dog.lastWalkedAt = T0 - careFor('senior').walkEveryMs;
+  const before = room.dog.happiness;
+  const result = applyCare(room, 'walk', 40, T0);
+  assert.equal(result.ok, true);
+  if (!result.ok || !result.room.dog) throw new Error('expected walk');
+  assert.ok(result.room.dog.happiness > before);
+});
+
+test('a hard young walk does not count as over-walking', () => {
+  const room = createRoom(T0);
+  assert.ok(room.dog);
+  room.dog.biologicalAgeMs = STAGE_AT_MS.young;
+  room.dog.furthestStage = 'young';
+  room.dog.lastWalkedAt = T0 - careFor('young').walkEveryMs;
+  const before = room.dog.happiness;
+  const result = applyCare(room, 'walk', 100, T0);
+  assert.equal(result.ok, true);
+  if (!result.ok || !result.room.dog) throw new Error('expected walk');
+  assert.ok(result.room.dog.happiness > before);
+});
+
+test('every stage walk fits the finish window and exposes UI copy', () => {
+  for (const stage of STAGES) {
+    const care = careFor(stage);
+    assert.ok(care.walkGameMs >= WALK_GAME.minMs);
+    assert.ok(care.walkGameMs <= WALK_GAME.maxMs);
+    assert.ok(care.walkHint.length > 0);
+    assert.ok(care.mealHint.length > 0);
+    assert.ok(care.ageNote.length > 0);
+    assert.ok(care.walkCaption.length > 0);
+  }
 });
 
 test('history records persist stage, peaks, and how they left', () => {

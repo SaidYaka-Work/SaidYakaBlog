@@ -55,8 +55,13 @@ export type CareView = {
   warning: string | null;
   walkHint: string;
   mealHint: string;
+  ageNote: string;
+  walkCaption: string;
   walkGameMs: number;
   walkSpeed: number;
+  walkSpawnMs: number;
+  walkRockChance: number;
+  feedDrops: number;
 };
 
 export type PublicDog = {

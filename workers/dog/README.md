@@ -37,9 +37,9 @@ npx wrangler dev
 
 ## Rules (all server-side)
 
-- Every dog starts as a puppy and grows through young → adult → senior. Good care speeds growth; neglect stunts it. Tune ages and care in `src/stages.ts`.
-- Care cadence follows the stage: puppies eat and walk often (short walks); young/adult dogs need the most exercise; seniors want fewer, gentler walks. Over-walking a senior can cost energy and happiness.
-- Feed and walk are mini-games. The Worker issues a `playId` on start and only accepts a finish after a plausible duration. Walk length and pace come from the stage config.
+- Every dog starts as a puppy and grows through young → adult → senior. Good care speeds growth; neglect stunts it. Tune ages and care in `src/stages.ts` only.
+- Care cadence and intensity follow the stage: puppies eat and walk often (short, easy loops and small meals); young/adult dogs need the most total exercise (longer, faster walks, energy that drains faster); seniors want fewer, gentler, shorter walks and tire quickly. A vigorous senior walk can cost energy and happiness.
+- Feed and walk are mini-games. The Worker issues a `playId` on start and only accepts a finish after a plausible duration. Walk length, pace, spawn density, and meal size come from the stage config.
 - Pet is a simple cooldown action.
 - Happiness below 25 for ~3 continuous days → the dog runs away. The porch keeps a memorial and a paginated history (`GET /history`).
 - While gone, visitors play a catch mini-game. A good enough score brings a new randomized dog.

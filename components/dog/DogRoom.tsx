@@ -123,7 +123,7 @@ export default function DogRoom() {
       </h1>
       <p className="hero-copy mt-4 max-w-xl text-[var(--muted)] leading-relaxed">
         One dog for the whole internet. Anyone can pet him, feed him, or take him around the block.
-        Care changes as he grows.
+        What he needs changes with his age.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-[var(--muted)]">
@@ -144,7 +144,7 @@ export default function DogRoom() {
           </div>
         ) : play === 'feed' ? (
           <div className="p-4">
-            <FeedGame onDone={(score) => finish(score)} />
+            <FeedGame onDone={(score) => finish(score)} drops={dog?.care.feedDrops} />
           </div>
         ) : play === 'walk' ? (
           <div className="p-4">
@@ -152,6 +152,9 @@ export default function DogRoom() {
               onDone={(score) => finish(score)}
               durationMs={dog?.care.walkGameMs}
               speed={dog?.care.walkSpeed}
+              spawnMs={dog?.care.walkSpawnMs}
+              rockChance={dog?.care.walkRockChance}
+              caption={dog?.care.walkCaption}
             />
           </div>
         ) : play === 'catch' ? (
@@ -182,7 +185,8 @@ export default function DogRoom() {
             </Pill>
             <Pill>{dog.mood}</Pill>
           </div>
-          <p className="mt-3 text-sm text-[var(--muted)]">{dog.profile.personality}</p>
+          <p className="mt-3 text-sm text-[var(--ink)]">{dog.care.ageNote}</p>
+          <p className="mt-2 text-sm text-[var(--muted)]">{dog.profile.personality}</p>
           {dog.care.warning && (
             <p className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--accent-soft)] px-4 py-3 text-sm">
               {dog.care.warning}

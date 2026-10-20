@@ -10,10 +10,16 @@ export default function WalkGame({
   onDone,
   durationMs = DURATION,
   speed = 180,
+  spawnMs = 550,
+  rockChance = 0.4,
+  caption = 'Tap or Space to hop. Sniff the sparks, skip the rocks.',
 }: {
   onDone: (score: number, durationMs: number) => void;
   durationMs?: number;
   speed?: number;
+  spawnMs?: number;
+  rockChance?: number;
+  caption?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const started = useRef(performance.now());
@@ -30,7 +36,7 @@ export default function WalkGame({
       v: 0,
       grounded: true,
       things: [] as Thing[],
-      spawn: 0.4,
+      spawn: Math.max(0.2, spawnMs / 1000),
       nextId: 1,
       sniffs: 0,
       hits: 0,
@@ -83,9 +89,10 @@ export default function WalkGame({
             id: state.nextId++,
             x: w + 20,
             y: Math.random() > 0.45 ? 148 : 88,
-            kind: Math.random() > 0.4 ? 'sniff' : 'rock',
+            kind: Math.random() < rockChance ? 'rock' : 'sniff',
           });
-          state.spawn = 0.55 + Math.random() * 0.4;
+          const base = Math.max(0.22, spawnMs / 1000);
+          state.spawn = base * (0.75 + Math.random() * 0.5);
         }
         state.things.forEach((thing) => {
           thing.x -= speed * dt;
@@ -141,11 +148,13 @@ export default function WalkGame({
       canvas.removeEventListener('pointerdown', hop);
       window.removeEventListener('keydown', onKey);
     };
-  }, [onDone, durationMs, speed]);
+  }, [onDone, durationMs, speed, spawnMs, rockChance]);
 
   return (
     <div>
-      <p className="mb-2 text-sm text-[var(--muted)]">{sniffs} sniffs collected</p>
+      <p className="mb-2 text-sm text-[var(--muted)]">
+        {caption} · {sniffs} sniffs collected
+      </p>
       <canvas ref={canvasRef} className="biscuit-game h-[240px] w-full rounded-2xl" />
     </div>
   );
