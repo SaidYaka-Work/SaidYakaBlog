@@ -126,12 +126,19 @@ const DogRig = forwardRef<Group, {
 
   useFrame((_, dt) => {
     const mixer = mixerRef.current;
-    if (mixer && !reduced && !asleep) mixer.update(dt);
+    const eating = reaction === 'feed';
+    const walking = reaction === 'walk';
+    const eatAction = actions.current.eat;
+    if (eating && eatAction) {
+      const duration = eatAction.getClip().duration;
+      eatAction.time = duration * 0.48;
+      eatAction.paused = true;
+    } else if (mixer && !reduced && !asleep) {
+      mixer.update(dt);
+    }
     const node = group.current;
     if (!node) return;
     const idle = reaction === 'idle' && !asleep && !sad && !reduced;
-    const walking = reaction === 'walk';
-    const eating = reaction === 'feed';
     const w = wander.current;
     const homeYaw = asleep ? SLEEP_YAW : eating ? EAT_YAW : THREE_QUARTER_YAW;
 

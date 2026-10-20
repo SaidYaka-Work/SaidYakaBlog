@@ -2,65 +2,46 @@
 
 import { useFrame, useThree } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei';
-import { useEffect, useMemo, useRef } from 'react';
-import { Color, ShaderMaterial } from 'three';
+import { useEffect, useRef } from 'react';
+import { CanvasTexture, SRGBColorSpace } from 'three';
 import type { Group } from 'three';
 import type { SkyMood } from './look';
 import { BOWL } from './frame';
 
-const SKY: Record<SkyMood, { top: string; bot: string }> = {
-  dawn: { top: '#f6e6d6', bot: '#f0c8a8' },
-  day: { top: '#f7f1e6', bot: '#f3d2b0' },
-  dusk: { top: '#e8c4b0', bot: '#d89878' },
-  night: { top: '#0b1220', bot: '#1a2438' },
+const SKY: Record<SkyMood, { top: string; bot: string; line: string }> = {
+  dawn: { top: '#f6e6d6', bot: '#f0c8a8', line: '#c9a888' },
+  day: { top: '#f7f1e6', bot: '#f3d2b0', line: '#c9a888' },
+  dusk: { top: '#e8c4b0', bot: '#d89878', line: '#b88870' },
+  night: { top: '#0b1220', bot: '#1a2438', line: '#243044' },
 };
 
-function SkyBackdrop({ mood }: { mood: SkyMood }) {
-  const material = useMemo(() => {
-    const colors = SKY[mood];
-    return new ShaderMaterial({
-      uniforms: {
-        uTop: { value: new Color(colors.top) },
-        uBot: { value: new Color(colors.bot) },
-        uLine: { value: new Color(mood === 'night' ? '#243044' : '#c9a888') },
-      },
-      vertexShader: `
-        varying vec2 vUv;
-        void main() {
-          vUv = uv;
-          gl_Position = vec4(position.xy, 0.999, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform vec3 uTop;
-        uniform vec3 uBot;
-        uniform vec3 uLine;
-        varying vec2 vUv;
-        void main() {
-          float h = smoothstep(0.0, 0.74, vUv.y);
-          vec3 col = mix(uBot, uTop, h);
-          float horizon = smoothstep(0.26, 0.3, vUv.y) * (1.0 - smoothstep(0.3, 0.34, vUv.y));
-          col = mix(col, uLine, horizon * 0.4);
-          float star = 0.0;
-          if (uTop.b > 0.12 && uTop.r < 0.2) {
-            vec2 g = floor(vUv * vec2(42.0, 24.0));
-            float n = fract(sin(dot(g, vec2(12.9898, 78.233))) * 43758.5453);
-            star = step(0.93, n) * step(0.52, vUv.y);
-          }
-          col = mix(col, vec3(0.91, 0.93, 0.97), star);
-          gl_FragColor = vec4(col, 1.0);
-        }
-      `,
-      depthWrite: false,
-      depthTest: false,
-    });
-  }, [mood]);
-
-  return (
-    <mesh material={material} frustumCulled={false} renderOrder={-10}>
-      <planeGeometry args={[2, 2]} />
-    </mesh>
-  );
+function skyTexture(mood: SkyMood) {
+  const { top, bot, line } = SKY[mood];
+  const canvas = document.createElement('canvas');
+  canvas.width = 8;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+  gradient.addColorStop(0, top);
+  gradient.addColorStop(0.62, top);
+  gradient.addColorStop(0.7, line);
+  gradient.addColorStop(0.74, bot);
+  gradient.addColorStop(1, bot);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 8, 256);
+  if (mood === 'night') {
+    ctx.fillStyle = '#e8eef8';
+    for (let i = 0; i < 40; i += 1) {
+      const x = (i * 17) % 8;
+      const y = 8 + ((i * 13) % 150);
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
 }
 
 function HorizonFence({ night }: { night: boolean }) {
@@ -103,9 +84,13 @@ export default function PorchWorld({
   const sky = SKY[mood];
 
   useEffect(() => {
-    scene.background = new Color(sky.top);
+    const texture = skyTexture(mood);
+    scene.background = texture;
     gl.setClearColor(sky.top, 1);
-  }, [gl, scene, sky.top]);
+    return () => {
+      texture?.dispose();
+    };
+  }, [gl, mood, scene, sky.top]);
 
   useFrame((_, dt) => {
     if (!hills.current) return;
@@ -119,7 +104,6 @@ export default function PorchWorld({
 
   return (
     <group>
-      <SkyBackdrop mood={mood} />
       <hemisphereLight args={[night ? '#6a7a98' : '#fff6ea', night ? '#1a1814' : '#d4b496', night ? 0.7 : 1.05]} />
       <directionalLight
         position={[5, 7, 3.5]}
