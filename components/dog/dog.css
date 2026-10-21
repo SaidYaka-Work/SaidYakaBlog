@@ -214,7 +214,86 @@
   top: calc(12px + env(safe-area-inset-top));
   right: 14px;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 0.4rem;
+  max-width: min(26rem, 68vw);
+}
+
+.dog-place {
+  position: absolute;
+  top: calc(52px + env(safe-area-inset-top));
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: min(16rem, 52vw);
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-elevated) 86%, transparent);
+  font-size: 0.78rem;
+}
+
+.dog-place span {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.dog-travel {
+  position: absolute;
+  top: calc(92px + env(safe-area-inset-top));
+  right: 14px;
+  width: min(18rem, 72vw);
+  max-height: min(52vh, 22rem);
+  overflow: auto;
+  padding: 0.35rem;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.dog-travel button {
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  background: transparent;
+  border-radius: 10px;
+  color: var(--ink);
+}
+
+.dog-travel button:hover,
+.dog-travel button:focus-visible {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.dog-travel strong {
+  display: block;
+  font-size: 0.88rem;
+}
+
+.dog-travel em {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.dog-attrib {
+  position: absolute;
+  left: 12px;
+  bottom: calc(78px + env(safe-area-inset-bottom));
+  max-width: min(22rem, 70vw);
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--ink) 62%, transparent);
+  pointer-events: none;
 }
 
 .dog-chip {
@@ -627,6 +706,22 @@
 
   .dog-hint {
     bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .dog-place {
+    top: calc(88px + env(safe-area-inset-top));
+    max-width: min(14rem, 58vw);
+    font-size: 0.7rem;
+  }
+
+  .dog-travel {
+    top: calc(128px + env(safe-area-inset-top));
+    width: min(17rem, 86vw);
+  }
+
+  .dog-attrib {
+    max-width: min(18rem, 78vw);
+    font-size: 0.58rem;
   }
 }
 

@@ -1,13 +1,24 @@
 'use client';
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Suspense, useEffect, useRef, useState, type RefObject } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState, type RefObject } from 'react';
 import { PerspectiveCamera, Vector3, type Group, type Mesh } from 'three';
 import type { DogGenome, LifeStage } from '@/lib/dog';
 import type { PortraitReaction } from './look';
 import { CAMERA_YAW, frameCamera, followYardCamera, projectMeshBounds } from './frame';
 import DogRig, { type DriveControl } from './DogRig';
 import PorchWorld from './PorchWorld';
+import type { WorldColliders } from './world/useWorldTiles';
+
+const WorldLayer = lazy(() => import('./world/WorldLayer'));
+
+export type WorldView = {
+  originLat: number;
+  originLng: number;
+  lat: number;
+  lng: number;
+  flight: number;
+};
 
 function FootShadow({ target }: { target: RefObject<Group | null> }) {
   const ref = useRef<Mesh>(null);
@@ -42,6 +53,7 @@ function FramedCamera({
   fill,
   asleep,
   stage,
+  world,
   onReady,
 }: {
   target: RefObject<Group | null>;
@@ -50,6 +62,7 @@ function FramedCamera({
   fill?: boolean;
   asleep?: boolean;
   stage?: LifeStage;
+  world?: WorldView | null;
   onReady?: () => void;
 }) {
   const camera = useThree((state) => state.camera) as PerspectiveCamera;
@@ -58,12 +71,37 @@ function FramedCamera({
   const look = useRef(new Vector3());
   const ready = useRef(false);
 
+  const street = useRef(new Vector3());
+
   useFrame((_, dt) => {
     const object = target.current;
     if (!object) return;
     camera.aspect = size.width / Math.max(1, size.height);
     from.current.copy(camera.position);
-    if (fill) {
+    if (world) {
+      const flight = Math.max(0, Math.min(1, world.flight));
+      const yaw = object.rotation.y;
+      const dist = 10 + flight * 170;
+      const pitch = 0.34 + flight * 0.86;
+      const height = 3.2 + flight * 210;
+      street.current.set(
+        object.position.x - Math.sin(yaw) * dist * Math.cos(pitch),
+        height,
+        object.position.z - Math.cos(yaw) * dist * Math.cos(pitch),
+      );
+      look.current.set(object.position.x, 0.7 + flight * 8, object.position.z);
+      if (ready.current) {
+        camera.position.lerpVectors(from.current, street.current, 1 - Math.exp(-dt * (flight > 0.08 ? 1.2 : 2)));
+        camera.up.set(0, 1, 0);
+        camera.lookAt(look.current);
+        camera.near = flight > 0.5 ? 2 : 0.2;
+        camera.far = 520;
+        camera.updateProjectionMatrix();
+      } else {
+        ready.current = true;
+        onReady?.();
+      }
+    } else if (fill) {
       const info = followYardCamera(camera, object, {
         stage,
         asleep,
@@ -128,6 +166,8 @@ export default function DogCanvas({
   drive = null,
   food = false,
   near = false,
+  world = null,
+  onWorldColliders,
   onReady,
 }: {
   genome?: DogGenome | null;
@@ -145,6 +185,8 @@ export default function DogCanvas({
   drive?: DriveControl | null;
   food?: boolean;
   near?: boolean;
+  world?: WorldView | null;
+  onWorldColliders?: (colliders: WorldColliders) => void;
   onReady?: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
@@ -207,20 +249,31 @@ export default function DogCanvas({
     >
       <Canvas
         dpr={[1, 1.6]}
-        camera={{ position: [3.4, 3.2, 6.4], fov: fill ? 36 : compact ? 36 : 32, near: 0.1, far: 80 }}
+        camera={{ position: [3.4, 3.2, 6.4], fov: world ? 42 : fill ? 36 : compact ? 36 : 32, near: 0.1, far: world ? 520 : 80 }}
         shadows
         frameloop={frameloop}
         gl={{ antialias: true, alpha: false, powerPreference: 'default' }}
       >
         <Suspense fallback={null}>
-          <PorchWorld
-            night={night}
-            showBowl={hungry || food || reaction === 'feed'}
-            compact={compact}
-            walking={reaction === 'walk'}
-            food={food || reaction === 'feed'}
-            near={near || reaction === 'feed'}
-          />
+          {world ? (
+            <WorldLayer
+              originLat={world.originLat}
+              originLng={world.originLng}
+              lat={world.lat}
+              lng={world.lng}
+              onColliders={onWorldColliders}
+            />
+          ) : (
+            <PorchWorld
+              night={night}
+              showBowl={hungry || food || reaction === 'feed'}
+              compact={compact}
+              walking={reaction === 'walk'}
+              food={food || reaction === 'feed'}
+              near={near || reaction === 'feed'}
+              gate
+            />
+          )}
           {!empty && (
             <DogRig
               ref={dogRef}
@@ -246,6 +299,7 @@ export default function DogCanvas({
               fill={fill}
               asleep={asleep || reaction === 'sleep'}
               stage={stage}
+              world={world}
               onReady={onReady}
             />
           )}

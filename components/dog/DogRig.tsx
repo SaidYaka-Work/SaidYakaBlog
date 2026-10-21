@@ -10,6 +10,7 @@ import { generateGenome, type DogGenome, type LifeStage } from '@/lib/dog';
 import { wagMs, type PortraitReaction } from './look';
 import type { DogGait, DogPose } from '@/lib/dog';
 import { applyDrive as stepDrive, createYard, tickYardAi } from '../../workers/dog/src/room';
+import { applyWorldDrive, tickWorldAi, type Ring } from '../../workers/dog/src/world';
 import { EAT_STAND, EAT_YAW, SLEEP_YAW, THREE_QUARTER_YAW, YARD_BODY } from './frame';
 import {
   CLIP_BLEND,
@@ -46,6 +47,11 @@ export type DriveControl = {
   youHold: boolean;
   localOnly: boolean;
   onPose?: (pose: DogPose) => void;
+  realm?: 'home' | 'world';
+  originKey?: string;
+  buildings?: Ring[];
+  roads?: Ring[];
+  parks?: Ring[];
 };
 
 function clipForGait(gait: DogGait, sad: boolean, asleep: boolean) {
@@ -106,6 +112,7 @@ const DogRig = forwardRef<Group, {
   const remoteBuf = useRef<PoseSample[]>([]);
   const hopAt = useRef(0);
   const lastStick = useRef(0);
+  const originKey = useRef(drive?.originKey || '');
   useImperativeHandle(ref, () => group.current as Group);
 
   useEffect(() => {
@@ -180,12 +187,42 @@ const DogRig = forwardRef<Group, {
     if (driving && control) {
       const now = Date.now();
       if (control.youHold || control.localOnly) {
+        if (control.originKey && control.originKey !== originKey.current) {
+          originKey.current = control.originKey;
+          if (control.server) {
+            localYard.current.pose.x = control.server.x;
+            localYard.current.pose.z = control.server.z;
+            localYard.current.pose.yaw = control.server.yaw;
+          } else {
+            localYard.current.pose.x = 0;
+            localYard.current.pose.z = 0;
+          }
+        }
         const stick = Math.hypot(control.input.ax, control.input.az);
         if (stick >= 0.12) lastStick.current = now;
         const wanderAlone = control.localOnly && stick < 0.12 && now - lastStick.current > 700;
-        localYard.current = wanderAlone
-          ? tickYardAi(localYard.current, now, dt)
-          : stepDrive(localYard.current, control.input.ax, control.input.az, control.input.run, dt, now);
+        if (control.realm === 'world') {
+          localYard.current = wanderAlone
+            ? tickWorldAi(localYard.current, now, dt, {
+                buildings: control.buildings,
+                roads: control.roads,
+                parks: control.parks,
+              })
+            : applyWorldDrive(
+                localYard.current,
+                control.input.ax,
+                control.input.az,
+                control.input.run,
+                dt,
+                now,
+                null,
+                control.buildings ?? [],
+              );
+        } else {
+          localYard.current = wanderAlone
+            ? tickYardAi(localYard.current, now, dt)
+            : stepDrive(localYard.current, control.input.ax, control.input.az, control.input.run, dt, now);
+        }
         const mixed = reconcileDriver(localYard.current.pose, control.server);
         localYard.current.pose.x = mixed.x;
         localYard.current.pose.z = mixed.z;

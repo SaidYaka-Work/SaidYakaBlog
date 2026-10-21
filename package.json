@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --experimental-strip-types scripts/dog-frame-check.ts && node --experimental-strip-types scripts/dog-motion-check.ts"
+    "test": "node --experimental-strip-types scripts/dog-frame-check.ts && node --experimental-strip-types scripts/dog-motion-check.ts && node --import ./workers/dog/node_modules/tsx/dist/loader.mjs scripts/dog-world-check.ts"
   },
   "dependencies": {
+    "@mapbox/vector-tile": "^3.0.0",
     "@mdx-js/loader": "^3.1.0",
     "@next/mdx": "^15.1.5",
     "@react-three/drei": "^10.7.9",
@@ -18,6 +19,7 @@
     "@vercel/analytics": "^1.4.1",
     "gray-matter": "^4.0.3",
     "next": "15.1.5",
+    "pbf": "^5.1.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "remark": "^15.0.1",
@@ -28,7 +30,9 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/typography": "^0.5.16",
+    "@types/mapbox__vector-tile": "^1.3.4",
     "@types/node": "^20",
+    "@types/pbf": "^3.0.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.186.0",

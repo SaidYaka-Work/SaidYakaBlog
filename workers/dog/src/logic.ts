@@ -15,7 +15,6 @@ import {
   type LifeStage,
 } from './stages';
 import {
-  applyDrive,
   createYard,
   fillFeeder,
   markWalkCredited,
@@ -31,6 +30,16 @@ import {
   WALK_CREDIT_M,
   type YardState,
 } from './room';
+import {
+  applyGoHome,
+  applyHomeOrWorldDrive,
+  applyLeaveWorld,
+  applyTravel,
+  migrateLocation,
+  publicLocation,
+  tickWorldAi,
+  type PublicLocation,
+} from './world';
 
 export {
   CARE_BY_STAGE,
@@ -162,6 +171,7 @@ export type DogRecord = {
   namedByCatcher: boolean;
 };
 
+/** Hall of Dogs row. Phase 4 can add stamps/collectibles/tricks here per past dog. */
 export type Memorial = DogRecord;
 
 export type PendingName = {
@@ -251,6 +261,8 @@ export type PublicSnapshot = {
   pose?: PublicPose;
   leash?: PublicLeash;
   feeder?: PublicFeeder;
+  /** Absent on older Workers. Later phases add optional companions, weather, stamps — never required fields. */
+  location?: PublicLocation;
 };
 
 export function clamp(value: number, min = 0, max = 100) {
@@ -346,8 +358,12 @@ export function migrateRoom(room: RoomState, now = Date.now()): RoomState {
     dog: room.dog ? withGenome(room.dog) : null,
     memorial: room.memorial ? withGenome(room.memorial) : null,
     history: room.history.map((record) => withGenome(record)),
-    yard: migrateYard(room.yard, now),
+    yard: withLocation(migrateYard(room.yard, now), now),
   };
+}
+
+function withLocation(yard: YardState, now: number): YardState {
+  return { ...yard, location: migrateLocation(yard.location, now) };
 }
 
 export function usedNameIds(room: RoomState) {
@@ -687,6 +703,7 @@ export function snapshot(room: RoomState, now: number, presence: number): Public
     pose: publicPose(yard.pose),
     leash: publicLeash(yard.leash, now),
     feeder: publicFeeder(yard.feeder, yard.pose, now),
+    location: publicLocation(migrateLocation(yard.location, now)),
   };
 }
 
@@ -853,6 +870,7 @@ export function applyVisitorMove(
   run: boolean,
   dt: number,
   now: number,
+  proposed?: { x: number; z: number } | null,
 ): { room: RoomState; acquired: boolean; code?: ErrorCode; retryAfterMs?: number; walk?: ActionResult } {
   const current = applyDecay(room, now);
   const yard = migrateYard(current.yard, now);
@@ -860,10 +878,36 @@ export function applyVisitorMove(
   if (!acquired.ok) {
     return { room: { ...current, yard: acquired.yard }, acquired: false, code: acquired.code, retryAfterMs: acquired.retryAfterMs };
   }
-  const driven = applyDrive(acquired.yard, ax, az, run, dt, now);
+  const driven = applyHomeOrWorldDrive(acquired.yard, ax, az, run, dt, now, proposed);
   const next = { ...current, yard: driven };
   const walk = creditLeashWalk(next, now);
   return { room: walk && walk.ok ? walk.room : next, acquired: true, walk: walk ?? undefined };
+}
+
+export function applyWorldAction(
+  room: RoomState,
+  clientId: string,
+  ip: string,
+  now: number,
+  kind: 'leave' | 'home' | 'travel',
+  placeId?: string,
+): { room: RoomState; acquired: boolean; code?: ErrorCode; retryAfterMs?: number } {
+  const current = applyDecay(room, now);
+  const yard = withLocation(migrateYard(current.yard, now), now);
+  const acquired = tryAcquireLeash(yard, clientId, ip, now);
+  if (!acquired.ok) {
+    return { room: { ...current, yard: acquired.yard }, acquired: false, code: acquired.code, retryAfterMs: acquired.retryAfterMs };
+  }
+  if (kind === 'leave') {
+    if (acquired.yard.location?.mode === 'world') return { room: { ...current, yard: acquired.yard }, acquired: true };
+    return { room: { ...current, yard: applyLeaveWorld(acquired.yard, now) }, acquired: true };
+  }
+  if (kind === 'home') {
+    return { room: { ...current, yard: applyGoHome(acquired.yard, now) }, acquired: true };
+  }
+  const traveled = applyTravel(acquired.yard, placeId ?? '', now);
+  if (!traveled.ok) return { room: { ...current, yard: acquired.yard }, acquired: true, code: traveled.code };
+  return { room: { ...current, yard: traveled.yard }, acquired: true };
 }
 
 export function applyBowlAction(
@@ -871,7 +915,10 @@ export function applyBowlAction(
   now: number,
 ): { room: RoomState; fed?: ActionResult; code?: ErrorCode } {
   const current = applyDecay(room, now);
-  const yard = migrateYard(current.yard, now);
+  const yard = withLocation(migrateYard(current.yard, now), now);
+  if (yard.location?.mode === 'world') {
+    return { room: { ...current, yard }, code: 'too_far' };
+  }
   const filled = fillFeeder(yard, now);
   if (!nearFeeder(filled.pose.x, filled.pose.z)) {
     return { room: { ...current, yard: filled }, code: 'too_far' };
@@ -889,14 +936,18 @@ export function applyBowlAction(
 
 export function tickSharedYard(room: RoomState, now: number, dt: number): { room: RoomState; fed?: ActionResult } {
   const current = applyDecay(room, now);
-  const yard = migrateYard(current.yard, now);
+  const yard = withLocation(migrateYard(current.yard, now), now);
   const dog = current.dog;
   const care = dog ? careView(dog, now) : null;
-  const nextYard = tickYardAi(yard, now, dt, {
-    hungry: Boolean(care && (care.feedOverdue || care.hunger > 58)),
-    tired: Boolean(dog && dog.energy < 28),
-    asleep: Boolean(dog?.asleep),
-  });
+  const hungry = Boolean(care && (care.feedOverdue || care.hunger > 58));
+  const nextYard =
+    yard.location?.mode === 'world'
+      ? tickWorldAi(yard, now, dt, { hungry })
+      : tickYardAi(yard, now, dt, {
+          hungry,
+          tired: Boolean(dog && dog.energy < 28),
+          asleep: Boolean(dog?.asleep),
+        });
   let next = { ...current, yard: nextYard };
   if (
     yard.feeder.hasFood &&
@@ -992,8 +1043,11 @@ export type ClientMessage =
   | { ok: true; kind: 'start'; game: CareGame }
   | { ok: true; kind: 'finish'; playId: string; score: number }
   | { ok: true; kind: 'name'; nameId: string }
-  | { ok: true; kind: 'move'; ax: number; az: number; run: boolean }
+  | { ok: true; kind: 'move'; ax: number; az: number; run: boolean; wx?: number; wz?: number }
   | { ok: true; kind: 'bowl' }
+  | { ok: true; kind: 'leave' }
+  | { ok: true; kind: 'home' }
+  | { ok: true; kind: 'travel'; placeId: string }
   | { ok: false; code: ErrorCode };
 
 const CLIENT_KEYS = [
@@ -1007,6 +1061,9 @@ const CLIENT_KEYS = [
   'ax',
   'az',
   'run',
+  'wx',
+  'wz',
+  'placeId',
 ];
 
 export function parseClientMessage(raw: string): ClientMessage {
@@ -1037,9 +1094,17 @@ export function parseClientMessage(raw: string): ClientMessage {
   }
   if (message.type === 'move' && typeof message.ax === 'number' && typeof message.az === 'number') {
     if (!Number.isFinite(message.ax) || !Number.isFinite(message.az)) return { ok: false, code: 'invalid' };
-    return { ok: true, kind: 'move', ax: message.ax, az: message.az, run: message.run === true };
+    const wx = typeof message.wx === 'number' && Number.isFinite(message.wx) ? message.wx : undefined;
+    const wz = typeof message.wz === 'number' && Number.isFinite(message.wz) ? message.wz : undefined;
+    return { ok: true, kind: 'move', ax: message.ax, az: message.az, run: message.run === true, wx, wz };
   }
   if (message.type === 'bowl') return { ok: true, kind: 'bowl' };
+  if (message.type === 'leave') return { ok: true, kind: 'leave' };
+  if (message.type === 'home') return { ok: true, kind: 'home' };
+  if (message.type === 'travel' && typeof message.placeId === 'string') {
+    if (!/^[a-z0-9-]{2,40}$/.test(message.placeId)) return { ok: false, code: 'invalid' };
+    return { ok: true, kind: 'travel', placeId: message.placeId };
+  }
   return { ok: false, code: 'invalid' };
 }
 

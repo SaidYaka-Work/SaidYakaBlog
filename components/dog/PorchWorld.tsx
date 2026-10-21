@@ -27,20 +27,54 @@ function makeRugTexture(fill: string, ring: string) {
   return texture;
 }
 
-function FenceRing({ night }: { night: boolean }) {
-  const wood = night ? '#3a2a20' : '#8a6a48';
-  const span = ROOM_HALF * 2 + 0.16;
-  const posts = [-3, -1.8, -0.6, 0.6, 1.8, 3];
-  const sides = [
-    { pos: [0, 0, -ROOM_HALF] as const, rot: 0 },
-    { pos: [0, 0, ROOM_HALF] as const, rot: 0 },
-    { pos: [-ROOM_HALF, 0, 0] as const, rot: Math.PI / 2 },
-    { pos: [ROOM_HALF, 0, 0] as const, rot: Math.PI / 2 },
-  ];
+function FenceSide({
+  wood,
+  span,
+  posts,
+  gap = 0,
+}: {
+  wood: string;
+  span: number;
+  posts: number[];
+  gap?: number;
+}) {
+  const rail = gap > 0 ? (span - gap * 2) / 2 : span;
+  const offset = gap > 0 ? (rail + gap * 2) / 2 : 0;
   return (
-    <group>
-      {sides.map((side) => (
-        <group key={`${side.pos[0]}-${side.pos[2]}`} position={[...side.pos]} rotation={[0, side.rot, 0]}>
+    <>
+      {gap > 0 ? (
+        <>
+          <mesh position={[-offset, 0.46, 0]}>
+            <boxGeometry args={[rail, 0.05, 0.06]} />
+            <meshStandardMaterial color={wood} />
+          </mesh>
+          <mesh position={[offset, 0.46, 0]}>
+            <boxGeometry args={[rail, 0.05, 0.06]} />
+            <meshStandardMaterial color={wood} />
+          </mesh>
+          <mesh position={[-offset, 0.24, 0]}>
+            <boxGeometry args={[rail, 0.05, 0.06]} />
+            <meshStandardMaterial color={wood} />
+          </mesh>
+          <mesh position={[offset, 0.24, 0]}>
+            <boxGeometry args={[rail, 0.05, 0.06]} />
+            <meshStandardMaterial color={wood} />
+          </mesh>
+          <mesh position={[-gap, 0.42, 0]}>
+            <boxGeometry args={[0.08, 0.84, 0.08]} />
+            <meshStandardMaterial color={wood} />
+          </mesh>
+          <mesh position={[gap, 0.42, 0]}>
+            <boxGeometry args={[0.08, 0.84, 0.08]} />
+            <meshStandardMaterial color={wood} />
+          </mesh>
+          <mesh position={[0, 0.86, 0]}>
+            <boxGeometry args={[gap * 2 + 0.16, 0.07, 0.07]} />
+            <meshStandardMaterial color={wood} />
+          </mesh>
+        </>
+      ) : (
+        <>
           <mesh position={[0, 0.46, 0]}>
             <boxGeometry args={[span, 0.05, 0.06]} />
             <meshStandardMaterial color={wood} />
@@ -49,12 +83,33 @@ function FenceRing({ night }: { night: boolean }) {
             <boxGeometry args={[span, 0.05, 0.06]} />
             <meshStandardMaterial color={wood} />
           </mesh>
-          {posts.map((x) => (
-            <mesh key={x} position={[x, 0.36, 0]}>
-              <boxGeometry args={[0.07, 0.72, 0.07]} />
-              <meshStandardMaterial color={wood} />
-            </mesh>
-          ))}
+        </>
+      )}
+      {posts.filter((x) => Math.abs(x) >= gap + 0.15).map((x) => (
+        <mesh key={x} position={[x, 0.36, 0]}>
+          <boxGeometry args={[0.07, 0.72, 0.07]} />
+          <meshStandardMaterial color={wood} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+function FenceRing({ night, gate = false }: { night: boolean; gate?: boolean }) {
+  const wood = night ? '#3a2a20' : '#8a6a48';
+  const span = ROOM_HALF * 2 + 0.16;
+  const posts = [-3, -1.8, -0.6, 0.6, 1.8, 3];
+  const sides = [
+    { pos: [0, 0, -ROOM_HALF] as const, rot: 0, gap: gate ? 0.62 : 0 },
+    { pos: [0, 0, ROOM_HALF] as const, rot: 0, gap: 0 },
+    { pos: [-ROOM_HALF, 0, 0] as const, rot: Math.PI / 2, gap: 0 },
+    { pos: [ROOM_HALF, 0, 0] as const, rot: Math.PI / 2, gap: 0 },
+  ];
+  return (
+    <group>
+      {sides.map((side) => (
+        <group key={`${side.pos[0]}-${side.pos[2]}`} position={[...side.pos]} rotation={[0, side.rot, 0]}>
+          <FenceSide wood={wood} span={span} posts={posts} gap={side.gap} />
         </group>
       ))}
     </group>
@@ -173,6 +228,7 @@ export default function PorchWorld({
   compact = false,
   food = false,
   near = false,
+  gate = false,
 }: {
   night: boolean;
   showBowl: boolean;
@@ -180,6 +236,7 @@ export default function PorchWorld({
   walking?: boolean;
   food?: boolean;
   near?: boolean;
+  gate?: boolean;
 }) {
   const { scene, gl } = useThree();
   const rug = useMemo(
@@ -227,7 +284,7 @@ export default function PorchWorld({
         </mesh>
       )}
 
-      {!compact && <FenceRing night={night} />}
+      {!compact && <FenceRing night={night} gate={gate} />}
       {!compact && <DogBed night={night} />}
       {!compact && <Plant x={BLOCKERS[0].x} z={BLOCKERS[0].z} />}
       {!compact && <Plant x={BLOCKERS[1].x} z={BLOCKERS[1].z} />}

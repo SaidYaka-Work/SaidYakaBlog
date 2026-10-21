@@ -90,6 +90,7 @@ export type PublicDog = {
   namedByCatcher: boolean;
 };
 
+/** Hall of Dogs row. Phase 4 can add stamps/collectibles/tricks here per past dog. */
 export type Memorial = {
   id: string;
   profile: DogProfile;
@@ -136,6 +137,19 @@ export type DogFeeder = {
   near: boolean;
 };
 
+export type DogLocation = {
+  mode: 'home' | 'world';
+  lat: number;
+  lng: number;
+  heading: number;
+  originLat: number;
+  originLng: number;
+  placeId: string;
+  placeName: string;
+  city: string;
+  country: string;
+};
+
 export type DogSnapshot = {
   type: 'state';
   dog: PublicDog | null;
@@ -149,6 +163,7 @@ export type DogSnapshot = {
   pose?: DogPose;
   leash?: DogLeash;
   feeder?: DogFeeder;
+  location?: DogLocation;
 };
 
 export function stageWord(stage: LifeStage) {
