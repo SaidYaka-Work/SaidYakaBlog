@@ -975,7 +975,7 @@
   }
 
   .dog-leash {
-    top: calc(112px + env(safe-area-inset-top)) !important;
+    top: calc(168px + env(safe-area-inset-top)) !important;
     bottom: auto !important;
     left: 50%;
     max-width: min(11.5rem, 58%);
@@ -1055,7 +1055,7 @@
   }
 
   .dog-leash {
-    top: calc(112px + env(safe-area-inset-top)) !important;
+    top: calc(168px + env(safe-area-inset-top)) !important;
     bottom: auto !important;
     left: 50%;
     max-width: min(11.5rem, 58%);
@@ -1114,7 +1114,7 @@
 }
 
 .dog-game.is-compact .dog-leash {
-  top: calc(112px + env(safe-area-inset-top)) !important;
+  top: calc(168px + env(safe-area-inset-top)) !important;
   bottom: auto !important;
   left: 50%;
   max-width: min(11.5rem, 58%);
