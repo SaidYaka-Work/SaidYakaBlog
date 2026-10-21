@@ -14,7 +14,7 @@ import {
   tileXY,
 } from '../workers/dog/src/world.ts';
 import { RUN_SPEED, createYard, nearGate } from '../workers/dog/src/room.ts';
-import { FACADE_PALETTE, facadeTint, isMajorRoad, lampsAlongRoads, treesInParks } from '../components/dog/world/dress.ts';
+import { FACADE_PALETTE, crossingsAtIntersections, dressPlants, facadeTint, isMajorRoad, lampsAlongRoads, streetTreesAlongRoads, treesInParks } from '../components/dog/world/dress.ts';
 
 function assert(cond: unknown, message: string) {
   if (!cond) throw new Error(message);
@@ -101,5 +101,19 @@ const trees = treesInParks(
   6,
 );
 assert(trees.length >= 1 && trees.length <= 6, `park trees ${trees.length}`);
+const park = [[{ x: -20, z: -20 }, { x: 20, z: -20 }, { x: 20, z: 20 }, { x: -20, z: 20 }]];
+const street = [{ line: [{ x: -30, z: 8 }, { x: 30, z: 8 }], width: 8, klass: 'primary' as const }];
+const plants = dressPlants(park, street, { x: 0, z: 0 }, 24);
+assert(plants.some((plant) => plant.kind === 'tree') && plants.some((plant) => plant.kind === 'bush'), 'parks get trees and bushes');
+assert(streetTreesAlongRoads(street, { x: 0, z: 0 }, 8).length >= 2, 'sidewalks get street trees');
+const marks = crossingsAtIntersections(
+  [
+    { line: [{ x: -20, z: 0 }, { x: 20, z: 0 }], width: 8, klass: 'primary' },
+    { line: [{ x: 0, z: -20 }, { x: 0, z: 20 }], width: 8, klass: 'secondary' },
+  ],
+  { x: 0, z: 0 },
+  4,
+);
+assert(marks.length >= 1, 'major intersections get crosswalks');
 
 console.log('dog-world-check ok');

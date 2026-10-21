@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import {
   BoxGeometry,
@@ -20,7 +20,7 @@ import {
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { lngLatToLocal, sunDirection } from '../../../workers/dog/src/world';
 import type { WorldTileData } from './decode';
-import { centroid, facadeTint, isMajorRoad, lampsAlongRoads, ringBounds, treesInParks } from './dress';
+import { centroid, crossingsAtIntersections, dressPlants, facadeTint, isMajorRoad, lampsAlongRoads, ringBounds, type Crossing, type Plant } from './dress';
 
 function shapeFrom(ring: { x: number; z: number }[]) {
   const shape = new Shape();
@@ -276,45 +276,108 @@ function roadMaterial(night: boolean, marked: boolean) {
 }
 
 function waterMaterial(night: boolean) {
-  const material = new MeshStandardMaterial({
-    color: night ? '#3a6a88' : '#6aa8c4',
-    roughness: 0.16,
-    metalness: 0.18,
-  });
-  material.onBeforeCompile = (shader) => {
-    shader.uniforms.uTime = { value: 0 };
-    shader.uniforms.uNight = { value: night ? 1 : 0 };
-    material.userData.uTime = shader.uniforms.uTime;
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-        varying vec3 vWorldPos;`,
-      )
-      .replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>
-        vWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;`,
-      );
-    shader.fragmentShader = shader.fragmentShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-        uniform float uTime;
-        uniform float uNight;
-        varying vec3 vWorldPos;`,
-      )
-      .replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>
+  const material = new ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uNight: { value: night ? 1 : 0 },
+      uFogColor: { value: new Color(night ? '#4a5c7a' : '#c8d6e4') },
+      uFogNear: { value: 36 },
+      uFogFar: { value: 220 },
+    },
+    vertexShader: `
+      varying vec3 vWorldPos;
+      varying float vDist;
+      void main() {
+        vec4 world = modelMatrix * vec4(position, 1.0);
+        vWorldPos = world.xyz;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vDist = length(mv.xyz);
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      uniform float uNight;
+      uniform vec3 uFogColor;
+      uniform float uFogNear;
+      uniform float uFogFar;
+      varying vec3 vWorldPos;
+      varying float vDist;
+      void main() {
         float w = sin(vWorldPos.x * 0.22 + uTime * 0.7) * sin(vWorldPos.z * 0.18 + uTime * 0.55);
         vec3 deep = mix(vec3(0.28, 0.52, 0.64), vec3(0.16, 0.32, 0.46), uNight);
         vec3 crest = mix(vec3(0.72, 0.86, 0.92), vec3(0.45, 0.62, 0.78), uNight);
-        diffuseColor.rgb = mix(deep, crest, 0.5 + 0.5 * w);`,
-      );
-  };
-  material.customProgramCacheKey = () => `water-${night ? 'n' : 'd'}`;
+        vec3 col = mix(deep, crest, 0.5 + 0.5 * w);
+        float fog = smoothstep(uFogNear, uFogFar, vDist);
+        gl_FragColor = vec4(mix(col, uFogColor, fog), 1.0);
+      }
+    `,
+  });
+  material.userData.uTime = material.uniforms.uTime;
   return material;
+}
+
+function crossingMaterial(night: boolean) {
+  return new ShaderMaterial({
+    uniforms: {
+      uNight: { value: night ? 1 : 0 },
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float uNight;
+      varying vec2 vUv;
+      void main() {
+        float stripe = step(0.45, fract(vUv.x * 7.0));
+        vec3 paint = mix(vec3(0.93, 0.91, 0.84), vec3(1.0, 0.9, 0.55), uNight * 0.4);
+        vec3 asphalt = mix(vec3(0.34, 0.33, 0.31), vec3(0.17, 0.18, 0.2), uNight);
+        gl_FragColor = vec4(mix(asphalt, paint, stripe), 1.0);
+      }
+    `,
+  });
+}
+
+function crossingMesh(crossings: Crossing[]) {
+  const geos: BufferGeometry[] = [];
+  for (const mark of crossings) {
+    const acrossX = -mark.dz;
+    const acrossZ = mark.dx;
+    const half = mark.w * 0.5;
+    const along = 3.2;
+    const ring = [
+      { x: mark.x + mark.dx * along + acrossX * half, z: mark.z + mark.dz * along + acrossZ * half },
+      { x: mark.x - mark.dx * along + acrossX * half, z: mark.z - mark.dz * along + acrossZ * half },
+      { x: mark.x - mark.dx * along - acrossX * half, z: mark.z - mark.dz * along - acrossZ * half },
+      { x: mark.x + mark.dx * along - acrossX * half, z: mark.z + mark.dz * along - acrossZ * half },
+    ];
+    try {
+      const geo = new ExtrudeGeometry(shapeFrom(ring), { depth: 0.04, bevelEnabled: false, curveSegments: 1 });
+      geo.rotateX(-Math.PI / 2);
+      geo.translate(0, 0.04, 0);
+      const count = geo.getAttribute('position').count;
+      const uv = new Float32Array(count * 2);
+      const pos = geo.getAttribute('position');
+      for (let v = 0; v < count; v += 1) {
+        const px = pos.getX(v) - mark.x;
+        const pz = pos.getZ(v) - mark.z;
+        uv[v * 2] = (px * acrossX + pz * acrossZ) / mark.w + 0.5;
+        uv[v * 2 + 1] = (px * mark.dx + pz * mark.dz) / (along * 2) + 0.5;
+      }
+      geo.setAttribute('uv', new BufferAttribute(uv, 2));
+      geos.push(geo);
+    } catch {
+      // skip
+    }
+  }
+  if (!geos.length) return null;
+  const merged = mergeGeometries(geos, false);
+  geos.forEach((geo) => geo.dispose());
+  return merged;
 }
 
 function SkyDome({ night }: { night: boolean }) {
@@ -360,34 +423,79 @@ function SkyDome({ night }: { night: boolean }) {
   );
 }
 
-function Forest({ trees, night }: { trees: { x: number; z: number; s: number }[]; night: boolean }) {
+function stampInstances(mesh: InstancedMesh | null, place: (dummy: Object3D, i: number) => void, count: number) {
+  if (!mesh) return;
+  const dummy = new Object3D();
+  for (let i = 0; i < count; i += 1) {
+    dummy.position.set(0, 0, 0);
+    dummy.scale.set(1, 1, 1);
+    dummy.rotation.set(0, 0, 0);
+    place(dummy, i);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(i, dummy.matrix);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.computeBoundingSphere();
+}
+
+function Forest({ plants, night }: { plants: Plant[]; night: boolean }) {
   const trunk = useRef<InstancedMesh>(null);
   const leaf = useRef<InstancedMesh>(null);
-  useEffect(() => {
-    const dummy = new Object3D();
-    trees.forEach((tree, i) => {
-      dummy.position.set(tree.x, 0, tree.z);
-      dummy.scale.setScalar(tree.s);
-      dummy.updateMatrix();
-      trunk.current?.setMatrixAt(i, dummy.matrix);
-      dummy.position.y = 2.4 * tree.s;
-      dummy.updateMatrix();
-      leaf.current?.setMatrixAt(i, dummy.matrix);
-    });
-    if (trunk.current) trunk.current.instanceMatrix.needsUpdate = true;
-    if (leaf.current) leaf.current.instanceMatrix.needsUpdate = true;
-  }, [trees]);
-  if (!trees.length) return null;
+  const bush = useRef<InstancedMesh>(null);
+  const trees = plants.filter((plant) => plant.kind === 'tree');
+  const bushes = plants.filter((plant) => plant.kind === 'bush');
+  useLayoutEffect(() => {
+    const nextTrees = plants.filter((plant) => plant.kind === 'tree');
+    const nextBushes = plants.filter((plant) => plant.kind === 'bush');
+    stampInstances(
+      trunk.current,
+      (dummy, i) => {
+        const tree = nextTrees[i];
+        dummy.position.set(tree.x, 0.85 * tree.s, tree.z);
+        dummy.scale.setScalar(tree.s);
+      },
+      nextTrees.length,
+    );
+    stampInstances(
+      leaf.current,
+      (dummy, i) => {
+        const tree = nextTrees[i];
+        dummy.position.set(tree.x, 2.55 * tree.s, tree.z);
+        dummy.scale.setScalar(tree.s);
+      },
+      nextTrees.length,
+    );
+    stampInstances(
+      bush.current,
+      (dummy, i) => {
+        const item = nextBushes[i];
+        dummy.position.set(item.x, 0.42 * item.s, item.z);
+        dummy.scale.setScalar(item.s);
+      },
+      nextBushes.length,
+    );
+  }, [plants]);
+  if (!plants.length) return null;
   return (
     <group>
-      <instancedMesh ref={trunk} args={[undefined, undefined, trees.length]} castShadow>
-        <cylinderGeometry args={[0.16, 0.22, 1.6, 6]} />
-        <meshStandardMaterial color={night ? '#6a4a32' : '#6a4a32'} />
-      </instancedMesh>
-      <instancedMesh ref={leaf} args={[undefined, undefined, trees.length]} castShadow>
-        <coneGeometry args={[1.8, 3.6, 7]} />
-        <meshStandardMaterial color={night ? '#6d8f52' : '#4f7a48'} />
-      </instancedMesh>
+      {trees.length > 0 && (
+        <>
+          <instancedMesh ref={trunk} args={[undefined, undefined, trees.length]} frustumCulled={false} castShadow>
+            <cylinderGeometry args={[0.18, 0.24, 1.7, 6]} />
+            <meshStandardMaterial color="#6a4a32" />
+          </instancedMesh>
+          <instancedMesh ref={leaf} args={[undefined, undefined, trees.length]} frustumCulled={false} castShadow>
+            <coneGeometry args={[1.9, 3.8, 7]} />
+            <meshStandardMaterial color={night ? '#7a9a58' : '#4f7a48'} />
+          </instancedMesh>
+        </>
+      )}
+      {bushes.length > 0 && (
+        <instancedMesh ref={bush} args={[undefined, undefined, bushes.length]} frustumCulled={false} castShadow>
+          <sphereGeometry args={[0.7, 8, 6]} />
+          <meshStandardMaterial color={night ? '#5a7a46' : '#3f6a38'} />
+        </instancedMesh>
+      )}
     </group>
   );
 }
@@ -395,45 +503,55 @@ function Forest({ trees, night }: { trees: { x: number; z: number; s: number }[]
 function Lamps({ lamps, night }: { lamps: { x: number; z: number }[]; night: boolean }) {
   const poles = useRef<InstancedMesh>(null);
   const bulbs = useRef<InstancedMesh>(null);
-  useEffect(() => {
-    const dummy = new Object3D();
-    lamps.forEach((lamp, i) => {
-      dummy.position.set(lamp.x, 1.55, lamp.z);
-      dummy.updateMatrix();
-      poles.current?.setMatrixAt(i, dummy.matrix);
-      dummy.position.set(lamp.x, 3.18, lamp.z);
-      dummy.updateMatrix();
-      bulbs.current?.setMatrixAt(i, dummy.matrix);
-    });
-    if (poles.current) poles.current.instanceMatrix.needsUpdate = true;
-    if (bulbs.current) bulbs.current.instanceMatrix.needsUpdate = true;
-  }, [lamps]);
+  const pools = useRef<InstancedMesh>(null);
+  useLayoutEffect(() => {
+    stampInstances(
+      poles.current,
+      (dummy, i) => {
+        dummy.position.set(lamps[i].x, 1.7, lamps[i].z);
+      },
+      lamps.length,
+    );
+    stampInstances(
+      bulbs.current,
+      (dummy, i) => {
+        dummy.position.set(lamps[i].x, 3.42, lamps[i].z);
+      },
+      lamps.length,
+    );
+    stampInstances(
+      pools.current,
+      (dummy, i) => {
+        dummy.position.set(lamps[i].x, 0.055, lamps[i].z);
+        dummy.rotation.x = -Math.PI / 2;
+        dummy.scale.setScalar(night ? 1 : 0.35);
+      },
+      lamps.length,
+    );
+  }, [lamps, night]);
   if (!lamps.length) return null;
-  const lit = lamps.slice(0, night ? 6 : 0);
+  const lit = night ? lamps.slice(0, 3) : [];
   return (
     <group>
-      <instancedMesh ref={poles} args={[undefined, undefined, lamps.length]}>
-        <cylinderGeometry args={[0.07, 0.09, 3.4, 6]} />
+      <instancedMesh ref={poles} args={[undefined, undefined, lamps.length]} frustumCulled={false}>
+        <cylinderGeometry args={[0.08, 0.1, 3.4, 6]} />
         <meshStandardMaterial color={night ? '#3a3a3e' : '#4a4a4c'} metalness={0.3} roughness={0.5} />
       </instancedMesh>
-      <instancedMesh ref={bulbs} args={[undefined, undefined, lamps.length]}>
-        <sphereGeometry args={[0.22, 8, 8]} />
+      <instancedMesh ref={bulbs} args={[undefined, undefined, lamps.length]} frustumCulled={false}>
+        <sphereGeometry args={[0.24, 8, 8]} />
         <meshBasicMaterial color={night ? '#ffe2a0' : '#f4e8c8'} />
       </instancedMesh>
-      {night &&
-        lamps.slice(0, 12).map((lamp) => (
-          <mesh key={`glow-${lamp.x}:${lamp.z}`} rotation={[-Math.PI / 2, 0, 0]} position={[lamp.x, 0.05, lamp.z]}>
-            <circleGeometry args={[5.2, 18]} />
-            <meshBasicMaterial color="#ffd080" transparent opacity={0.38} depthWrite={false} />
-          </mesh>
-        ))}
+      <instancedMesh ref={pools} args={[undefined, undefined, lamps.length]} frustumCulled={false}>
+        <circleGeometry args={[5.4, 18]} />
+        <meshBasicMaterial color="#ffd080" transparent opacity={night ? 0.34 : 0.08} depthWrite={false} />
+      </instancedMesh>
       {lit.map((lamp) => (
         <pointLight
           key={`lit-${lamp.x}:${lamp.z}`}
-          position={[lamp.x, 3.1, lamp.z]}
+          position={[lamp.x, 3.2, lamp.z]}
           color="#ffd89a"
-          intensity={2.1}
-          distance={18}
+          intensity={1.8}
+          distance={14}
           decay={2}
         />
       ))}
@@ -476,18 +594,24 @@ export default function WorldScene({
   }, [tiles]);
 
   const lamps = useMemo(
-    () => lampsAlongRoads(tiles.flatMap((tile) => tile.roads), here, slim ? 10 : 16),
+    () => lampsAlongRoads(tiles.flatMap((tile) => tile.roads), here, slim ? 16 : 28),
     [here, slim, tiles],
   );
-  const trees = useMemo(
-    () => treesInParks(tiles.flatMap((tile) => tile.parks), here, slim ? 22 : 36),
+  const plants = useMemo(
+    () => dressPlants(tiles.flatMap((tile) => tile.parks), tiles.flatMap((tile) => tile.roads), here, slim ? 64 : 120),
     [here, slim, tiles],
   );
+  const crossings = useMemo(
+    () => crossingsAtIntersections(tiles.flatMap((tile) => tile.roads), here, slim ? 6 : 10),
+    [here, slim, tiles],
+  );
+  const crossingGeo = useMemo(() => crossingMesh(crossings), [crossings]);
 
   const facade = useMemo(() => facadeMaterial(night), [night]);
   const asphalt = useMemo(() => roadMaterial(night, false), [night]);
   const marked = useMemo(() => roadMaterial(night, true), [night]);
   const water = useMemo(() => waterMaterial(night), [night]);
+  const zebra = useMemo(() => crossingMaterial(night), [night]);
   useEffect(() => {
     if (facade.uniforms?.uSunDir) {
       facade.uniforms.uSunDir.value = [sun.x, Math.max(0.25, sun.y + (night ? 0.4 : 0)), sun.z];
@@ -513,12 +637,14 @@ export default function WorldScene({
       meshes.sidewalks?.dispose();
       meshes.roads?.dispose();
       meshes.major?.dispose();
+      crossingGeo?.dispose();
       facade.dispose();
       asphalt.dispose();
       marked.dispose();
       water.dispose();
+      zebra.dispose();
     };
-  }, [asphalt, facade, gl, marked, meshes, night, scene, slim, water]);
+  }, [asphalt, crossingGeo, facade, gl, marked, meshes, night, scene, slim, water, zebra]);
 
   return (
     <group>
@@ -551,6 +677,7 @@ export default function WorldScene({
       {meshes.major && (
         <mesh geometry={meshes.major} receiveShadow material={marked} />
       )}
+      {crossingGeo && <mesh geometry={crossingGeo} material={zebra} />}
       {meshes.water && <mesh geometry={meshes.water} material={water} />}
       {meshes.buildings.map((geo, index) => (
         <mesh key={`b-${index}`} geometry={geo} material={facade} castShadow />
@@ -560,7 +687,7 @@ export default function WorldScene({
           <meshStandardMaterial color={night ? '#4a403c' : '#8a7468'} roughness={0.8} />
         </mesh>
       ))}
-      <Forest trees={trees} night={night} />
+      <Forest plants={plants} night={night} />
       <Lamps lamps={lamps} night={night} />
     </group>
   );

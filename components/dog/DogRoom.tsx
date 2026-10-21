@@ -83,6 +83,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const [flight, setFlight] = useState(0);
   const [streetName, setStreetName] = useState('');
   const [lightOverride, setLightOverride] = useState<'day' | 'night' | null>(null);
+  const [thoughtAnchor, setThoughtAnchor] = useState<{ x: number; y: number } | null>(null);
   const colliders = useRef<WorldColliders>({ buildings: [], roads: [], parks: [], label: '' });
   const leftGate = useRef(false);
   const localPose = useRef<{ x: number; z: number } | null>(null);
@@ -446,6 +447,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   }, [inWorld, input, overlay, playing, shared, snapshot?.location]);
 
   useEffect(() => {
+    if (previewRef.current) return;
     if (!snapshot?.location) return;
     if (snapshot.location.mode === 'world') {
       setLocalWorld(true);
@@ -557,6 +559,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           drive={drive}
           onWorldColliders={onWorldColliders}
           onReady={() => setReady(true)}
+          onAnchor={setThoughtAnchor}
         />
       ) : (
         <DogPortrait
@@ -577,6 +580,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           drive={previewing ? drive : null}
           onWorldColliders={onWorldColliders}
           onReady={() => setReady(true)}
+          onAnchor={setThoughtAnchor}
         />
       )}
 
@@ -619,6 +623,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           onHome={goHome}
           onTravel={goTravel}
           onToggleTravel={() => setTravelOpen((open) => !open)}
+          thoughtAnchor={thoughtAnchor}
         />
       )}
 
