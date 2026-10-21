@@ -159,7 +159,6 @@ function facadeMaterial(night: boolean) {
   return new ShaderMaterial({
     vertexColors: true,
     side: DoubleSide,
-    fog: true,
     uniforms: {
       uNight: { value: night ? 1 : 0 },
       uFogColor: { value: new Color(night ? '#4a5c7a' : '#c8d6e4') },
@@ -172,19 +171,21 @@ function facadeMaterial(night: boolean) {
       uAmbient: { value: night ? 0.7 : 0.42 },
     },
     vertexShader: `
-      attribute vec3 color;
       attribute float aHeight;
       varying vec3 vColor;
       varying vec3 vWorldPos;
       varying vec3 vWorldNormal;
       varying float vHeight;
+      varying float vDist;
       void main() {
         vColor = color;
-        vHeight = aHeight;
+        vHeight = max(aHeight, 4.0);
         vec4 world = modelMatrix * vec4(position, 1.0);
         vWorldPos = world.xyz;
         vWorldNormal = normalize(mat3(modelMatrix) * normal);
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vDist = length(mv.xyz);
+        gl_Position = projectionMatrix * mv;
       }
     `,
     fragmentShader: `
@@ -201,6 +202,7 @@ function facadeMaterial(night: boolean) {
       varying vec3 vWorldPos;
       varying vec3 vWorldNormal;
       varying float vHeight;
+      varying float vDist;
       void main() {
         vec3 nrm = normalize(vWorldNormal);
         float roof = smoothstep(0.48, 0.78, abs(nrm.y));
@@ -221,8 +223,7 @@ function facadeMaterial(night: boolean) {
         float sun = max(0.0, dot(nrm, normalize(uSunDir)));
         vec3 litCol = albedo * (uAmbient + hemi * 0.7 + uSunColor * sun * 0.55);
         litCol += windowNight * pane * lit * uNight * (1.0 - roof) * 0.95;
-        float dist = length(vWorldPos - cameraPosition);
-        float fog = smoothstep(uFogNear, uFogFar, dist);
+        float fog = smoothstep(uFogNear, uFogFar, vDist);
         gl_FragColor = vec4(mix(litCol, uFogColor, fog), 1.0);
       }
     `,
@@ -369,7 +370,7 @@ function Forest({ trees, night }: { trees: { x: number; z: number; s: number }[]
       dummy.scale.setScalar(tree.s);
       dummy.updateMatrix();
       trunk.current?.setMatrixAt(i, dummy.matrix);
-      dummy.position.y = 1.7 * tree.s;
+      dummy.position.y = 2.4 * tree.s;
       dummy.updateMatrix();
       leaf.current?.setMatrixAt(i, dummy.matrix);
     });
@@ -380,12 +381,12 @@ function Forest({ trees, night }: { trees: { x: number; z: number; s: number }[]
   return (
     <group>
       <instancedMesh ref={trunk} args={[undefined, undefined, trees.length]} castShadow>
-        <cylinderGeometry args={[0.12, 0.16, 1.1, 6]} />
-        <meshStandardMaterial color={night ? '#5a4030' : '#6a4a32'} />
+        <cylinderGeometry args={[0.16, 0.22, 1.6, 6]} />
+        <meshStandardMaterial color={night ? '#6a4a32' : '#6a4a32'} />
       </instancedMesh>
       <instancedMesh ref={leaf} args={[undefined, undefined, trees.length]} castShadow>
-        <coneGeometry args={[1.15, 2.4, 7]} />
-        <meshStandardMaterial color={night ? '#3d5a40' : '#4f7a48'} />
+        <coneGeometry args={[1.8, 3.6, 7]} />
+        <meshStandardMaterial color={night ? '#6d8f52' : '#4f7a48'} />
       </instancedMesh>
     </group>
   );
@@ -421,9 +422,9 @@ function Lamps({ lamps, night }: { lamps: { x: number; z: number }[]; night: boo
       </instancedMesh>
       {night &&
         lamps.slice(0, 12).map((lamp) => (
-          <mesh key={`glow-${lamp.x}:${lamp.z}`} rotation={[-Math.PI / 2, 0, 0]} position={[lamp.x, 0.04, lamp.z]}>
-            <circleGeometry args={[3.4, 16]} />
-            <meshBasicMaterial color="#ffd080" transparent opacity={0.22} depthWrite={false} />
+          <mesh key={`glow-${lamp.x}:${lamp.z}`} rotation={[-Math.PI / 2, 0, 0]} position={[lamp.x, 0.05, lamp.z]}>
+            <circleGeometry args={[5.2, 18]} />
+            <meshBasicMaterial color="#ffd080" transparent opacity={0.38} depthWrite={false} />
           </mesh>
         ))}
       {lit.map((lamp) => (

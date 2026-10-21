@@ -105,7 +105,7 @@ export function treesInParks(parks: PointXZ[][], here: PointXZ, max = 36) {
       trees.push({
         x: c.x + Math.cos(ang) * r,
         z: c.z + Math.sin(ang) * r,
-        s: 0.75 + hash2(i + 2, c.x) * 0.7,
+        s: 1.15 + hash2(i + 2, c.x) * 0.9,
       });
     }
   }
@@ -116,7 +116,7 @@ export function treesInParks(parks: PointXZ[][], here: PointXZ, max = 36) {
       trees.push({
         x: here.x + Math.cos(ang) * r,
         z: here.z + Math.sin(ang) * r,
-        s: 0.9 + hash2(i, here.z) * 0.5,
+        s: 1.2 + hash2(i, here.z) * 0.7,
       });
     }
   }

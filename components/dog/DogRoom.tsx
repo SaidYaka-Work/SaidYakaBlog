@@ -461,11 +461,21 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
     if (!inWorld) setStreetName('');
   }, [inWorld]);
 
+  const flying = flight > 0;
   useEffect(() => {
-    if (flight <= 0) return;
-    const id = window.setInterval(() => setFlight((value) => (value < 0.04 ? 0 : value * 0.86)), 50);
-    return () => window.clearInterval(id);
-  }, [flight]);
+    if (!flying) return;
+    const hold = preview === 'travel' ? 1400 : 0;
+    let tick: number | undefined;
+    const start = window.setTimeout(() => {
+      tick = window.setInterval(() => {
+        setFlight((value) => (value < 0.04 ? 0 : value * 0.93));
+      }, 50);
+    }, hold);
+    return () => {
+      window.clearTimeout(start);
+      if (tick) window.clearInterval(tick);
+    };
+  }, [flying, preview]);
 
   useEffect(() => {
     if (!playing || overlay) return;
