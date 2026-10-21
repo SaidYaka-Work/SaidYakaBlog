@@ -860,6 +860,11 @@ export default function FakeGptGame() {
                                 type="button"
                                 disabled={busy && active}
                                 onPointerDown={(event) => {
+                                  event.stopPropagation();
+                                  focusLane(lane.id);
+                                  void finishLane(lane.id, true, option);
+                                }}
+                                onClick={(event) => {
                                   event.preventDefault();
                                   event.stopPropagation();
                                   focusLane(lane.id);

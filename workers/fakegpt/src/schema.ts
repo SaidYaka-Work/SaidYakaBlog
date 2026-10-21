@@ -222,7 +222,7 @@ export function parseDailyRound(raw: unknown): DailyRound | null {
     difficulty: asDifficulty(row.difficulty),
     answer,
     aliases,
-    options: kind === 'mc' ? options : [],
+    options: needsChoices(kind, options) ? options : [],
     nudges: nudges.length ? nudges : ['hello??', 'are you still generating?'],
     good: sanitizeLine(row.good, 160) || 'ok the model remembered a fact. rare.',
     bad: sanitizeLine(row.bad, 160) || `that's a hallucination, buddy. it's ${answer}.`,
