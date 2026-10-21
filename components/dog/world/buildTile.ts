@@ -30,11 +30,11 @@ export const DRESS_STEPS: DressStep[] = ['buildings', 'merge', 'parks', 'water',
 
 /** Ground < parks < sidewalks < roads < markings. Meters, not shader units. */
 export const LAYER_Y = {
-  park: 0,
-  water: 0.003,
-  sidewalk: 0.01,
-  road: 0.04,
-  mark: 0.055,
+  park: -0.03,
+  water: 0.002,
+  sidewalk: 0.03,
+  road: 0.08,
+  mark: 0.11,
 } as const;
 
 export type RibbonCursor = { road: number; seg: number; geos: BufferGeometry[] };
@@ -300,7 +300,7 @@ export function flattenRings(rings: { x: number; z: number }[][], y = 0.012) {
   for (const ring of rings) {
     if (ring.length < 3) continue;
     try {
-      const geo = new ExtrudeGeometry(shapeFrom(ring), { depth: 0.04, bevelEnabled: false, curveSegments: 1 });
+      const geo = new ExtrudeGeometry(shapeFrom(ring), { depth: 0.02, bevelEnabled: false, curveSegments: 1 });
       geo.rotateX(-Math.PI / 2);
       geo.translate(0, y, 0);
       geos.push(geo);

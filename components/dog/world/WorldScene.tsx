@@ -391,7 +391,6 @@ function Forest({ plants, night }: { plants: Plant[]; night: boolean }) {
 function Lamps({ lamps, night }: { lamps: { x: number; z: number }[]; night: boolean }) {
   const poles = useRef<InstancedMesh>(null);
   const bulbs = useRef<InstancedMesh>(null);
-  const pools = useRef<InstancedMesh>(null);
   useLayoutEffect(() => {
     stampInstances(
       poles.current,
@@ -407,16 +406,7 @@ function Lamps({ lamps, night }: { lamps: { x: number; z: number }[]; night: boo
       },
       lamps.length,
     );
-    stampInstances(
-      pools.current,
-      (dummy, i) => {
-        dummy.position.set(lamps[i].x, 0.055, lamps[i].z);
-        dummy.rotation.x = -Math.PI / 2;
-        dummy.scale.setScalar(night ? 1 : 0.35);
-      },
-      lamps.length,
-    );
-  }, [lamps, night]);
+  }, [lamps]);
   if (!lamps.length) return null;
   return (
     <group>
@@ -427,10 +417,6 @@ function Lamps({ lamps, night }: { lamps: { x: number; z: number }[]; night: boo
       <instancedMesh ref={bulbs} args={[undefined, undefined, lamps.length]}>
         <sphereGeometry args={[0.24, 6, 6]} />
         <meshBasicMaterial color={night ? '#ffe2a0' : '#f4e8c8'} />
-      </instancedMesh>
-      <instancedMesh ref={pools} args={[undefined, undefined, lamps.length]}>
-        <circleGeometry args={[5.4, 12]} />
-        <meshBasicMaterial color="#ffd080" transparent opacity={night ? 0.34 : 0.08} depthWrite={false} />
       </instancedMesh>
     </group>
   );
