@@ -15,7 +15,8 @@ That is the only deploy step. `wrangler.toml` already has:
 - `name = "saidyaka-dog"`
 - `account_id = "06bf4532eebfba00e18e7c9bf7ba85c2"`
 - Durable Object binding `DOG` → `DogRoom`
-- SQLite migration `v1`
+- Durable Object binding `DAILY` → `DailyStats` (anonymous Unknown Number totals)
+- SQLite migrations `v1` (DogRoom) and `v2-daily-stats` (DailyStats)
 
 Wrangler will print the live URL, which looks like:
 

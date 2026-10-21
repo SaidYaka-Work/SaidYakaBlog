@@ -392,6 +392,50 @@ html[data-motion='on'] [data-reveal].will-reveal.is-in {
   opacity: 1;
 }
 
+@keyframes un-bubble-in {
+  from {
+    opacity: 0.001;
+    transform: translate3d(0, 0.6rem, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes un-dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+html[data-motion='on'] .un-bubble {
+  animation: un-bubble-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+html[data-motion='on'] .un-dot {
+  animation: un-dot 1s ease-in-out infinite;
+}
+
+html[data-motion='on'] .un-dot:nth-child(2) {
+  animation-delay: 0.14s;
+}
+
+html[data-motion='on'] .un-dot:nth-child(3) {
+  animation-delay: 0.28s;
+}
+
+html[data-motion='on'] .un-reveal {
+  animation: un-bubble-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
