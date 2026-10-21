@@ -230,6 +230,18 @@ export class RoomSession {
     const moved = applyVisitorMove(this.room!, clientId, ip, ax, az, run, dt, now, proposed);
     return { ...moved, ...this.adopt(moved.room, now, 'action') };
   }
+
+  /** Rate-limited walks still refresh the idle timer so the hold does not drop. */
+  touchHold(clientId: string, now: number) {
+    if (!this.mayPersist || !this.room?.yard) return;
+    const leash = this.room.yard.leash;
+    if (leash.holderId !== clientId) return;
+    if (leash.lastInputAt === now) return;
+    this.room = {
+      ...this.room,
+      yard: { ...this.room.yard, leash: { ...leash, lastInputAt: now } },
+    };
+  }
 }
 
 export async function flushIfNeeded(

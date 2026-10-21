@@ -29,7 +29,8 @@ import {
   type BuiltTile,
 } from './buildTile';
 import { unpackGeometry, type PackedTile } from './packTile';
-import { MAX_LIVE_TILES, evictTileCache } from './tileWindow';
+import { KEEP_RING, MAX_CACHED_TILES, evictTileCache, wantedTileKeys } from './tileWindow';
+import { camFade, frameMark } from './frameMark';
 
 function disposeBuilt(tile: BuiltTile) {
   tile.buildings.forEach((geo) => geo.dispose());
@@ -45,6 +46,8 @@ function facadeMaterial(night: boolean) {
   return new ShaderMaterial({
     vertexColors: true,
     side: DoubleSide,
+    transparent: true,
+    depthWrite: true,
     uniforms: {
       uNight: { value: night ? 1 : 0 },
       uFogColor: { value: new Color(night ? '#4a5c7a' : '#c8d6e4') },
@@ -55,6 +58,9 @@ function facadeMaterial(night: boolean) {
       uSunColor: { value: new Color(night ? '#d0def8' : '#ffe4bc') },
       uSunDir: { value: new Vector3(0.4, 0.8, 0.2) },
       uAmbient: { value: night ? 0.7 : 0.42 },
+      uLook: { value: new Vector3(0, 1.15, 0) },
+      uCam: { value: new Vector3(0, 8, 14) },
+      uFade: { value: 0 },
     },
     vertexShader: `
       attribute float aHeight;
@@ -84,6 +90,9 @@ function facadeMaterial(night: boolean) {
       uniform vec3 uSunColor;
       uniform vec3 uSunDir;
       uniform float uAmbient;
+      uniform vec3 uLook;
+      uniform vec3 uCam;
+      uniform float uFade;
       varying vec3 vColor;
       varying vec3 vWorldPos;
       varying vec3 vWorldNormal;
@@ -110,7 +119,14 @@ function facadeMaterial(night: boolean) {
         vec3 litCol = albedo * (uAmbient + hemi * 0.7 + uSunColor * sun * 0.55);
         litCol += windowNight * pane * lit * uNight * (1.0 - roof) * 0.95;
         float fog = smoothstep(uFogNear, uFogFar, vDist);
-        gl_FragColor = vec4(mix(litCol, uFogColor, fog), 1.0);
+        vec2 a = vWorldPos.xz - uLook.xz;
+        vec2 b = uCam.xz - uLook.xz;
+        float span = max(dot(b, b), 0.001);
+        float t = clamp(dot(a, b) / span, 0.0, 1.0);
+        float occ = length(a - b * t);
+        float fade = uFade * (1.0 - smoothstep(2.2, 9.0, occ)) * smoothstep(0.04, 0.18, t) * (1.0 - smoothstep(0.82, 1.0, t));
+        litCol = mix(litCol, uFogColor, fade * 0.78);
+        gl_FragColor = vec4(mix(litCol, uFogColor, fog), 1.0 - fade * 0.55);
       }
     `,
   });
@@ -293,7 +309,7 @@ function SkyDome({ night }: { night: boolean }) {
 }
 
 function stampInstances(mesh: InstancedMesh | null, place: (dummy: Object3D, i: number) => void, count: number) {
-  if (!mesh) return;
+  if (!mesh || count <= 0) return;
   const dummy = new Object3D();
   for (let i = 0; i < count; i += 1) {
     dummy.position.set(0, 0, 0);
@@ -304,7 +320,7 @@ function stampInstances(mesh: InstancedMesh | null, place: (dummy: Object3D, i: 
     mesh.setMatrixAt(i, dummy.matrix);
   }
   mesh.instanceMatrix.needsUpdate = true;
-  mesh.computeBoundingSphere();
+  if (mesh.instanceMatrix.array.length) mesh.computeBoundingSphere();
 }
 
 const LEAF_DAY = ['#4a7a3e', '#6a944c', '#3f6e36', '#8aaa58', '#547844', '#c4b05a', '#3a6a42', '#7a9e46'];
@@ -502,9 +518,12 @@ export default function WorldScene({
   failed?: boolean;
 }) {
   const { scene, gl, camera } = useThree();
-  const sun = useMemo(() => sunDirection(lat, lng, Date.now()), [lat, lng]);
+  const sun = useMemo(() => sunDirection(originLat, originLng, Date.now()), [originLat, originLng]);
   const night = nightHint ?? sun.night;
-  const here = useMemo(() => lngLatToLocal(lat, lng, originLat, originLng), [lat, lng, originLat, originLng]);
+  const here = useMemo(() => {
+    const point = lngLatToLocal(lat, lng, originLat, originLng);
+    return { x: Math.round(point.x / 24) * 24, z: Math.round(point.z / 24) * 24 };
+  }, [lat, lng, originLat, originLng]);
   const [slim, setSlim] = useState(false);
   useEffect(() => {
     const sync = () => setSlim(window.innerWidth < 700);
@@ -522,7 +541,11 @@ export default function WorldScene({
 
   useEffect(() => {
     const wanted = new Set(tiles.map((tile) => tile.key));
-    const evicted = evictTileCache(cache.current, wanted, (_key, built) => disposeBuilt(built), MAX_LIVE_TILES);
+    const centerKey = tiles[0]?.key.split('/').map(Number) ?? [];
+    const keep = tiles[0]
+      ? new Set(wantedTileKeys({ z: centerKey[0], x: centerKey[1], y: centerKey[2] }, KEEP_RING))
+      : wanted;
+    const evicted = evictTileCache(cache.current, keep, (_key, built) => disposeBuilt(built), MAX_CACHED_TILES);
     queue.current = queue.current.filter((tile) => wanted.has(tile.key) && !cache.current.has(tile.key));
     uploads.current = uploads.current.filter((item) => wanted.has(item.tile.key) && !cache.current.has(item.tile.key));
     if (pending.current && !wanted.has(pending.current.tile.key)) pending.current = null;
@@ -544,7 +567,8 @@ export default function WorldScene({
     uploads.current.sort(
       (a, b) => tileDistanceToPoint(a.tile, hereRef.current) - tileDistanceToPoint(b.tile, hereRef.current),
     );
-    if (evicted.length) setReady(Array.from(cache.current.values()));
+    setReady(Array.from(cache.current.values()).filter((tile) => wanted.has(tile.key)));
+    void evicted;
   }, [tiles]);
 
   useEffect(() => () => {
@@ -632,6 +656,12 @@ export default function WorldScene({
   }, [camera, gl, ready.length, scene]);
 
   useFrame((_, dt) => {
+    const tileStart = performance.now();
+    const look = facade.uniforms.uLook?.value;
+    const cam = facade.uniforms.uCam?.value;
+    if (look && typeof look.set === 'function') look.set(camFade.lookX, camFade.lookY, camFade.lookZ);
+    if (cam && typeof cam.set === 'function') cam.set(camFade.camX, camFade.camY, camFade.camZ);
+    if (facade.uniforms.uFade) facade.uniforms.uFade.value = camFade.fade;
     const clock = water.userData.uTime;
     if (clock) clock.value = (clock.value + dt) % 1000;
     const host = window as Window & { __DOG_PERF?: { tiles?: number; geometries?: number; textures?: number } };
@@ -655,7 +685,21 @@ export default function WorldScene({
       upload.layer += 1;
       if (upload.layer >= PACK_LAYERS.length) {
         uploads.current.shift();
-        evictTileCache(cache.current, tiles.map((tile) => tile.key), (_key, item) => disposeBuilt(item), MAX_LIVE_TILES);
+        evictTileCache(
+          cache.current,
+          tiles[0]
+            ? wantedTileKeys(
+                {
+                  z: Number(tiles[0].key.split('/')[0]),
+                  x: Number(tiles[0].key.split('/')[1]),
+                  y: Number(tiles[0].key.split('/')[2]),
+                },
+                KEEP_RING,
+              )
+            : tiles.map((tile) => tile.key),
+          (_key, item) => disposeBuilt(item),
+          MAX_CACHED_TILES,
+        );
       }
     } else {
       const budget = slim ? 4 : 6;
@@ -672,10 +716,26 @@ export default function WorldScene({
           changed = true;
         }
         pending.current = result.done ? null : result.job;
-        evictTileCache(cache.current, tiles.map((tile) => tile.key), (_key, item) => disposeBuilt(item), MAX_LIVE_TILES);
+        evictTileCache(
+          cache.current,
+          tiles[0]
+            ? wantedTileKeys(
+                {
+                  z: Number(tiles[0].key.split('/')[0]),
+                  x: Number(tiles[0].key.split('/')[1]),
+                  y: Number(tiles[0].key.split('/')[2]),
+                },
+                KEEP_RING,
+              )
+            : tiles.map((tile) => tile.key),
+          (_key, item) => disposeBuilt(item),
+          MAX_CACHED_TILES,
+        );
       }
     }
-    if (changed) setReady(Array.from(cache.current.values()));
+    const display = new Set(tiles.map((tile) => tile.key));
+    if (changed) setReady(Array.from(cache.current.values()).filter((tile) => display.has(tile.key)));
+    frameMark.tiles = performance.now() - tileStart;
   });
 
   useEffect(() => {

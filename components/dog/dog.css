@@ -410,13 +410,14 @@
 
 .dog-toasts {
   left: 50%;
-  top: calc(14px + env(safe-area-inset-top));
+  top: calc(92px + env(safe-area-inset-top));
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
   width: min(22rem, calc(100vw - 10rem));
   pointer-events: none;
+  z-index: 5;
 }
 
 .dog-toast {
@@ -435,7 +436,7 @@
 .dog-leash {
   position: absolute;
   left: 50%;
-  top: calc(52px + env(safe-area-inset-top));
+  top: calc(128px + env(safe-area-inset-top));
   transform: translateX(-50%);
   margin: 0;
   padding: 0.4rem 0.75rem;
@@ -466,12 +467,12 @@
   position: absolute;
   left: 50%;
   right: auto;
-  top: calc(8px + env(safe-area-inset-top));
-  bottom: auto;
+  top: auto;
+  bottom: calc(92px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 4;
   pointer-events: none;
-  max-width: min(36rem, calc(100% - 8.5rem));
+  max-width: min(28rem, calc(100% - 7.6rem));
   padding: 0.22rem 0.5rem;
   border-radius: 6px;
   background: rgba(12, 10, 8, 0.62);
@@ -865,8 +866,8 @@
 
   .dog-debug {
     top: auto;
-    bottom: calc(176px + env(safe-area-inset-bottom));
-    max-width: calc(100% - 1rem);
+    bottom: calc(108px + env(safe-area-inset-bottom));
+    max-width: calc(100% - 6.8rem);
   }
 
   .dog-emotes {
@@ -905,10 +906,10 @@
 
   .dog-toasts {
     top: calc(52px + env(safe-area-inset-top));
+    width: min(22rem, calc(100vw - 2rem));
   }
 
   .dog-leash {
-    top: calc(88px + env(safe-area-inset-top));
     font-size: 0.72rem;
   }
 
@@ -935,6 +936,12 @@
   .dog-attrib {
     max-width: min(18rem, 78vw);
     font-size: 0.58rem;
+  }
+}
+
+@media (max-width: 640px) and (min-width: 361px) {
+  .dog-leash {
+    top: calc(88px + env(safe-area-inset-top));
   }
 }
 

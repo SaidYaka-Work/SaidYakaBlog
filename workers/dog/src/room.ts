@@ -415,7 +415,6 @@ export function tryAcquireLeash(
         ...current,
         leash: {
           ...current.leash,
-          lastInputAt: now,
           queue: (current.leash.queue ?? []).filter((wait) => wait.id !== clientId),
         },
       },
@@ -500,7 +499,7 @@ export function applyDrive(
     pose: stepped.pose,
     leash: {
       ...current.leash,
-      lastInputAt: now,
+      lastInputAt: moving && current.leash.holderId ? now : current.leash.lastInputAt,
       sessionMeters,
       hourMeters,
       hourStartedAt,

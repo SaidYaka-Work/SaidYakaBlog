@@ -5,11 +5,14 @@ import {
   applyLeaveWorld,
   applyTravel,
   applyWorldDrive,
+  buildFootprintGrid,
+  cameraRayHitT,
   haversineMeters,
   lngLatToLocal,
   localToLngLat,
   pointInRing,
   pushCircleOut,
+  queryFootprints,
   sunDirection,
   tileXY,
 } from '../workers/dog/src/world.ts';
@@ -78,6 +81,27 @@ const square = [
 assert(pointInRing(0, 0, square), 'centroid starts inside');
 const out = pushCircleOut(0, 0, 0.3, [square]);
 assert(!pointInRing(out.x, out.z, square), 'buildings push the dog out');
+
+const wall = [
+  { x: 2, z: -8 },
+  { x: 6, z: -8 },
+  { x: 6, z: 8 },
+  { x: 2, z: 8 },
+];
+const grid = buildFootprintGrid([wall]);
+assert(queryFootprints(grid, 1.7, 0, 4).length === 1, 'spatial grid finds the nearby wall');
+assert(queryFootprints(grid, 80, 80, 4).length === 0, 'spatial grid ignores far walls');
+let sliding = { ...left, pose: { ...left.pose, x: 1.2, z: 0, yaw: Math.PI / 2, vx: 0, vz: 0 } };
+const beforeZ = sliding.pose.z;
+for (let i = 0; i < 8; i += 1) {
+  sliding = applyWorldDrive(sliding, 1, 0.85, true, 0.08, T0 + 240 + i * 80, null, grid, [], []);
+}
+assert(sliding.pose.x < 2.2, 'wall collision does not walk through the building');
+assert(Math.abs(sliding.pose.z - beforeZ) > 0.08, 'dog slides along the wall instead of stopping dead');
+const hit = cameraRayHitT(0, 0, 8, 0, 0.8, grid);
+assert(hit < 0.55, `camera spherecast must pull up before the wall (t=${hit})`);
+const clear = cameraRayHitT(0, 0, -8, 0, 0.8, grid);
+assert(clear > 0.95, 'open camera path stays at full distance');
 
 const noon = sunDirection(origin.lat, origin.lng, Date.parse('2026-06-21T16:00:00Z'));
 const midnight = sunDirection(origin.lat, origin.lng, Date.parse('2026-06-21T04:00:00Z'));

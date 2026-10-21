@@ -10,7 +10,8 @@ import { generateGenome, type DogGenome, type LifeStage } from '@/lib/dog';
 import { wagMs, type PortraitReaction } from './look';
 import type { DogGait, DogPose } from '@/lib/dog';
 import { applyDrive as stepDrive, createYard, tickYardAi } from '../../workers/dog/src/room';
-import { applyWorldDrive, tickWorldAi, type Ring } from '../../workers/dog/src/world';
+import { applyWorldDrive, tickWorldAi, type FootprintGrid, type Ring } from '../../workers/dog/src/world';
+import { frameMark } from './world/frameMark';
 import { EAT_STAND, EAT_YAW, SLEEP_YAW, THREE_QUARTER_YAW, YARD_BODY } from './frame';
 import {
   CLIP_BLEND,
@@ -50,8 +51,8 @@ export type DriveControl = {
   onPose?: (pose: DogPose) => void;
   realm?: 'home' | 'world';
   originKey?: string;
-  buildings?: Ring[];
-  roads?: Ring[];
+  buildings?: Ring[] | FootprintGrid;
+  roads?: Ring[] | FootprintGrid;
   parks?: Ring[];
 };
 
@@ -205,10 +206,11 @@ const DogRig = forwardRef<Group, {
         if (stick >= 0.12) lastStick.current = now;
         const wanderAlone = control.localOnly && stick < 0.12 && now - lastStick.current > 700;
         if (control.realm === 'world') {
+          const driveStart = performance.now();
           localYard.current = wanderAlone
             ? tickWorldAi(localYard.current, now, dt, {
-                buildings: control.buildings,
-                roads: control.roads,
+                buildings: Array.isArray(control.buildings) ? control.buildings : undefined,
+                roads: Array.isArray(control.roads) ? control.roads : undefined,
                 parks: control.parks,
               })
             : applyWorldDrive(
@@ -223,6 +225,7 @@ const DogRig = forwardRef<Group, {
                 control.roads ?? [],
                 control.parks ?? [],
               );
+          frameMark.drive = performance.now() - driveStart;
         } else {
           localYard.current = wanderAlone
             ? tickYardAi(localYard.current, now, dt)

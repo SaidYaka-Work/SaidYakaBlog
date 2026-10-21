@@ -24,6 +24,7 @@ import {
   publicFeeder,
   publicLeash,
   publicPose,
+  leashExpired,
   releaseLeash,
   startEating,
   tryAcquireLeash,
@@ -972,7 +973,15 @@ export function applyVisitorMove(
   proposed?: { x: number; z: number } | null,
 ): { room: RoomState; acquired: boolean; code?: ErrorCode; retryAfterMs?: number; walk?: ActionResult } {
   const current = applyDecay(room, now);
-  const yard = migrateYard(current.yard, now);
+  let yard = migrateYard(current.yard, now);
+  const moving = Math.hypot(ax, az) > 0.08;
+  if (yard.leash.holderId === clientId && leashExpired(yard.leash, now)) {
+    yard = releaseLeash(yard, now, undefined, 'idle');
+    if (!moving) return { room: { ...current, yard }, acquired: false };
+  }
+  if (!moving && yard.leash.holderId !== clientId) {
+    return { room: { ...current, yard }, acquired: false };
+  }
   const acquired = tryAcquireLeash(yard, clientId, ip, now);
   if (!acquired.ok) {
     return { room: { ...current, yard: acquired.yard }, acquired: false, code: acquired.code, retryAfterMs: acquired.retryAfterMs };

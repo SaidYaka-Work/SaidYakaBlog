@@ -26,6 +26,7 @@ import { parseDebugSpawn, type DebugSpawn } from './debugSpawn';
 import { ATTRIBUTION, HOME_PLACE, PLACES, formatPlaceLine, nearestPlace, placeById, sunDirection } from '../../workers/dog/src/world';
 import type { WorldView } from './DogCanvas';
 import type { WorldColliders } from './world/useWorldTiles';
+import { emptyFootprintGrid } from '../../workers/dog/src/world';
 import './dog.css';
 
 const HistoryBoard = dynamic(() => import('./HistoryBoard'), { ssr: false });
@@ -97,7 +98,15 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const [selfHere, setSelfHere] = useState({ x: 0.95, z: -0.55 });
   const [debugSpawn, setDebugSpawn] = useState<DebugSpawn | null>(null);
   const [leashWaitMs, setLeashWaitMs] = useState(0);
-  const colliders = useRef<WorldColliders>({ buildings: [], roads: [], parks: [], label: '' });
+  const [leashTaking, setLeashTaking] = useState(false);
+  const colliders = useRef<WorldColliders>({
+    buildings: [],
+    roads: [],
+    parks: [],
+    buildingGrid: emptyFootprintGrid(),
+    roadGrid: emptyFootprintGrid(),
+    label: '',
+  });
   const localPose = useRef<{ x: number; z: number } | null>(null);
   const poseRef = useRef<DogPose | null>(null);
   const lastHudAt = useRef(0);
@@ -389,9 +398,9 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   }, [apply, pushToast, worker]);
 
   function send(payload: object) {
-    if (socket.current?.readyState === WebSocket.OPEN) {
-      socket.current.send(JSON.stringify(payload));
-    }
+    if (socket.current?.readyState !== WebSocket.OPEN) return false;
+    socket.current.send(JSON.stringify(payload));
+    return true;
   }
 
   function start(game: Exclude<PlayKind, null>) {
@@ -560,7 +569,17 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   function takeLeash() {
     hideHint();
     lastIntent.current = 'move';
-    send({ type: 'move', ax: 0, az: 0.18, run: false });
+    if (leashWaitMs > 0) {
+      pushToast(`Give him a moment · ${Math.max(1, Math.ceil(leashWaitMs / 1000))}s`);
+      return;
+    }
+    if (youHoldRef.current) return;
+    setLeashTaking(true);
+    pushToast('Taking the leash…');
+    window.setTimeout(() => setLeashTaking(false), 4000);
+    if (!send({ type: 'move', ax: 0, az: 0.18, run: false })) {
+      pushToast('Give him a moment · reconnecting');
+    }
   }
 
   inputRef.current = input;
@@ -574,28 +593,23 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       const now = performance.now();
       if (moving) {
         if (now - lastMove.current < 80) return;
-        lastMove.current = now;
         lastIntent.current = 'move';
-        send({
+        const sent = send({
           type: 'move',
           ax: current.ax,
           az: current.az,
           run: current.run,
-          ...(snapshot?.location && localPose.current && !spawnRef.current
+          ...(localPose.current && !spawnRef.current
             ? { wx: localPose.current.x, wz: localPose.current.z }
             : {}),
         });
-        return;
-      }
-      if (youHoldRef.current && now - lastMove.current >= 2_000) {
-        lastMove.current = now;
-        send({ type: 'move', ax: 0, az: 0, run: false });
+        if (sent) lastMove.current = now;
       }
     };
     tick();
     const id = window.setInterval(tick, 80);
     return () => window.clearInterval(id);
-  }, [overlay, playing, shared, snapshot?.location]);
+  }, [overlay, playing, shared]);
 
   useEffect(() => {
     if (!playing || overlay || !shared || previewing || youHold) return;
@@ -616,6 +630,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   }, [input, overlay, playing, previewing, shared, youHold]);
 
   useEffect(() => {
+    if (youHold) setLeashTaking(false);
     if (wasNext.current && youHold) pushToast('The leash is yours.');
     wasNext.current = youNext;
   }, [pushToast, youHold, youNext]);
@@ -704,8 +719,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         localOnly: previewing || !shared || Boolean(debugSpawn),
         realm: 'world' as const,
         originKey: `${activePlace.id}:${worldView.originLat},${worldView.originLng}`,
-        buildings: colliders.current.buildings,
-        roads: colliders.current.roads,
+        buildings: colliders.current.buildingGrid,
+        roads: colliders.current.roadGrid,
         parks: colliders.current.parks,
         onPose: handlePose,
       };
@@ -799,6 +814,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
             window.setTimeout(() => setReaction('idle'), 900);
           }}
           leashWaitMs={leashWaitMs}
+          leashTaking={leashTaking}
           onFeed={feedHim}
           onHall={() => setPanel('hall')}
           onCatch={() => {

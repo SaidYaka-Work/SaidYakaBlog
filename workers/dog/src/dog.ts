@@ -259,7 +259,12 @@ export class DogRoom {
 
     if (parsed.kind === 'move') {
       const wait = meta.lastMoveAt + MOVE_MIN_MS - now;
-      if (wait > 0) return;
+      if (wait > 0) {
+        if (Math.hypot(parsed.ax, parsed.az) > 0.08 && this.session?.mayPersist) {
+          this.session.touchHold(meta.clientId, now);
+        }
+        return;
+      }
       const dt = meta.lastMoveAt ? Math.min(0.18, (now - meta.lastMoveAt) / 1000) : 0.08;
       const proposed =
         parsed.wx !== undefined && parsed.wz !== undefined ? { x: parsed.wx, z: parsed.wz } : null;

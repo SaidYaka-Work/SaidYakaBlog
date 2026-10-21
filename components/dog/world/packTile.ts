@@ -49,7 +49,8 @@ export function packGeometry(geo: BufferGeometry | null | undefined): PackedMesh
 }
 
 export function unpackGeometry(mesh: PackedMesh | null | undefined): BufferGeometry | null {
-  if (!mesh?.position?.length) return null;
+  if (!mesh?.position?.length || !mesh.normal?.length) return null;
+  if (mesh.position.length !== mesh.normal.length || !Number.isFinite(mesh.position[0])) return null;
   const geo = new BufferGeometry();
   geo.setAttribute('position', new BufferAttribute(mesh.position, 3));
   geo.setAttribute('normal', new BufferAttribute(mesh.normal, 3));

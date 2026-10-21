@@ -208,15 +208,50 @@ test('continuous walking past the old max hold keeps the leash; idle is what exp
   assert.equal(afterIdle.room.yard?.leash.holderId, 'bob');
 });
 
-test('zero-input heartbeat from the holder still refreshes lastInputAt', () => {
+test('zero-input heartbeat from the holder does not refresh lastInputAt', () => {
   const held = tryAcquireLeash(createYard(T0), 'alice', '10.0.0.1', T0);
   assert.equal(held.ok, true);
   if (!held.ok) throw new Error('expected acquire');
   const beat = applyDrive(held.yard, 0, 0, false, 0.08, T0 + 4_000);
-  assert.equal(beat.leash.lastInputAt, T0 + 4_000);
+  assert.equal(beat.leash.lastInputAt, T0);
   assert.equal(beat.leash.holderId, 'alice');
-  const stillHeld = tryAcquireLeash(beat, 'bob', '10.0.0.2', T0 + 4_000 + LEASH_IDLE_MS - 50);
+  const stillHeld = tryAcquireLeash(beat, 'bob', '10.0.0.2', T0 + 4_000);
   assert.equal(stillHeld.ok, false);
+  const afterIdle = applyVisitorMove(beat, 'bob', '10.0.0.2', 1, 0, false, 0.1, T0 + LEASH_IDLE_MS);
+  assert.equal(afterIdle.acquired, true);
+  assert.equal(afterIdle.room.yard?.leash.holderId, 'bob');
+});
+
+test('simulated 120s of 80ms moves keeps the leash; idle then releases; retake is immediate', () => {
+  const room = createRoom(T0);
+  let current = applyVisitorMove(room, 'alice', '10.0.0.1', 1, 0, false, 0.08, T0).room;
+  assert.equal(current.yard?.leash.holderId, 'alice');
+  let now = T0;
+  const steps = Math.ceil(120_000 / 80);
+  for (let i = 0; i < steps; i += 1) {
+    now += 80;
+    current = applyVisitorMove(current, 'alice', '10.0.0.1', 0.8, 0.1, false, 0.08, now).room;
+  }
+  assert.ok(now - T0 >= 120_000);
+  assert.equal(current.yard?.leash.holderId, 'alice', 'moves every 80ms keep the hold past 120s');
+  assert.ok((current.yard?.leash.lastInputAt ?? 0) >= now - 80);
+
+  let parked = current;
+  for (let t = 2_000; t < LEASH_IDLE_MS; t += 2_000) {
+    parked = applyVisitorMove(parked, 'alice', '10.0.0.1', 0, 0, false, 0.08, now + t).room;
+    assert.equal(parked.yard?.leash.holderId, 'alice', 'zero-input must not steal or refresh');
+    assert.equal(parked.yard?.leash.lastInputAt, current.yard?.leash.lastInputAt);
+  }
+
+  const stealEarly = applyVisitorMove(parked, 'bob', '10.0.0.2', 1, 0, false, 0.08, now + 200);
+  assert.equal(stealEarly.acquired, false);
+
+  const released = applyVisitorMove(parked, 'alice', '10.0.0.1', 0, 0, false, 0.08, now + LEASH_IDLE_MS);
+  assert.equal(released.room.yard?.leash.holderId, null, 'idle after last real move releases');
+
+  const again = applyVisitorMove(released.room, 'alice', '10.0.0.1', 0, 0.18, false, 0.08, now + LEASH_IDLE_MS + 20);
+  assert.equal(again.acquired, true, 're-take after idle release succeeds immediately');
+  assert.equal(again.room.yard?.leash.holderId, 'alice');
 });
 
 test('after an idle drop the same walker can take the leash again without cooldown', () => {

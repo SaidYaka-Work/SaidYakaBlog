@@ -16,7 +16,15 @@ import {
   type WorldTileData,
 } from '../components/dog/world/decode.ts';
 import { formatPlaceLine } from '../workers/dog/src/world.ts';
-import { MAX_LIVE_TILES, evictTileCache, wantedTileKeys } from '../components/dog/world/tileWindow.ts';
+import {
+  KEEP_RING,
+  MAX_CACHED_TILES,
+  MAX_LIVE_TILES,
+  evictTileCache,
+  stableTileCenter,
+  tileFraction,
+  wantedTileKeys,
+} from '../components/dog/world/tileWindow.ts';
 import { parseDebugSpawn, SPAWN_PRESETS } from '../components/dog/debugSpawn.ts';
 
 function box(x: number, z: number, w: number, d: number) {
@@ -135,5 +143,26 @@ assert.ok(cache.size <= MAX_LIVE_TILES);
 assert.equal(parseDebugSpawn('?debug=1&spawn=timessq-buildings')?.lat, SPAWN_PRESETS['timessq-buildings'].lat);
 assert.equal(parseDebugSpawn('spawn=40.758,-73.9855')?.lng, -73.9855);
 assert.equal(parseDebugSpawn('?debug=1'), null);
+
+const frac = tileFraction(40.730823, -73.997332, 14);
+const held = stableTileCenter(40.730823, -73.997332, { z: 14, x: frac.x, y: frac.y }, 14);
+assert.equal(held.x, frac.x);
+const neighborLng = -73.997332 + (1 - frac.u + 0.08) * (360 / 2 ** 14);
+const flapping = stableTileCenter(40.730823, neighborLng, held, 14);
+assert.equal(flapping.x, held.x, 'edge tiles must not flap on a recenter');
+const deepLng = -73.997332 + (1 - frac.u + 0.4) * (360 / 2 ** 14);
+const recentered = stableTileCenter(40.730823, deepLng, held, 14);
+assert.ok(recentered.x !== held.x, 'recenter only after walking well into the neighbor');
+
+const keepKeys = wantedTileKeys(center, KEEP_RING);
+assert.equal(keepKeys.length, MAX_CACHED_TILES);
+const reuse = new Map<string, string>([
+  ['14/4825/6156', 'center'],
+  ['14/4823/6156', 'kept-west'],
+  ['14/4800/6100', 'far'],
+]);
+const reusedEvicted = evictTileCache(reuse, keepKeys, undefined, MAX_CACHED_TILES);
+assert.ok(reusedEvicted.includes('14/4800/6100'));
+assert.equal(reuse.has('14/4823/6156'), true, 'already-built tiles just outside 3×3 are reused');
 
 console.log('dog-tile-build-check ok');

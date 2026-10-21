@@ -313,6 +313,112 @@ function closestOnSegment(x: number, z: number, ax: number, az: number, bx: numb
   return { x: ax + dx * t, z: az + dz * t };
 }
 
+export const FOOTPRINT_CELL = 24;
+
+export type FootprintGrid = {
+  cell: number;
+  cells: Map<string, Ring[]>;
+};
+
+export function emptyFootprintGrid(cell = FOOTPRINT_CELL): FootprintGrid {
+  return { cell, cells: new Map() };
+}
+
+export function isFootprintGrid(value: unknown): value is FootprintGrid {
+  return Boolean(value && typeof value === 'object' && 'cells' in value && 'cell' in value);
+}
+
+function insertRing(grid: FootprintGrid, ring: Ring) {
+  if (ring.length < 2) return;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const point of ring) {
+    if (point.x < minX) minX = point.x;
+    if (point.x > maxX) maxX = point.x;
+    if (point.z < minZ) minZ = point.z;
+    if (point.z > maxZ) maxZ = point.z;
+  }
+  if (!Number.isFinite(minX)) return;
+  const x0 = Math.floor(minX / grid.cell);
+  const x1 = Math.floor(maxX / grid.cell);
+  const z0 = Math.floor(minZ / grid.cell);
+  const z1 = Math.floor(maxZ / grid.cell);
+  for (let z = z0; z <= z1; z += 1) {
+    for (let x = x0; x <= x1; x += 1) {
+      const key = `${x}:${z}`;
+      const bucket = grid.cells.get(key);
+      if (bucket) bucket.push(ring);
+      else grid.cells.set(key, [ring]);
+    }
+  }
+}
+
+export function buildFootprintGrid(rings: Ring[], cell = FOOTPRINT_CELL): FootprintGrid {
+  const grid = emptyFootprintGrid(cell);
+  for (const ring of rings) insertRing(grid, ring);
+  return grid;
+}
+
+const EMPTY_GRID = emptyFootprintGrid();
+
+export function asFootprintGrid(value: Ring[] | FootprintGrid | unknown): FootprintGrid {
+  if (isFootprintGrid(value)) return value;
+  if (!Array.isArray(value) || value.length === 0) return EMPTY_GRID;
+  return buildFootprintGrid(value);
+}
+
+export function queryFootprints(grid: FootprintGrid, x: number, z: number, radius = 6): Ring[] {
+  const seen = new Set<Ring>();
+  const out: Ring[] = [];
+  const pad = Math.max(1, Math.ceil(radius / grid.cell));
+  const cx = Math.floor(x / grid.cell);
+  const cz = Math.floor(z / grid.cell);
+  for (let dz = -pad; dz <= pad; dz += 1) {
+    for (let dx = -pad; dx <= pad; dx += 1) {
+      const bucket = grid.cells.get(`${cx + dx}:${cz + dz}`);
+      if (!bucket) continue;
+      for (const ring of bucket) {
+        if (seen.has(ring)) continue;
+        seen.add(ring);
+        out.push(ring);
+      }
+    }
+  }
+  return out;
+}
+
+/** 2D spherecast from (ox,oz) toward (dx,dz). Returns t in [0,1] of how far is clear. */
+export function cameraRayHitT(
+  ox: number,
+  oz: number,
+  dx: number,
+  dz: number,
+  radius: number,
+  grid: FootprintGrid,
+): number {
+  const vx = dx - ox;
+  const vz = dz - oz;
+  const len = Math.hypot(vx, vz);
+  if (len < 1e-4) return 1;
+  const steps = Math.max(5, Math.min(24, Math.ceil(len / 1.4)));
+  for (let i = 1; i <= steps; i += 1) {
+    const t = i / steps;
+    const x = ox + vx * t;
+    const z = oz + vz * t;
+    const nearby = queryFootprints(grid, x, z, radius + 3);
+    for (const ring of nearby) {
+      if (ring.length >= 3 && pointInRing(x, z, ring)) return Math.max(0, (i - 1) / steps);
+      for (let a = 0, b = ring.length - 1; a < ring.length; b = a, a += 1) {
+        const hit = closestOnSegment(x, z, ring[b].x, ring[b].z, ring[a].x, ring[a].z);
+        if (Math.hypot(x - hit.x, z - hit.z) < radius) return Math.max(0, (i - 1) / steps);
+      }
+    }
+  }
+  return 1;
+}
+
 function ringCentroid(ring: Ring) {
   let x = 0;
   let z = 0;
@@ -392,7 +498,7 @@ function creditWalk(yard: YardState, meters: number, moving: boolean, now: numbe
     ...yard,
     leash: {
       ...yard.leash,
-      lastInputAt: now,
+      lastInputAt: moving && yard.leash.holderId ? now : yard.leash.lastInputAt,
       sessionMeters,
       hourMeters,
       hourStartedAt,
@@ -417,21 +523,31 @@ export function applyWorldDrive(
   dt: number,
   now: number,
   proposed?: { x: number; z: number } | null,
-  buildings: Ring[] = [],
-  roads: Ring[] = [],
+  buildings: Ring[] | FootprintGrid = [],
+  roads: Ring[] | FootprintGrid = [],
   parks: Ring[] = [],
 ): YardState {
   const location = migrateLocation(yard.location, now);
-  const stepped = integrateOpen(yard.pose, ax, az, run, clamp(dt, 0, MOVE_DT_MAX), (_x, _z, nx, nz) => {
-    const slid = pushCircleOut(nx, nz, DOG_RADIUS, buildings);
-    return stayOnPavement(slid.x, slid.z, roads, parks);
+  const walls = asFootprintGrid(buildings);
+  const pavement = asFootprintGrid(roads);
+  const stepped = integrateOpen(yard.pose, ax, az, run, clamp(dt, 0, MOVE_DT_MAX), (x, z, nx, nz) => {
+    const nearby = queryFootprints(walls, nx, nz, DOG_RADIUS + 4);
+    const roadNear = queryFootprints(pavement, nx, nz, 8);
+    const slid = pushCircleOut(nx, nz, DOG_RADIUS, nearby);
+    if (Math.hypot(slid.x - x, slid.z - z) < 1e-4 && (Math.abs(nx - x) > 1e-5 || Math.abs(nz - z) > 1e-5)) {
+      const alongX = pushCircleOut(nx, z, DOG_RADIUS, nearby);
+      if (Math.hypot(alongX.x - x, alongX.z - z) > 1e-4) return stayOnPavement(alongX.x, alongX.z, roadNear, parks);
+      const alongZ = pushCircleOut(x, nz, DOG_RADIUS, nearby);
+      if (Math.hypot(alongZ.x - x, alongZ.z - z) > 1e-4) return stayOnPavement(alongZ.x, alongZ.z, roadNear, parks);
+    }
+    return stayOnPavement(slid.x, slid.z, roadNear, parks);
   });
   let pose = stepped.pose;
   if (proposed && Number.isFinite(proposed.x) && Number.isFinite(proposed.z)) {
     const jump = Math.hypot(proposed.x - yard.pose.x, proposed.z - yard.pose.z);
     const cap = RUN_SPEED * Math.max(dt, MOVE_DT_MAX) + 0.85;
     if (jump <= cap) {
-      const safe = pushCircleOut(proposed.x, proposed.z, DOG_RADIUS, buildings);
+      const safe = pushCircleOut(proposed.x, proposed.z, DOG_RADIUS, queryFootprints(walls, proposed.x, proposed.z, DOG_RADIUS + 4));
       pose = { ...pose, x: safe.x, z: safe.z };
     }
   }

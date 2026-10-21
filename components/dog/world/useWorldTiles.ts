@@ -1,15 +1,26 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { TILEJSON_URL, lngLatToLocal, tileXY, type Ring } from '../../../workers/dog/src/world';
+import {
+  TILEJSON_URL,
+  WORLD_TILE_ZOOM,
+  buildFootprintGrid,
+  emptyFootprintGrid,
+  lngLatToLocal,
+  type FootprintGrid,
+  type Ring,
+} from '../../../workers/dog/src/world';
 import { decodeTile, type WorldTileData } from './decode';
 import type { PackedTile } from './packTile';
-import { TILE_RING, evictTileCache, wantedTiles } from './tileWindow';
+import { KEEP_RING, MAX_CACHED_TILES, TILE_RING, evictTileCache, stableTileCenter, wantedTiles, type TileCoord } from './tileWindow';
+import { liveBuildingGrid } from './frameMark';
 
 export type WorldColliders = {
   buildings: Ring[];
   roads: Ring[];
   parks: Ring[];
+  buildingGrid: FootprintGrid;
+  roadGrid: FootprintGrid;
   label: string;
 };
 
@@ -106,12 +117,21 @@ async function fetchTileBuffer(url: string) {
 export default function useWorldTiles(originLat: number, originLng: number, lat: number, lng: number, enabled: boolean) {
   const [tiles, setTiles] = useState<WorldTileData[]>([]);
   const [status, setStatus] = useState<TileStatus>('loading');
-  const [colliders, setColliders] = useState<WorldColliders>({ buildings: [], roads: [], parks: [], label: '' });
+  const [colliders, setColliders] = useState<WorldColliders>({
+    buildings: [],
+    roads: [],
+    parks: [],
+    buildingGrid: emptyFootprintGrid(),
+    roadGrid: emptyFootprintGrid(),
+    label: '',
+  });
   const cache = useRef(new Map<string, WorldTileData>());
   const origin = useRef(`${originLat},${originLng}`);
   const focusRef = useRef({ lat, lng });
   focusRef.current = { lat, lng };
-  const center = tileXY(lat, lng);
+  const stableRef = useRef<TileCoord | null>(null);
+  const center = stableTileCenter(lat, lng, stableRef.current, WORLD_TILE_ZOOM);
+  stableRef.current = center;
   const tileKey = `${center.z}/${center.x}/${center.y}`;
 
   useEffect(() => {
@@ -219,17 +239,25 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
       });
     }
 
-    function publish(wantedKeys: Set<string>) {
-      const next = wantedKeys.size
+    function publish(displayKeys: Set<string>) {
+      const next = displayKeys.size
         ? Array.from(cache.current.entries())
-            .filter(([key]) => wantedKeys.has(key))
+            .filter(([key]) => displayKeys.has(key))
             .map(([, tile]) => tile)
         : [];
       setTiles(next);
+      const buildings = next.flatMap((tile) => tile.buildings.map((b) => b.ring));
+      const roads = next.flatMap((tile) => tile.roads.map((r) => r.line));
+      const parks = next.flatMap((tile) => tile.parks);
+      const buildingGrid = buildFootprintGrid(buildings);
+      const roadGrid = buildFootprintGrid(roads);
+      liveBuildingGrid.current = buildingGrid;
       setColliders((current) => ({
-        buildings: next.flatMap((tile) => tile.buildings.map((b) => b.ring)),
-        roads: next.flatMap((tile) => tile.roads.map((r) => r.line)),
-        parks: next.flatMap((tile) => tile.parks),
+        buildings,
+        roads,
+        parks,
+        buildingGrid,
+        roadGrid,
         label: current.label,
       }));
       if (next.some((tile) => tile.buildings.length || tile.roads.length)) {
@@ -247,14 +275,19 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
         if (!dead) setStatus('failed');
         return;
       }
-      const wanted = wantedTiles(center, TILE_RING).map((tile) => ({
+      const display = wantedTiles(center, TILE_RING).map((tile) => ({
         ...tile,
         key: `${tile.z}/${tile.x}/${tile.y}`,
       }));
-      const wantedKeys = new Set(wanted.map((tile) => tile.key));
-      evictTileCache(cache.current, wantedKeys);
-      const queue = wanted.filter((tile) => !cache.current.has(tile.key));
-      publish(wantedKeys);
+      const keep = wantedTiles(center, KEEP_RING).map((tile) => ({
+        ...tile,
+        key: `${tile.z}/${tile.x}/${tile.y}`,
+      }));
+      const displayKeys = new Set(display.map((tile) => tile.key));
+      const keepKeys = new Set(keep.map((tile) => tile.key));
+      evictTileCache(cache.current, keepKeys, undefined, MAX_CACHED_TILES);
+      const queue = keep.filter((tile) => !cache.current.has(tile.key));
+      publish(displayKeys);
       let inflight = 0;
       await new Promise<void>((resolve) => {
         const kick = () => {
@@ -271,7 +304,7 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
               .then((data) => {
                 loaded += 1;
                 cache.current.set(tile.key, data);
-                if (!dead) publish(wantedKeys);
+                if (!dead) publish(displayKeys);
               })
               .catch((error) => {
                 failures += 1;
@@ -286,7 +319,7 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
         kick();
       });
       if (dead) return;
-      evictTileCache(cache.current, wantedKeys);
+      evictTileCache(cache.current, keepKeys, undefined, MAX_CACHED_TILES);
       if (loaded === 0 && (failures > 0 || cache.current.size === 0)) {
         setStatus('failed');
       } else {
@@ -301,7 +334,7 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
       worker?.removeEventListener('error', onWorkerError);
       releaseWorker();
     };
-  }, [center.x, center.y, center.z, enabled, originLat, originLng, tileKey]);
+  }, [center, enabled, originLat, originLng, tileKey]);
 
   useEffect(() => {
     if (!enabled || !tiles.length) return;

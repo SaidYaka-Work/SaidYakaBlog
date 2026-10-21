@@ -2,15 +2,16 @@
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Suspense, lazy, useEffect, useRef, useState, type RefObject } from 'react';
-import { ACESFilmicToneMapping, PerspectiveCamera, PointLight, Raycaster, SRGBColorSpace, Vector3, type Group, type Mesh } from 'three';
+import { ACESFilmicToneMapping, PerspectiveCamera, PointLight, SRGBColorSpace, Vector3, type Group, type Mesh } from 'three';
 import type { DogCompanion, DogGenome, LifeStage } from '@/lib/dog';
 import Companions from './Companions';
 import type { PortraitReaction } from './look';
 import { CAMERA_YAW, frameCamera, followYardCamera } from './frame';
 import DogRig, { type DriveControl } from './DogRig';
 import WorldBowl from './WorldBowl';
-import { HOME_PLACE } from '../../workers/dog/src/world';
+import { asFootprintGrid, cameraRayHitT, HOME_PLACE } from '../../workers/dog/src/world';
 import type { TileStatus, WorldColliders } from './world/useWorldTiles';
+import { camFade, frameMark, liveBuildingGrid } from './world/frameMark';
 
 const WorldLayer = lazy(() => import('./world/WorldLayer'));
 
@@ -64,6 +65,9 @@ function PerfProbe() {
         memMB: number;
         samples: number;
         tiles?: number;
+        driveMs?: number;
+        cameraMs?: number;
+        tileMs?: number;
       };
     };
     const ms = dt * 1000;
@@ -90,6 +94,9 @@ function PerfProbe() {
       geometries: info.memory.geometries,
       textures: info.memory.textures,
       tiles: prev?.tiles ?? 0,
+      driveMs: frameMark.drive,
+      cameraMs: frameMark.camera,
+      tileMs: frameMark.tiles,
       memMB: mem ? Math.round(mem.usedJSHeapSize / 1e6) : 0,
       samples: (prev?.samples ?? 0) + 1,
     };
@@ -103,10 +110,10 @@ function DebugHud() {
     if (typeof window === 'undefined') return;
     if (!new URLSearchParams(window.location.search).has('debug')) return;
     const tick = () => {
-      const perf = (window as Window & { __DOG_PERF?: { fps: number; p95: number; hitch: number; calls: number; triangles: number; tiles?: number; geometries?: number; textures?: number } }).__DOG_PERF;
+      const perf = (window as Window & { __DOG_PERF?: { fps: number; p95: number; hitch: number; calls: number; triangles: number; tiles?: number; geometries?: number; textures?: number; driveMs?: number; cameraMs?: number; tileMs?: number } }).__DOG_PERF;
       if (!perf) return;
       setLine(
-        `${perf.fps.toFixed(0)} fps · p95 ${perf.p95.toFixed(1)}ms · hitch ${perf.hitch.toFixed(0)}ms · ${perf.calls} calls · ${perf.triangles} tris · ${perf.tiles ?? 0} tiles · geo ${perf.geometries ?? 0} · tex ${perf.textures ?? 0}`,
+        `${perf.fps.toFixed(0)} fps · p95 ${perf.p95.toFixed(1)}ms · hitch ${perf.hitch.toFixed(0)}ms · ${perf.calls} calls · ${perf.triangles} tris · ${perf.tiles ?? 0} tiles · geo ${perf.geometries ?? 0} · drv ${ (perf.driveMs ?? 0).toFixed(1)} cam ${(perf.cameraMs ?? 0).toFixed(1)} til ${(perf.tileMs ?? 0).toFixed(1)}`,
       );
     };
     tick();
@@ -166,19 +173,17 @@ function FramedCamera({
 }) {
   const camera = useThree((state) => state.camera) as PerspectiveCamera;
   const size = useThree((state) => state.size);
-  const scene = useThree((state) => state.scene);
   const from = useRef(new Vector3());
   const look = useRef(new Vector3());
   const ready = useRef(false);
-  const ray = useRef(new Raycaster());
   const dir = useRef(new Vector3());
+  const pulled = useRef(new Vector3());
 
   const street = useRef(new Vector3());
   const lastAnchor = useRef({ x: -1, y: -1 });
   const lastAnchorAt = useRef(0);
   const orbit = useRef({ yaw: 0, pitch: 0 });
-  const occluders = useRef<import('three').Object3D[]>([]);
-  const lastOcc = useRef(0);
+  const pulledDist = useRef(14.8);
 
   useEffect(() => {
     const node = host.current;
@@ -253,26 +258,35 @@ function FramedCamera({
       );
       dir.current.copy(street.current).sub(look.current);
       const span = dir.current.length();
+      const camStart = performance.now();
       if (flight < 0.08 && span > 1) {
+        const grid = asFootprintGrid(liveBuildingGrid.current);
+        const hitT = cameraRayHitT(look.current.x, look.current.z, street.current.x, street.current.z, 0.9, grid);
+        const want = Math.max(0.12, hitT) * span;
+        pulledDist.current += (want - pulledDist.current) * Math.min(1, dt * 7);
         dir.current.multiplyScalar(1 / span);
-        const now = performance.now();
-        if (now - lastOcc.current > 400) {
-          lastOcc.current = now;
-          const next: import('three').Object3D[] = [];
-          scene.traverse((item) => {
-            if (item.userData?.occlude) next.push(item);
-          });
-          occluders.current = next;
+        const minDist = 5.6;
+        let used = Math.max(3.8, Math.min(span, pulledDist.current));
+        let lift = height;
+        if (used < minDist) {
+          const extra = minDist - used;
+          lift = height + extra * 1.15;
+          used = Math.max(3.8, used);
         }
-        ray.current.set(look.current, dir.current);
-        ray.current.far = span;
-        const hit = ray.current.intersectObjects(occluders.current, false)[0];
-        if (hit && hit.distance < span - 1.2) {
-          const pulled = Math.max(3.4, hit.distance - 1.8);
-          street.current.copy(look.current).addScaledVector(dir.current, pulled);
-          street.current.y = Math.max(street.current.y, look.current.y + 2.6);
-        }
+        pulled.current.copy(look.current).addScaledVector(dir.current, used);
+        pulled.current.y = Math.max(lift, look.current.y + 2.8 + Math.max(0, minDist - used) * 0.7);
+        street.current.copy(pulled.current);
+        camFade.fade = hitT < 0.96 ? 1 : Math.max(0, camFade.fade - dt * 2.4);
+      } else {
+        camFade.fade = 0;
       }
+      camFade.lookX = look.current.x;
+      camFade.lookY = look.current.y;
+      camFade.lookZ = look.current.z;
+      camFade.camX = street.current.x;
+      camFade.camY = street.current.y;
+      camFade.camZ = street.current.z;
+      frameMark.camera = performance.now() - camStart;
       camera.near = flight > 0.5 ? 2 : 0.2;
       camera.far = 520;
       camera.up.set(0, 1, 0);
@@ -488,7 +502,11 @@ export default function DogCanvas({
           gl.toneMapping = ACESFilmicToneMapping;
           gl.outputColorSpace = SRGBColorSpace;
           gl.toneMappingExposure = night ? 1.16 : 0.92;
-          gl.setPixelRatio(Math.min(window.innerWidth < 700 ? 1.25 : 1.5, window.devicePixelRatio || 1));
+          const dpr = Math.min(window.innerWidth < 700 ? 1.25 : 1.5, window.devicePixelRatio || 1);
+          gl.setPixelRatio(dpr);
+          const width = Math.max(1, gl.domElement.clientWidth || 1);
+          const height = Math.max(1, gl.domElement.clientHeight || 1);
+          gl.setSize(width, height, false);
         }}
       >
         <SizeSync host={host} />
