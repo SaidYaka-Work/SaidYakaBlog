@@ -8,8 +8,8 @@ Nothing the player makes is stored. Images and audio are scored in memory and di
 
 | Job | Model | Why |
 | --- | --- | --- |
-| Daily set + persona chat | `@cf/meta/llama-3.2-1b-instruct` | Cheapest Llama instruct on Workers AI |
-| Drawing judge | `@cf/llava-hf/llava-1.5-7b-hf` | Smallest dedicated image-to-text model currently listed |
+| Daily set + persona chat | `@cf/meta/llama-3.1-8b-instruct-fast` | Supports JSON Schema `response_format`; 1B instruct cannot emit valid JSON |
+| Drawing judge | `@cf/llava-hf/llava-1.5-7b-hf` | Smallest dedicated image-to-text model currently listed (`description` field) |
 | Sound transcript | `@cf/openai/whisper` | Cheaper than `whisper-large-v3-turbo` |
 
 Pricing: [Workers AI pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/) (10,000 neurons/day free; $0.011 / 1,000 neurons after).
@@ -18,12 +18,7 @@ Pricing: [Workers AI pricing](https://developers.cloudflare.com/workers-ai/platf
 
 From this folder, on a machine logged into Said's Cloudflare account:
 
-```bash
-npx wrangler kv namespace create FAKEGPT
-npx wrangler kv namespace create FAKEGPT --preview
-```
-
-Paste the two ids into `wrangler.toml` (`id` and `preview_id`).
+KV namespace ids are already in `wrangler.toml`. After a deploy, delete any leftover `daily:YYYY-MM-DD` keys (pre-v2 cache) if today's set is still a fallback.
 
 ```bash
 npx wrangler deploy

@@ -1,8 +1,15 @@
 import { chatTurn, generateDailySet, judgeRound, todayOr, type AiRunner } from './ai';
 import { kvGetJson, kvPutJson, takeBudget, takeWindow, type Counter, type KVNamespace } from './budget';
 import { fallbackDailySet } from './fallback';
-import { GLOBAL_AI_CALLS_PER_DAY, IP_CHAT_PER_HOUR, IP_DAILY_GET_PER_HOUR, IP_JUDGE_PER_HOUR } from './models';
-import { clientIp, parseChatRequest, parseJudgeRequest, utcDate } from './schema';
+import {
+  dailyCacheKey,
+  dailyCacheTtlSec,
+  GLOBAL_AI_CALLS_PER_DAY,
+  IP_CHAT_PER_HOUR,
+  IP_DAILY_GET_PER_HOUR,
+  IP_JUDGE_PER_HOUR,
+} from './models';
+import { clientIp, parseChatRequest, parseJudgeRequest, type DailySet, utcDate } from './schema';
 
 export type Env = {
   AI?: AiRunner;
@@ -11,7 +18,7 @@ export type Env = {
 };
 
 const HOUR = 60 * 60 * 1000;
-const DAY = 26 * 60 * 60;
+const BUDGET_TTL_SEC = 26 * 60 * 60;
 
 const ALLOWED_DEFAULTS = [
   'https://saidyaka.com',
@@ -68,16 +75,16 @@ async function spend(env: Env, date: string, cost: number): Promise<boolean> {
   const used = (await kvGetJson<{ used: number }>(env.FAKEGPT, key))?.used ?? 0;
   const next = takeBudget(used, cost, GLOBAL_AI_CALLS_PER_DAY);
   if (!next.ok) return false;
-  await kvPutJson(env.FAKEGPT, key, { used: next.used }, DAY);
+  await kvPutJson(env.FAKEGPT, key, { used: next.used }, BUDGET_TTL_SEC);
   return true;
 }
 
-async function dailySet(env: Env, date: string) {
-  const key = `daily:${date}`;
-  const cached = await kvGetJson<ReturnType<typeof fallbackDailySet>>(env.FAKEGPT, key);
+export async function dailySet(env: Env, date: string): Promise<DailySet> {
+  const key = dailyCacheKey(date);
+  const cached = await kvGetJson<DailySet>(env.FAKEGPT, key);
   if (cached?.rounds?.length) return cached;
   const generated = (await spend(env, date, 1)) ? await generateDailySet(env.AI, date) : fallbackDailySet(date);
-  await kvPutJson(env.FAKEGPT, key, generated, DAY);
+  await kvPutJson(env.FAKEGPT, key, generated, dailyCacheTtlSec(generated.source));
   return generated;
 }
 

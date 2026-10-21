@@ -23,7 +23,9 @@ export function sanitizeLine(value: unknown, max: number): string {
   return text.replace(/[`<>]/g, '');
 }
 
-export function extractJson(raw: string): unknown {
+export function extractJson(raw: unknown): unknown {
+  if (raw && typeof raw === 'object') return raw;
+  if (typeof raw !== 'string') throw new Error('no json object');
   const trimmed = raw.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const body = fenced ? fenced[1].trim() : trimmed;

@@ -8,13 +8,10 @@ workers_dev = true
 [ai]
 binding = "AI"
 
-# Replace both ids after:
-#   npx wrangler kv namespace create FAKEGPT
-#   npx wrangler kv namespace create FAKEGPT --preview
 [[kv_namespaces]]
 binding = "FAKEGPT"
-id = "00000000000000000000000000000001"
-preview_id = "00000000000000000000000000000002"
+id = "c644398a83fb4a14aa0543cbcb7af15b"
+preview_id = "148de06bedb84a62b4f3f80e9d83ff3a"
 
 # Pre-generate today's set shortly after midnight UTC so the first player
 # does not pay the generation latency.
