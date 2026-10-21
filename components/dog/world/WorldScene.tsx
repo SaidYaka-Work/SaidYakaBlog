@@ -13,6 +13,7 @@ import {
   Mesh,
   MeshStandardMaterial,
   Object3D,
+  ShaderMaterial,
   Shape,
   type BufferGeometry,
 } from 'three';
@@ -155,118 +156,122 @@ function flattenRings(rings: { x: number; z: number }[][], y = 0.012) {
 }
 
 function facadeMaterial(night: boolean) {
-  const material = new MeshStandardMaterial({
+  return new ShaderMaterial({
     vertexColors: true,
-    roughness: night ? 0.52 : 0.74,
-    metalness: 0.03,
     side: DoubleSide,
-    emissive: night ? '#22180c' : '#000000',
-  });
-  material.onBeforeCompile = (shader) => {
-    shader.uniforms.uNight = { value: night ? 1 : 0 };
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-        attribute float aHeight;
-        varying float vHeight;
-        varying vec3 vWorldPos;
-        varying vec3 vWorldNormal;`,
-      )
-      .replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>
+    fog: true,
+    uniforms: {
+      uNight: { value: night ? 1 : 0 },
+      uFogColor: { value: new Color(night ? '#4a5c7a' : '#c8d6e4') },
+      uFogNear: { value: 36 },
+      uFogFar: { value: 220 },
+      uHemiSky: { value: new Color(night ? '#9eb6e6' : '#fff1dc') },
+      uHemiGround: { value: new Color(night ? '#3a342c' : '#c4a888') },
+      uSunColor: { value: new Color(night ? '#d0def8' : '#ffe4bc') },
+      uSunDir: { value: [0.4, 0.8, 0.2] },
+      uAmbient: { value: night ? 0.7 : 0.42 },
+    },
+    vertexShader: `
+      attribute vec3 color;
+      attribute float aHeight;
+      varying vec3 vColor;
+      varying vec3 vWorldPos;
+      varying vec3 vWorldNormal;
+      varying float vHeight;
+      void main() {
+        vColor = color;
         vHeight = aHeight;
-        vWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
-        vWorldNormal = normalize(mat3(modelMatrix) * objectNormal);`,
-      );
-    shader.fragmentShader = shader.fragmentShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-        uniform float uNight;
-        varying float vHeight;
-        varying vec3 vWorldPos;
-        varying vec3 vWorldNormal;
-        float vPane;
-        float vLit;
-        float vRoof;
-        vec3 vGlow;`,
-      )
-      .replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>
+        vec4 world = modelMatrix * vec4(position, 1.0);
+        vWorldPos = world.xyz;
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float uNight;
+      uniform vec3 uFogColor;
+      uniform float uFogNear;
+      uniform float uFogFar;
+      uniform vec3 uHemiSky;
+      uniform vec3 uHemiGround;
+      uniform vec3 uSunColor;
+      uniform vec3 uSunDir;
+      uniform float uAmbient;
+      varying vec3 vColor;
+      varying vec3 vWorldPos;
+      varying vec3 vWorldNormal;
+      varying float vHeight;
+      void main() {
         vec3 nrm = normalize(vWorldNormal);
-        vRoof = smoothstep(0.55, 0.82, abs(nrm.y));
+        float roof = smoothstep(0.48, 0.78, abs(nrm.y));
         float h = max(3.2, vHeight);
-        float rows = max(2.0, floor(h / 3.1));
+        float rows = max(3.0, floor(h / 2.8));
         float along = abs(nrm.x) > abs(nrm.z) ? vWorldPos.z : vWorldPos.x;
         float wy = fract((vWorldPos.y / h) * rows);
-        float wx = fract(along / 2.55);
-        vPane = step(0.18, wx) * step(wx, 0.82) * step(0.26, wy) * step(wy, 0.84);
-        vLit = step(0.38, fract(sin(dot(floor(vec2(along * 0.4, vWorldPos.y * rows * 0.35)), vec2(12.9898, 78.233))) * 43758.5453));
-        vec3 windowDay = vec3(0.38, 0.48, 0.56);
-        vGlow = mix(vec3(0.14, 0.16, 0.2), vec3(1.0, 0.84, 0.48), vLit);
-        vec3 facade = diffuseColor.rgb;
-        vec3 wall = mix(facade, mix(windowDay, vGlow, uNight), vPane * (1.0 - vRoof) * 0.94);
-        float ao = mix(0.58, 1.0, smoothstep(0.0, 2.6, vWorldPos.y));
-        diffuseColor.rgb = mix(wall * ao, facade * 0.7, vRoof);`,
-      )
-      .replace(
-        '#include <emissivemap_fragment>',
-        `#include <emissivemap_fragment>
-        totalEmissiveRadiance += vGlow * vPane * vLit * uNight * (1.0 - vRoof) * 0.85;`,
-      );
-  };
-  material.customProgramCacheKey = () => `facade-${night ? 'n' : 'd'}`;
-  return material;
+        float wx = fract(along / 2.4);
+        float pane = step(0.16, wx) * step(wx, 0.84) * step(0.22, wy) * step(wy, 0.86);
+        float id = fract(sin(dot(floor(vec2(along * 0.42, vWorldPos.y * rows * 0.32)), vec2(12.9898, 78.233))) * 43758.5453);
+        float lit = step(0.34, id);
+        vec3 windowDay = vec3(0.28, 0.38, 0.48);
+        vec3 windowNight = mix(vec3(0.1, 0.12, 0.16), vec3(1.0, 0.82, 0.42), lit);
+        vec3 wall = mix(vColor, mix(windowDay, windowNight, uNight), pane * (1.0 - roof));
+        float ao = mix(0.55, 1.0, smoothstep(0.0, 2.8, vWorldPos.y));
+        vec3 albedo = mix(wall * ao, vColor * 0.62, roof);
+        vec3 hemi = mix(uHemiGround, uHemiSky, nrm.y * 0.5 + 0.5);
+        float sun = max(0.0, dot(nrm, normalize(uSunDir)));
+        vec3 litCol = albedo * (uAmbient + hemi * 0.7 + uSunColor * sun * 0.55);
+        litCol += windowNight * pane * lit * uNight * (1.0 - roof) * 0.95;
+        float dist = length(vWorldPos - cameraPosition);
+        float fog = smoothstep(uFogNear, uFogFar, dist);
+        gl_FragColor = vec4(mix(litCol, uFogColor, fog), 1.0);
+      }
+    `,
+  });
 }
 
 function roadMaterial(night: boolean, marked: boolean) {
-  const material = new MeshStandardMaterial({
-    color: night ? '#2c2e32' : '#55544f',
-    roughness: 0.94,
+  if (!marked) {
+    return new MeshStandardMaterial({
+      color: night ? '#2c2e32' : '#55544f',
+      roughness: 0.94,
+    });
+  }
+  return new ShaderMaterial({
+    uniforms: {
+      uNight: { value: night ? 1 : 0 },
+      uFogColor: { value: new Color(night ? '#4a5c7a' : '#c8d6e4') },
+      uFogNear: { value: 36 },
+      uFogFar: { value: 220 },
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      varying vec3 vWorldPos;
+      void main() {
+        vUv = uv;
+        vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float uNight;
+      uniform vec3 uFogColor;
+      uniform float uFogNear;
+      uniform float uFogFar;
+      varying vec2 vUv;
+      varying vec3 vWorldPos;
+      void main() {
+        vec3 asphalt = mix(vec3(0.34, 0.33, 0.31), vec3(0.17, 0.18, 0.2), uNight);
+        float center = smoothstep(0.468, 0.492, vUv.x) * smoothstep(0.532, 0.508, vUv.x);
+        float dash = step(0.4, fract(vUv.y * 0.1));
+        float edge = smoothstep(0.09, 0.03, vUv.x) + smoothstep(0.91, 0.97, vUv.x);
+        float walk = step(0.82, fract(vUv.y * 0.03)) * step(0.1, vUv.x) * step(vUv.x, 0.9);
+        vec3 paint = mix(vec3(0.94, 0.92, 0.84), vec3(1.0, 0.9, 0.5), uNight * 0.45);
+        vec3 col = mix(asphalt, paint, clamp(center * dash + edge * 0.42 + walk * 0.82, 0.0, 1.0));
+        float fog = smoothstep(uFogNear, uFogFar, length(vWorldPos - cameraPosition));
+        gl_FragColor = vec4(mix(col, uFogColor, fog), 1.0);
+      }
+    `,
   });
-  if (!marked) return material;
-  material.onBeforeCompile = (shader) => {
-    shader.uniforms.uNight = { value: night ? 1 : 0 };
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-        varying vec2 vRoadUv;`,
-      )
-      .replace(
-        '#include <uv_vertex>',
-        `#include <uv_vertex>
-        vRoadUv = uv;`,
-      )
-      .replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>
-        vRoadUv = uv;`,
-      );
-    shader.fragmentShader = shader.fragmentShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-        uniform float uNight;
-        varying vec2 vRoadUv;`,
-      )
-      .replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>
-        vec2 uv = vRoadUv;
-        float center = smoothstep(0.468, 0.492, uv.x) * smoothstep(0.532, 0.508, uv.x);
-        float dash = step(0.42, fract(uv.y * 0.1));
-        float edge = smoothstep(0.09, 0.03, uv.x) + smoothstep(0.91, 0.97, uv.x);
-        float walk = step(0.84, fract(uv.y * 0.032)) * step(0.1, uv.x) * step(uv.x, 0.9);
-        vec3 paint = mix(vec3(0.94, 0.92, 0.84), vec3(1.0, 0.9, 0.52), uNight * 0.4);
-        diffuseColor.rgb = mix(diffuseColor.rgb, paint, clamp(center * dash + edge * 0.4 + walk * 0.78, 0.0, 1.0));`,
-      );
-  };
-  material.customProgramCacheKey = () => `road-${night ? 'n' : 'd'}`;
-  return material;
 }
 
 function waterMaterial(night: boolean) {
@@ -364,7 +369,7 @@ function Forest({ trees, night }: { trees: { x: number; z: number; s: number }[]
       dummy.scale.setScalar(tree.s);
       dummy.updateMatrix();
       trunk.current?.setMatrixAt(i, dummy.matrix);
-      dummy.position.y = 1.35 * tree.s;
+      dummy.position.y = 1.7 * tree.s;
       dummy.updateMatrix();
       leaf.current?.setMatrixAt(i, dummy.matrix);
     });
@@ -376,11 +381,11 @@ function Forest({ trees, night }: { trees: { x: number; z: number; s: number }[]
     <group>
       <instancedMesh ref={trunk} args={[undefined, undefined, trees.length]} castShadow>
         <cylinderGeometry args={[0.12, 0.16, 1.1, 6]} />
-        <meshStandardMaterial color={night ? '#4a3428' : '#6a4a32'} />
+        <meshStandardMaterial color={night ? '#5a4030' : '#6a4a32'} />
       </instancedMesh>
       <instancedMesh ref={leaf} args={[undefined, undefined, trees.length]} castShadow>
-        <coneGeometry args={[0.85, 1.8, 7]} />
-        <meshStandardMaterial color={night ? '#2f4a34' : '#4f7a48'} />
+        <coneGeometry args={[1.15, 2.4, 7]} />
+        <meshStandardMaterial color={night ? '#3d5a40' : '#4f7a48'} />
       </instancedMesh>
     </group>
   );
@@ -407,13 +412,20 @@ function Lamps({ lamps, night }: { lamps: { x: number; z: number }[]; night: boo
   return (
     <group>
       <instancedMesh ref={poles} args={[undefined, undefined, lamps.length]}>
-        <cylinderGeometry args={[0.06, 0.08, 3.1, 6]} />
+        <cylinderGeometry args={[0.07, 0.09, 3.4, 6]} />
         <meshStandardMaterial color={night ? '#3a3a3e' : '#4a4a4c'} metalness={0.3} roughness={0.5} />
       </instancedMesh>
       <instancedMesh ref={bulbs} args={[undefined, undefined, lamps.length]}>
-        <sphereGeometry args={[0.16, 8, 8]} />
+        <sphereGeometry args={[0.22, 8, 8]} />
         <meshBasicMaterial color={night ? '#ffe2a0' : '#f4e8c8'} />
       </instancedMesh>
+      {night &&
+        lamps.slice(0, 12).map((lamp) => (
+          <mesh key={`glow-${lamp.x}:${lamp.z}`} rotation={[-Math.PI / 2, 0, 0]} position={[lamp.x, 0.04, lamp.z]}>
+            <circleGeometry args={[3.4, 16]} />
+            <meshBasicMaterial color="#ffd080" transparent opacity={0.22} depthWrite={false} />
+          </mesh>
+        ))}
       {lit.map((lamp) => (
         <pointLight
           key={`lit-${lamp.x}:${lamp.z}`}
@@ -475,6 +487,11 @@ export default function WorldScene({
   const asphalt = useMemo(() => roadMaterial(night, false), [night]);
   const marked = useMemo(() => roadMaterial(night, true), [night]);
   const water = useMemo(() => waterMaterial(night), [night]);
+  useEffect(() => {
+    if (facade.uniforms?.uSunDir) {
+      facade.uniforms.uSunDir.value = [sun.x, Math.max(0.25, sun.y + (night ? 0.4 : 0)), sun.z];
+    }
+  }, [facade, night, sun.x, sun.y, sun.z]);
 
   useFrame((_, dt) => {
     const clock = water.userData.uTime;

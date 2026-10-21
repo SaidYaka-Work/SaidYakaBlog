@@ -53,7 +53,7 @@ export function ringBounds(ring: PointXZ[]) {
 export function lampsAlongRoads(roads: RoadLine[], here: PointXZ, max = 16, spacing = 28) {
   const lamps: PointXZ[] = [];
   for (const road of roads) {
-    if (road.width < 6.2) continue;
+    if (road.width < 5) continue;
     let traveled = 0;
     for (let i = 1; i < road.line.length; i += 1) {
       const a = road.line[i - 1];
@@ -76,9 +76,15 @@ export function lampsAlongRoads(roads: RoadLine[], here: PointXZ, max = 16, spac
       traveled += len;
     }
   }
-  return lamps
+  const nearest = lamps
     .sort((a, b) => Math.hypot(a.x - here.x, a.z - here.z) - Math.hypot(b.x - here.x, b.z - here.z))
     .slice(0, max);
+  if (nearest.length >= 3) return nearest;
+  for (let i = nearest.length; i < Math.min(6, max); i += 1) {
+    const ang = (i / 6) * Math.PI * 2;
+    nearest.push({ x: here.x + Math.cos(ang) * 14, z: here.z + Math.sin(ang) * 14 });
+  }
+  return nearest;
 }
 
 export function treesInParks(parks: PointXZ[][], here: PointXZ, max = 36) {
@@ -91,8 +97,8 @@ export function treesInParks(parks: PointXZ[][], here: PointXZ, max = 36) {
       area += park[j].x * park[i].z - park[i].x * park[j].z;
     }
     area = Math.abs(area) * 0.5;
-    if (area < 90) continue;
-    const n = Math.min(4, 1 + Math.floor(area / 500));
+    if (area < 40) continue;
+    const n = Math.min(8, 2 + Math.floor(area / 280));
     for (let i = 0; i < n && trees.length < max * 2; i += 1) {
       const ang = hash2(c.x, c.z + i) * Math.PI * 2;
       const r = 1.6 + hash2(c.z, c.x + i) * 7;
@@ -100,6 +106,17 @@ export function treesInParks(parks: PointXZ[][], here: PointXZ, max = 36) {
         x: c.x + Math.cos(ang) * r,
         z: c.z + Math.sin(ang) * r,
         s: 0.75 + hash2(i + 2, c.x) * 0.7,
+      });
+    }
+  }
+  if (parks.length) {
+    for (let i = 0; i < 6 && trees.length < max; i += 1) {
+      const ang = hash2(here.x + i, here.z) * Math.PI * 2;
+      const r = 4 + hash2(here.z, i + 3) * 10;
+      trees.push({
+        x: here.x + Math.cos(ang) * r,
+        z: here.z + Math.sin(ang) * r,
+        s: 0.9 + hash2(i, here.z) * 0.5,
       });
     }
   }
