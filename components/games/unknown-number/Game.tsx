@@ -28,6 +28,7 @@ import {
   recordFinish,
   shareLines,
   suspectPool,
+  uniqueIds,
   winPercent,
   writeJson,
   wrongGuessCount,
@@ -191,7 +192,7 @@ export default function UnknownNumberGame() {
       const guesses: GuessRecord[] = [...day.guesses, { text: choice.name, correct }];
       const nextEliminated = correct
         ? eliminatedIds(day)
-        : [...new Set([...eliminatedIds(day), choice.id])];
+        : uniqueIds([...eliminatedIds(day), choice.id]);
       if (correct) {
         const next: DayState = { ...day, guesses, eliminated: nextEliminated, status: 'won' };
         const nextStats = recordFinish(stats, day.date, 'won', guesses.length);

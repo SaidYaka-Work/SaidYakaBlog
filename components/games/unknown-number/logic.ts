@@ -356,16 +356,25 @@ export function loadStats(): GameStats {
   };
 }
 
+export function uniqueIds(ids: readonly string[]): string[] {
+  const seen: Record<string, true> = {};
+  const out: string[] = [];
+  for (const id of ids) {
+    if (seen[id]) continue;
+    seen[id] = true;
+    out.push(id);
+  }
+  return out;
+}
+
 export function eliminatedIds(state: Pick<DayState, 'guesses' | 'eliminated'>): string[] {
-  if (state.eliminated?.length) return [...new Set(state.eliminated)];
-  return [
-    ...new Set(
-      state.guesses
-        .filter((guess) => !guess.correct)
-        .map((guess) => findFigureByGuess(guess.text)?.id)
-        .filter((id): id is string => Boolean(id)),
-    ),
-  ];
+  if (state.eliminated?.length) return uniqueIds(state.eliminated);
+  return uniqueIds(
+    state.guesses
+      .filter((guess) => !guess.correct)
+      .map((guess) => findFigureByGuess(guess.text)?.id)
+      .filter((id): id is string => Boolean(id)),
+  );
 }
 
 export function loadDayState(today: string): DayState | null {
