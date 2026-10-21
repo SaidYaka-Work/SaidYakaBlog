@@ -10,7 +10,7 @@ import {
   type BufferGeometry,
 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { centroid, facadeTint, isMajorRoad, pointInRing, ringBounds } from './dress';
+import { centroid, facadeTint, isDressRoad, isMajorRoad, pointInRing, ringBounds } from './dress';
 import type { TileBounds, WorldTileData } from './decode';
 
 export type BuiltTile = {
@@ -46,6 +46,7 @@ export type BuildJob = {
   roofs: BufferGeometry[];
   index: number;
   list: WorldTileData['buildings'];
+  visualRoads: WorldTileData['roads'];
   dress: DressStep | 'done' | string;
   built: BuiltTile;
   ribbon: RibbonCursor | null;
@@ -134,14 +135,51 @@ function paintBuilding(geo: BufferGeometry, tint: readonly number[], height: num
   geo.setAttribute('aHeight', new BufferAttribute(heights, 1));
 }
 
+export function geometryTris(geo: BufferGeometry | null | undefined) {
+  if (!geo) return 0;
+  const index = geo.getIndex();
+  if (index) return Math.floor(index.count / 3);
+  return Math.floor((geo.getAttribute('position')?.count ?? 0) / 3);
+}
+
+export function countBuiltTris(built: BuiltTile) {
+  const buildings = built.buildings.reduce((sum, geo) => sum + geometryTris(geo), 0);
+  const roofs = built.roofs.reduce((sum, geo) => sum + geometryTris(geo), 0);
+  const parks = geometryTris(built.parks);
+  const water = geometryTris(built.water);
+  const sidewalks = geometryTris(built.sidewalks);
+  const roads = geometryTris(built.roads);
+  return {
+    buildings,
+    roofs,
+    parks,
+    water,
+    sidewalks,
+    roads,
+    total: buildings + roofs + parks + water + sidewalks + roads,
+  };
+}
+
 export function pushBuilding(
   building: WorldTileData['buildings'][number],
   walls: BufferGeometry[],
   roofs: BufferGeometry[],
   withRoof: boolean,
+  asBox = false,
 ) {
   try {
     const height = Math.max(3.2, building.height - building.min);
+    const mid = centroid(building.ring);
+    const tint = facadeTint(mid.x, mid.z);
+    if (asBox) {
+      const box = ringBounds(building.ring);
+      if (box.w < 1.2 || box.d < 1.2) return;
+      const geo = new BoxGeometry(box.w, height, box.d);
+      geo.translate((box.minX + box.maxX) / 2, building.min + height / 2, (box.minZ + box.maxZ) / 2);
+      paintBuilding(geo, tint, height);
+      walls.push(geo);
+      return;
+    }
     const geo = new ExtrudeGeometry(shapeFrom(building.ring), {
       depth: height,
       bevelEnabled: false,
@@ -149,8 +187,7 @@ export function pushBuilding(
     });
     geo.rotateX(-Math.PI / 2);
     geo.translate(0, building.min, 0);
-    const mid = centroid(building.ring);
-    paintBuilding(geo, facadeTint(mid.x, mid.z), height);
+    paintBuilding(geo, tint, height);
     walls.push(geo);
     if (!withRoof) return;
     const box = ringBounds(building.ring);
@@ -204,10 +241,11 @@ export function pushRibbonSegs(
   majorOnly: boolean,
   cursor: RibbonCursor,
   limit: number,
+  roads = tile.roads,
 ) {
   let made = 0;
-  while (cursor.road < tile.roads.length && made < limit) {
-    const road = tile.roads[cursor.road];
+  while (cursor.road < roads.length && made < limit) {
+    const road = roads[cursor.road];
     if (majorOnly && !isMajorRoad(road.width, road.klass)) {
       cursor.road += 1;
       cursor.seg = 1;
@@ -238,7 +276,7 @@ export function pushRibbonSegs(
       cursor.seg = 1;
     }
   }
-  return cursor.road >= tile.roads.length;
+  return cursor.road >= roads.length;
 }
 
 /** Sidewalks as two side strips so they never cross the road interior. */
@@ -248,10 +286,11 @@ export function pushSidewalkSegs(
   y: number,
   cursor: RibbonCursor,
   limit: number,
+  roads = tile.roads,
 ) {
   let made = 0;
-  while (cursor.road < tile.roads.length && made < limit) {
-    const road = tile.roads[cursor.road];
+  while (cursor.road < roads.length && made < limit) {
+    const road = roads[cursor.road];
     if (cursor.seg < 1) cursor.seg = 1;
     while (cursor.seg < road.line.length && made < limit) {
       const a = road.line[cursor.seg - 1];
@@ -286,7 +325,7 @@ export function pushSidewalkSegs(
       cursor.seg = 1;
     }
   }
-  return cursor.road >= tile.roads.length;
+  return cursor.road >= roads.length;
 }
 
 export function takeMerged(geos: BufferGeometry[]) {
@@ -318,8 +357,11 @@ export function flattenRings(rings: { x: number; z: number }[][], y = 0.012) {
 export function createBuildJob(tile: WorldTileData, here: { x: number; z: number }): BuildJob {
   const lod = tileIsLod(tile, here);
   const list = lod
-    ? tile.buildings.filter((building) => building.area > 28).slice(0, 80)
-    : tile.buildings.slice(0, 160);
+    ? tile.buildings.filter((building) => building.area >= 48).slice(0, 28)
+    : tile.buildings.filter((building) => building.area >= 12).slice(0, 96);
+  const visualRoads = lod
+    ? tile.roads.filter((road) => isMajorRoad(road.width, road.klass)).slice(0, 36)
+    : tile.roads.filter((road) => isDressRoad(road.width, road.klass));
   return {
     tile,
     lod,
@@ -327,6 +369,7 @@ export function createBuildJob(tile: WorldTileData, here: { x: number; z: number
     roofs: [],
     index: 0,
     list,
+    visualRoads,
     dress: 'buildings',
     built: emptyTile(tile.key),
     ribbon: null,
@@ -342,7 +385,7 @@ export function stepBuildJob(job: BuildJob): StepResult {
   if (job.dress === 'buildings') {
     const end = Math.min(job.list.length, job.index + 8);
     for (; job.index < end; job.index += 1) {
-      pushBuilding(job.list[job.index], job.walls, job.roofs, !job.lod);
+      pushBuilding(job.list[job.index], job.walls, job.roofs, !job.lod, job.lod);
     }
     if (job.index < job.list.length) return { done: false, changed: false, job };
     job.dress = 'merge';
@@ -422,7 +465,7 @@ export function stepBuildJob(job: BuildJob): StepResult {
     }
     const cursor = job.ribbon ?? { road: 0, seg: 1, geos: [] };
     job.ribbon = cursor;
-    const done = pushSidewalkSegs(job.tile, 1.15, LAYER_Y.sidewalk, cursor, 8);
+    const done = pushSidewalkSegs(job.tile, 1.15, LAYER_Y.sidewalk, cursor, 8, job.visualRoads);
     if (!done) return { done: false, changed: false, job };
     job.built.sidewalks = takeMerged(cursor.geos);
     job.dress = 'roads';
@@ -432,7 +475,7 @@ export function stepBuildJob(job: BuildJob): StepResult {
   if (job.dress === 'roads') {
     const cursor = job.ribbon ?? { road: 0, seg: 1, geos: [] };
     job.ribbon = cursor;
-    const done = pushRibbonSegs(job.tile, 0, LAYER_Y.road, false, cursor, 8);
+    const done = pushRibbonSegs(job.tile, 0, LAYER_Y.road, job.lod, cursor, 8, job.visualRoads);
     if (!done) return { done: false, changed: false, job };
     job.built.roads = takeMerged(cursor.geos);
     job.built.major = null;

@@ -4,6 +4,7 @@ import { PbfReader } from 'pbf';
 import { VectorTile } from '@mapbox/vector-tile';
 import {
   DRESS_STEPS,
+  countBuiltTris,
   createBuildJob,
   pointToAabb,
   runBuildJob,
@@ -87,6 +88,16 @@ for (let i = 0; i < (walkPos?.count ?? 0); i += 1) {
   if (Math.abs(walkPos!.getZ(i)) < 3.6) onRoad += 1;
 }
 assert.ok((walkPos?.count ?? 0) > 0 && onRoad / walkPos!.count < 0.2, 'sidewalks stay beside the road');
+const nearTris = countBuiltTris(built);
+assert.ok(nearTris.sidewalks > 0 && nearTris.roads > 0, 'near tile keeps sidewalks and roads');
+
+const lodBuilt = runBuildJob(tile, { x: 400, z: 0 }).built;
+assert.equal(lodBuilt.sidewalks, null, 'lod drops sidewalks');
+assert.equal(lodBuilt.parks, null, 'lod drops park fills');
+assert.equal(lodBuilt.roofs.length, 0, 'lod drops roof caps');
+const lodTris = countBuiltTris(lodBuilt);
+assert.ok(lodTris.total < nearTris.total, `lod ${lodTris.total} should be cheaper than near ${nearTris.total}`);
+assert.ok(lodTris.buildings > 0, 'lod still draws the large nearby box as a cheap wall');
 
 const stuck = createBuildJob(tile, here);
 stuck.dress = 'nope';
@@ -251,6 +262,8 @@ assert.ok(
 
 const fixtureBuilt = runBuildJob(decodedFixture, { x: 0, z: 0 }).built;
 assertMeshMatchesFootprint(fixtureBuilt, decodedFixture, 'OpenFreeMap fixture 14/4823/6157');
+const fixtureLod = runBuildJob(decodedFixture, { x: 4000, z: 0 }).built;
+assert.equal(fixtureLod.sidewalks, null, 'far fixture drops sidewalks');
 
 const center = { z: 14, x: 4825, y: 6156 };
 const windowKeys = wantedTileKeys(center);

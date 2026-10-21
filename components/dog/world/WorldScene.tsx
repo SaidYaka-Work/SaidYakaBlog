@@ -276,7 +276,7 @@ function SkyDome({ night }: { night: boolean }) {
   });
   return (
     <mesh ref={ref} renderOrder={-2}>
-      <sphereGeometry args={[420, 16, 10]} />
+      <sphereGeometry args={[180, 12, 8]} />
       <shaderMaterial
         side={DoubleSide}
         depthWrite={false}
@@ -388,18 +388,18 @@ function Forest({ plants, night }: { plants: Plant[]; night: boolean }) {
       {trees.length > 0 && (
         <>
           <instancedMesh ref={trunk} args={[undefined, undefined, trees.length]}>
-            <cylinderGeometry args={[0.18, 0.24, 1.7, 5]} />
+            <cylinderGeometry args={[0.18, 0.24, 1.7, 4]} />
             <meshBasicMaterial color="#8a5a38" />
           </instancedMesh>
           <instancedMesh ref={leaf} args={[undefined, undefined, trees.length]}>
-            <coneGeometry args={[1.9, 3.8, 6]} />
+            <coneGeometry args={[1.9, 3.8, 4]} />
             <meshBasicMaterial color={night ? '#8aaa62' : '#5f8a4e'} />
           </instancedMesh>
         </>
       )}
       {bushes.length > 0 && (
         <instancedMesh ref={bush} args={[undefined, undefined, bushes.length]}>
-          <sphereGeometry args={[0.7, 7, 5]} />
+          <sphereGeometry args={[0.7, 5, 4]} />
           <meshBasicMaterial color={night ? '#6a8a52' : '#4a7a40'} />
         </instancedMesh>
       )}
@@ -430,11 +430,11 @@ function Lamps({ lamps, night }: { lamps: { x: number; z: number }[]; night: boo
   return (
     <group>
       <instancedMesh ref={poles} args={[undefined, undefined, lamps.length]}>
-        <cylinderGeometry args={[0.08, 0.1, 3.4, 5]} />
+        <cylinderGeometry args={[0.08, 0.1, 3.4, 4]} />
         <meshLambertMaterial color={night ? '#4a4a50' : '#5a5a5c'} emissive="#222224" emissiveIntensity={0.25} />
       </instancedMesh>
       <instancedMesh ref={bulbs} args={[undefined, undefined, lamps.length]}>
-        <sphereGeometry args={[0.24, 6, 6]} />
+        <sphereGeometry args={[0.24, 5, 4]} />
         <meshBasicMaterial color={night ? '#ffe2a0' : '#f4e8c8'} />
       </instancedMesh>
     </group>
@@ -553,7 +553,7 @@ export default function WorldScene({
     // Keep half-uploaded tiles: their cache entry exists, but layers are still pending.
     uploads.current = uploads.current.filter((item) => keep.has(item.tile.key));
     if (pending.current && !keep.has(pending.current.tile.key)) pending.current = null;
-    for (const tile of warming) {
+    for (const tile of tiles) {
       if (cache.current.has(tile.key)) continue;
       if (tile.packed) {
         if (!uploads.current.some((item) => item.tile.key === tile.key)) {
@@ -584,10 +584,10 @@ export default function WorldScene({
   }, []);
 
   const lamps = useMemo(
-    () => lampsAlongRoads(tiles.flatMap((tile) => tile.roads), here, slim ? 6 : 10),
+    () => lampsAlongRoads(tiles.flatMap((tile) => tile.roads), here, slim ? 5 : 8),
     [here, slim, tiles],
   );
-  const plantMax = slim ? 48 : 96;
+  const plantMax = slim ? 28 : 48;
   const plants = useMemo(
     () => dressPlants(tiles.flatMap((tile) => tile.parks), tiles.flatMap((tile) => tile.roads), here, plantMax),
     [here, plantMax, tiles],
@@ -696,7 +696,7 @@ export default function WorldScene({
       if (built && layer) {
         applyPackedLayer(built, upload.packed, layer);
         changed = tiles.some((tile) => tile.key === upload.tile.key);
-        if (layer === 'buildings') skipUpload.current = 1;
+        skipUpload.current = layer === 'buildings' || layer === 'roads' ? 2 : 1;
       }
       upload.layer += 1;
       if (upload.layer >= PACK_LAYERS.length) {
@@ -757,7 +757,7 @@ export default function WorldScene({
   useEffect(() => {
     const fog = night ? '#4a5c7a' : '#c8d6e4';
     scene.background = new Color(fog);
-    scene.fog = new Fog(fog, 36, slim ? 140 : 200);
+    scene.fog = new Fog(fog, 28, slim ? 96 : 130);
     gl.setClearColor(fog, 1);
     gl.toneMappingExposure = night ? 1.22 : 0.9;
   }, [gl, night, scene, slim]);
@@ -782,7 +782,7 @@ export default function WorldScene({
     <group>
       <SkyDome night={night} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]} material={groundMat}>
-        <planeGeometry args={[2400, 2400]} />
+        <planeGeometry args={[360, 360]} />
       </mesh>
       {failed && ready.every((tile) => !tile.buildings.length && !tile.roads) && (
         <group>

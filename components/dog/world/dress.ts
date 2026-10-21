@@ -205,6 +205,16 @@ export function isMajorRoad(width: number, klass?: string) {
   return klass === 'primary' || klass === 'secondary' || klass === 'tertiary' || klass === 'trunk' || klass === 'motorway';
 }
 
+export function isMinorPath(klass?: string) {
+  return klass === 'path' || klass === 'footway' || klass === 'service' || klass === 'track' || klass === 'steps';
+}
+
+/** Roads worth drawing near the dog. Collision still uses the full decode set. */
+export function isDressRoad(width: number, klass?: string) {
+  if (isMinorPath(klass)) return false;
+  return width >= 4.2;
+}
+
 function segmentHit(a0: PointXZ, a1: PointXZ, b0: PointXZ, b1: PointXZ) {
   const dax = a1.x - a0.x;
   const daz = a1.z - a0.z;

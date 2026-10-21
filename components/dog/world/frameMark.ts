@@ -18,3 +18,6 @@ export const camFade = {
 };
 
 export const liveBuildingGrid: { current: unknown } = { current: null };
+
+/** Shared pixel-ratio cap. PerfProbe lowers this when p95 stays high. */
+export const renderScale = { dpr: 1.25 };

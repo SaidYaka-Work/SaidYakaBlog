@@ -11,7 +11,7 @@ import DogRig, { type DriveControl } from './DogRig';
 import WorldBowl from './WorldBowl';
 import { asFootprintGrid, footprintClearance, resolveCameraXZ, HOME_PLACE } from '../../workers/dog/src/world';
 import type { TileStatus, WorldColliders } from './world/useWorldTiles';
-import { camFade, frameMark, liveBuildingGrid } from './world/frameMark';
+import { camFade, frameMark, liveBuildingGrid, renderScale } from './world/frameMark';
 
 const WorldLayer = lazy(() => import('./world/WorldLayer'));
 
@@ -34,7 +34,7 @@ function SizeSync({ host }: { host: RefObject<HTMLDivElement | null> }) {
       const box = node.getBoundingClientRect();
       const width = Math.max(1, box.width);
       const height = Math.max(1, box.height);
-      const dpr = Math.min(window.innerWidth < 700 ? 1.25 : 1.5, window.devicePixelRatio || 1);
+      const dpr = Math.min(renderScale.dpr, 1.25, window.devicePixelRatio || 1);
       gl.setPixelRatio(dpr);
       gl.setSize(width, height, false);
       set({ size: { width, height, top: box.top, left: box.left } });
@@ -100,6 +100,10 @@ function PerfProbe() {
       memMB: mem ? Math.round(mem.usedJSHeapSize / 1e6) : 0,
       samples: (prev?.samples ?? 0) + 1,
     };
+    if (ring.length > 40 && p95 > 48 && renderScale.dpr > 1) {
+      renderScale.dpr = 1;
+      gl.setPixelRatio(1);
+    }
   });
   return null;
 }
@@ -300,7 +304,7 @@ function FramedCamera({
       camFade.camZ = street.current.z;
       frameMark.camera = performance.now() - camStart;
       camera.near = flight > 0.5 ? 2 : 0.35;
-      camera.far = 520;
+      camera.far = 180;
       camera.up.set(0, 1, 0);
       if (!ready.current) {
         camera.position.copy(street.current);
@@ -508,7 +512,7 @@ export default function DogCanvas({
     >
       <Canvas
         dpr={[1, 1.25]}
-        camera={{ position: [0, 6.8, 15], fov: 44, near: 0.1, far: 560 }}
+        camera={{ position: [0, 6.8, 15], fov: 44, near: 0.1, far: 180 }}
         frameloop={frameloop}
         resize={{ debounce: 0, scroll: false }}
         gl={{
@@ -521,7 +525,7 @@ export default function DogCanvas({
           gl.toneMapping = ACESFilmicToneMapping;
           gl.outputColorSpace = SRGBColorSpace;
           gl.toneMappingExposure = night ? 1.16 : 0.92;
-          const dpr = Math.min(window.innerWidth < 700 ? 1.25 : 1.5, window.devicePixelRatio || 1);
+          const dpr = Math.min(renderScale.dpr, 1.25, window.devicePixelRatio || 1);
           gl.setPixelRatio(dpr);
           const width = Math.max(1, gl.domElement.clientWidth || 1);
           const height = Math.max(1, gl.domElement.clientHeight || 1);
