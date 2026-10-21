@@ -719,7 +719,7 @@ export default function WorldScene({
   return (
     <group>
       <SkyDome night={night} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={groundMat}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]} material={groundMat}>
         <planeGeometry args={[2400, 2400]} />
       </mesh>
       {failed && ready.every((tile) => !tile.buildings.length && !tile.roads) && (
@@ -749,7 +749,7 @@ export default function WorldScene({
           {tile.sidewalks && (
             <mesh geometry={tile.sidewalks} material={walkMat} renderOrder={1} />
           )}
-          {tile.roads && <mesh geometry={tile.roads} material={marked} renderOrder={3} />}
+          {tile.roads && <mesh geometry={tile.roads} material={asphalt} renderOrder={3} />}
           {tile.water && <mesh geometry={tile.water} material={water} />}
           {tile.buildings.map((geo, index) => (
             <mesh key={`${tile.key}-b-${index}`} geometry={geo} material={facade} userData={{ occlude: true }} />

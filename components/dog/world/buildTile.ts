@@ -31,10 +31,10 @@ export const DRESS_STEPS: DressStep[] = ['buildings', 'merge', 'parks', 'water',
 /** Ground < parks < sidewalks < roads < markings. Meters, not shader units. */
 export const LAYER_Y = {
   park: 0,
-  water: 0.004,
-  sidewalk: 0.008,
-  road: 0.018,
-  mark: 0.028,
+  water: 0.003,
+  sidewalk: 0.01,
+  road: 0.04,
+  mark: 0.055,
 } as const;
 
 export type RibbonCursor = { road: number; seg: number; geos: BufferGeometry[] };
