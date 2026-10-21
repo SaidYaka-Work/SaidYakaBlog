@@ -30,13 +30,13 @@ function readTheme(node: HTMLElement): Theme {
   const dark = document.documentElement.classList.contains('dark');
   const styles = getComputedStyle(node);
   return {
-    ocean0: dark ? '#243039' : '#c9dde8',
-    ocean1: dark ? '#14191d' : '#8fb4c6',
-    land: dark ? '#5b4d3c' : '#d7c4a3',
-    landStroke: dark ? '#8a7458' : '#9c8462',
-    grid: dark ? 'rgba(232, 214, 186, 0.12)' : 'rgba(42, 58, 66, 0.14)',
-    rim: dark ? 'rgba(232, 168, 124, 0.55)' : 'rgba(180, 83, 42, 0.35)',
-    glow: dark ? 'rgba(232, 168, 124, 0.42)' : 'rgba(180, 83, 42, 0.32)',
+    ocean0: dark ? '#2a3a44' : '#b7d3e2',
+    ocean1: dark ? '#12181c' : '#6f9db3',
+    land: dark ? '#c4a57a' : '#e6d2ae',
+    landStroke: dark ? '#8d7352' : '#8b6f45',
+    grid: dark ? 'rgba(232, 214, 186, 0.16)' : 'rgba(28, 44, 52, 0.16)',
+    rim: dark ? 'rgba(232, 168, 124, 0.7)' : 'rgba(180, 83, 42, 0.45)',
+    glow: dark ? 'rgba(232, 168, 124, 0.28)' : 'rgba(180, 83, 42, 0.22)',
     pin: styles.getPropertyValue('--un-out-bg').trim() || (dark ? '#e8a87c' : '#b4532a'),
     label: styles.getPropertyValue('--ink').trim() || (dark ? '#f3eee6' : '#161412'),
     labelBg: styles.getPropertyValue('--bg-elevated').trim() || (dark ? '#1d1916' : '#fffdf8'),
@@ -57,7 +57,7 @@ export default function GlobeHint({
   revealed: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const worldRef = useRef<{ land: GeoJSON.Feature; countries: GeoJSON.Feature } | null>(null);
+  const worldRef = useRef<{ land: GeoJSON.FeatureCollection; countries: GeoJSON.FeatureCollection } | null>(null);
   const viewRef = useRef<GlobeView>(globeView(wrongGuesses, birthplace, revealed));
   const fromRef = useRef<GlobeView>(viewRef.current);
   const animRef = useRef<number | null>(null);
@@ -69,8 +69,8 @@ export default function GlobeHint({
       .then((topology: Topology) => {
         if (cancelled) return;
         worldRef.current = {
-          land: feature(topology as never, topology.objects.land as never) as unknown as GeoJSON.Feature,
-          countries: feature(topology as never, topology.objects.countries as never) as unknown as GeoJSON.Feature,
+          land: feature(topology as never, topology.objects.land as never) as unknown as GeoJSON.FeatureCollection,
+          countries: feature(topology as never, topology.objects.countries as never) as unknown as GeoJSON.FeatureCollection,
         };
         paint(canvasRef.current, viewRef.current, birthplace, worldRef.current);
       })
@@ -163,7 +163,7 @@ function paint(
   canvas: HTMLCanvasElement | null,
   view: GlobeView,
   birth: Birthplace,
-  world: { land: GeoJSON.Feature; countries: GeoJSON.Feature } | null,
+  world: { land: GeoJSON.FeatureCollection; countries: GeoJSON.FeatureCollection } | null,
 ) {
   if (!canvas) return;
   const width = canvas.clientWidth || 200;
@@ -215,21 +215,9 @@ function paint(
   ctx.stroke();
 
   if (world) {
-    ctx.beginPath();
-    path(world.land);
-    ctx.fillStyle = theme.land;
-    ctx.fill();
-    ctx.strokeStyle = theme.landStroke;
-    ctx.lineWidth = view.index >= 3 ? 0.7 : 0.45;
-    ctx.stroke();
+    fillCollection(ctx, path, world.land, theme.land, theme.landStroke, view.index >= 3 ? 0.75 : 0.5);
     if (view.index >= 1) {
-      ctx.beginPath();
-      path(world.countries);
-      ctx.strokeStyle = theme.landStroke;
-      ctx.globalAlpha = 0.55;
-      ctx.lineWidth = 0.45;
-      ctx.stroke();
-      ctx.globalAlpha = 1;
+      strokeCollection(ctx, path, world.countries, theme.landStroke, 0.45, 0.5);
     }
   }
 
@@ -242,20 +230,17 @@ function paint(
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.fill();
 
-  if (view.showHint || (view.index === 0 && !view.showPin)) {
-    const circle = geoCircle()
-      .center([birth.lng, birth.lat])
-      .radius(view.index === 0 ? 90 : view.hintDeg)
-      .precision(2)();
+  if (view.showHint) {
+    const circle = geoCircle().center([birth.lng, birth.lat]).radius(view.hintDeg).precision(2)();
     ctx.beginPath();
     path(circle);
     ctx.fillStyle = theme.glow;
     ctx.shadowColor = theme.glow;
-    ctx.shadowBlur = 16;
+    ctx.shadowBlur = 18;
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.strokeStyle = theme.rim;
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 1.5;
     ctx.stroke();
   }
 
@@ -279,6 +264,45 @@ function paint(
       drawLabel(ctx, point[0], Math.max(18, point[1] - 22), `${birth.name}`, theme, width);
     }
   }
+}
+
+function fillCollection(
+  ctx: CanvasRenderingContext2D,
+  path: ReturnType<typeof geoPath>,
+  collection: GeoJSON.FeatureCollection,
+  fill: string,
+  stroke: string,
+  lineWidth: number,
+) {
+  for (const feat of collection.features) {
+    ctx.beginPath();
+    path(feat.geometry);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  }
+}
+
+function strokeCollection(
+  ctx: CanvasRenderingContext2D,
+  path: ReturnType<typeof geoPath>,
+  collection: GeoJSON.FeatureCollection,
+  stroke: string,
+  lineWidth: number,
+  alpha: number,
+) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  for (const feat of collection.features) {
+    ctx.beginPath();
+    path(feat.geometry);
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function drawPin(ctx: CanvasRenderingContext2D, x: number, y: number, theme: Theme) {

@@ -40,6 +40,10 @@ const GlobeHint = dynamic(() => import('./GlobeHint'), {
   loading: () => <div className="un-globe un-globe-pending" aria-hidden="true" />,
 });
 
+function prefersReducedStatsDelay() {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 const meta = getGameBySlug('unknown-number')!;
 
 function debugFigure(): Figure | null {
@@ -199,8 +203,8 @@ export default function UnknownNumberGame() {
         setDay(next);
         setStats(nextStats);
         persist(next, nextStats);
-        setStatsOpen(true);
         beep(740, 0.12);
+        window.setTimeout(() => setStatsOpen(true), prefersReducedStatsDelay() ? 0 : 1100);
         return;
       }
       const holding: DayState = { ...day, guesses, eliminated: nextEliminated };
@@ -212,8 +216,8 @@ export default function UnknownNumberGame() {
         setDay(next);
         setStats(nextStats);
         persist(next, nextStats);
-        setStatsOpen(true);
         beep(180, 0.1);
+        window.setTimeout(() => setStatsOpen(true), prefersReducedStatsDelay() ? 0 : 1100);
         return;
       }
       beep(240, 0.05);
