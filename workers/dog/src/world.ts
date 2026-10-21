@@ -164,14 +164,16 @@ export function migrateLocation(value: Location | undefined, now: number): Locat
 
 /** Align a yard that still thinks it is indoors onto its last geo (or WSP). */
 export function settleWorldYard(yard: YardState, now: number): YardState {
+  const poseIn = yard.pose ?? { x: 0, z: 0, yaw: 0.55, vx: 0, vz: 0, gait: 'idle' as const };
+  const feederIn = yard.feeder ?? { hasFood: false, filledAt: 0, eatingUntil: 0, ...placeFeeder(poseIn) };
   const priorMode = yard.location?.mode;
   const location = migrateLocation(yard.location, now);
   const parked = lngLatToLocal(location.lat, location.lng, location.originLat, location.originLng);
   const pose = isLegacyIndoorMode(priorMode)
-    ? { ...yard.pose, x: parked.x, z: parked.z, yaw: location.heading, vx: 0, vz: 0 }
-    : yard.pose;
+    ? { ...poseIn, x: parked.x, z: parked.z, yaw: location.heading, vx: 0, vz: 0 }
+    : poseIn;
   const bowl =
-    Number.isFinite(yard.feeder.x) && Number.isFinite(yard.feeder.z) ? yard.feeder : { ...yard.feeder, ...placeFeeder(pose) };
+    Number.isFinite(feederIn.x) && Number.isFinite(feederIn.z) ? feederIn : { ...feederIn, ...placeFeeder(pose) };
   return { ...yard, pose, location, feeder: bowl };
 }
 

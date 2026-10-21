@@ -364,7 +364,7 @@ export function createRoom(now: number): RoomState {
     history: [],
     lastCatchAt: 0,
     pendingName: null,
-    yard: createYard(now),
+    yard: settleWorldYard(createYard(now), now),
     companions: {},
   };
 }
@@ -390,15 +390,18 @@ function withGenome<T extends { id: string; profile: DogProfile; genome?: DogGen
   };
 }
 
-export function migrateRoom(room: RoomState, now = Date.now()): RoomState {
+export function migrateRoom(room?: RoomState | null, now = Date.now()): RoomState {
+  if (!room || typeof room !== 'object') return createRoom(now);
+  const history = Array.isArray(room.history) ? room.history : [];
   return {
     ...room,
     pendingName: room.pendingName ?? null,
-    dog: room.dog ? withGenome(room.dog) : null,
+    lastCatchAt: Number.isFinite(room.lastCatchAt) ? room.lastCatchAt : 0,
+    dog: room.dog ? withGenome(room.dog) : room.dog === null ? null : createRoom(now).dog,
     memorial: room.memorial ? withGenome(room.memorial) : null,
-    history: room.history.map((record) => withGenome(record)),
+    history: history.map((record) => withGenome(record)),
     yard: settleWorldYard(migrateYard(room.yard, now), now),
-    companions: room.companions ?? {},
+    companions: room.companions && typeof room.companions === 'object' ? room.companions : {},
   };
 }
 

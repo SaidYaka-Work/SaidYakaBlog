@@ -67,22 +67,28 @@ function corsHeaders(origin: string | null, env: Env): HeadersInit {
   };
 }
 
+function napping(origin: string | null, env: Env) {
+  return new Response('napping', { status: 503, headers: corsHeaders(origin, env) });
+}
+
 export class DogRoom {
   private session: RoomSession | null = null;
   private rates: Record<string, RateBucket> = {};
   private emoteRates: Record<string, EmoteBucket> = {};
   private lastPoseAt = 0;
-  private readonly ready: Promise<void>;
+  private ready: Promise<void>;
 
   constructor(
     private readonly ctx: DurableObjectState,
     private readonly env: Env,
   ) {
     this.ready = this.ctx.blockConcurrencyWhile(async () => {
-      const now = Date.now();
-      this.session = await RoomSession.boot(this.storage(), now);
-      await this.safeSchedule(now);
-    });
+      try {
+        this.session = await RoomSession.boot(this.storage(), Date.now());
+      } catch {
+        this.session = null;
+      }
+    }).catch(() => undefined);
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -101,24 +107,33 @@ export class DogRoom {
       if (origin && !originAllowed(origin, this.env.ALLOWED_ORIGINS)) {
         return new Response('origin not allowed', { status: 403 });
       }
-      const now = Date.now();
-      const room = await this.load(now, 'read');
-      return Response.json(snapshot(room, now, this.sockets()), {
-        headers: corsHeaders(origin, this.env),
-      });
+      try {
+        const now = Date.now();
+        const room = await this.load(now, 'read');
+        await this.safeSchedule(now);
+        return Response.json(snapshot(room, now, this.sockets()), {
+          headers: corsHeaders(origin, this.env),
+        });
+      } catch {
+        return napping(origin, this.env);
+      }
     }
 
     if (url.pathname === '/history' && request.method === 'GET') {
       if (origin && !originAllowed(origin, this.env.ALLOWED_ORIGINS)) {
         return new Response('origin not allowed', { status: 403 });
       }
-      const now = Date.now();
-      const room = await this.load(now, 'read');
-      const offset = Number(url.searchParams.get('offset') || 0);
-      const limit = Number(url.searchParams.get('limit') || HISTORY_PAGE);
-      return Response.json(listHistory(room, offset, limit), {
-        headers: corsHeaders(origin, this.env),
-      });
+      try {
+        const now = Date.now();
+        const room = await this.load(now, 'read');
+        const offset = Number(url.searchParams.get('offset') || 0);
+        const limit = Number(url.searchParams.get('limit') || HISTORY_PAGE);
+        return Response.json(listHistory(room, offset, limit), {
+          headers: corsHeaders(origin, this.env),
+        });
+      } catch {
+        return napping(origin, this.env);
+      }
     }
 
     if (url.pathname === '/ws') {
@@ -153,13 +168,22 @@ export class DogRoom {
         clientId,
       } satisfies SocketMeta);
 
-      const now = Date.now();
-      const seated = welcomeCompanion(await this.load(now, 'connect'), clientId, now);
-      await this.commit(seated, now, 'connect');
-      server.send(JSON.stringify({ type: 'welcome', clientId }));
-      server.send(JSON.stringify(snapshot(seated, now, this.sockets())));
-      this.broadcastSnapshot();
-      await this.safeSchedule(now);
+      try {
+        const now = Date.now();
+        const seated = welcomeCompanion(await this.load(now, 'connect'), clientId, now);
+        await this.commit(seated, now, 'connect');
+        server.send(JSON.stringify({ type: 'welcome', clientId }));
+        server.send(JSON.stringify(snapshot(seated, now, this.sockets())));
+        this.broadcastSnapshot();
+        await this.safeSchedule(now);
+      } catch {
+        try {
+          server.close(1013, 'napping');
+        } catch {
+          // ignore
+        }
+        return napping(origin, this.env);
+      }
 
       return new Response(null, { status: 101, webSocket: client });
     }
@@ -417,23 +441,27 @@ export class DogRoom {
   }
 
   async alarm() {
-    const now = Date.now();
-    const session = await this.ensure(now);
-    const sockets = this.sockets();
-    const ticked = session.tick(now, sockets);
-    await this.flush(session, ticked, now);
-    if (sockets > 0) {
-      this.emitPose(session.room, now);
-      if (ticked.fed && ticked.fed.ok) {
-        this.broadcast(snapshot(session.room, now, sockets));
-        this.broadcast({ type: 'event', text: ticked.fed.event.text, at: ticked.fed.event.at });
+    try {
+      const now = Date.now();
+      const session = await this.ensure(now);
+      const sockets = this.sockets();
+      const ticked = session.tick(now, sockets);
+      await this.flush(session, ticked, now);
+      if (sockets > 0) {
+        this.emitPose(session.room, now);
+        if (ticked.fed && ticked.fed.ok) {
+          this.broadcast(snapshot(session.room, now, sockets));
+          this.broadcast({ type: 'event', text: ticked.fed.event.text, at: ticked.fed.event.at });
+        }
+        if (now - session.lastFullSnapAt >= PERSIST_BROADCAST_MS) {
+          this.broadcast(snapshot(session.room, now, sockets));
+          session.lastFullSnapAt = now;
+        }
       }
-      if (now - session.lastFullSnapAt >= PERSIST_BROADCAST_MS) {
-        this.broadcast(snapshot(session.room, now, sockets));
-        session.lastFullSnapAt = now;
-      }
+      await this.safeSchedule(now);
+    } catch {
+      // never throw out of alarm — a fresh DO must stay alive
     }
-    await this.safeSchedule(now);
   }
 
   private liveIds(except?: string) {
@@ -503,7 +531,11 @@ export class DogRoom {
   }
 
   private async ensure(now: number) {
-    await this.ready;
+    try {
+      await this.ready;
+    } catch {
+      this.ready = Promise.resolve();
+    }
     if (!this.session) {
       this.session = await RoomSession.boot(this.storage(), now);
     }

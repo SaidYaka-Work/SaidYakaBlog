@@ -43,6 +43,20 @@ export default {
     }
 
     const id = env.DOG.idFromName('biscuit');
-    return env.DOG.get(id).fetch(request);
+    try {
+      return await env.DOG.get(id).fetch(request);
+    } catch {
+      const allowed = origin && originAllowed(origin, env.ALLOWED_ORIGINS) ? origin : '';
+      return new Response('napping', {
+        status: 503,
+        headers: {
+          'Access-Control-Allow-Origin': allowed,
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Cache-Control': 'no-store',
+          Vary: 'Origin',
+        },
+      });
+    }
   },
 };

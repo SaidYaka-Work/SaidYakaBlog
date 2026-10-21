@@ -6,7 +6,7 @@
  * once every PERSIST_MIN_MS while dirty. Pose ticks never write by themselves.
  */
 
-import { applyDecay, applyVisitorMove, createRoom, migrateRoom, tickSharedYard, type RoomState } from './logic';
+import { applyDecay, applyVisitorMove, createRoom, migrateRoom, snapshot, tickSharedYard, type RoomState } from './logic';
 import { YARD_TICK_MS } from './room';
 
 export const PERSIST_MIN_MS = 60_000;
@@ -116,13 +116,20 @@ export class RoomSession {
   }
 
   static async boot(storage: Pick<PersistStorage, 'get' | 'put'>, now: number): Promise<RoomSession> {
-    const existing = await storage.get<RoomState>('room');
-    if (!existing) {
-      const room = createRoom(now);
-      await storage.put({ room });
+    try {
+      const existing = await storage.get<RoomState>('room');
+      const room = migrateRoom(existing ?? createRoom(now), now);
+      if (!existing) {
+        try {
+          await storage.put({ room });
+        } catch {
+          // First SQLite write on a brand-new DO can fail; stay in memory.
+        }
+      }
       return new RoomSession(room, now, now);
+    } catch {
+      return new RoomSession(migrateRoom(createRoom(now), now), now, now);
     }
-    return new RoomSession(migrateRoom(existing, now), now, now);
   }
 
   adopt(next: RoomState, now: number, kind: PersistKind): PersistDecision {
@@ -173,6 +180,30 @@ export async function flushIfNeeded(
 ): Promise<void> {
   if (!decision.wrote) return;
   await storage.put({ room: session.room });
+}
+
+export async function runOrNap<T>(
+  run: () => Promise<T>,
+): Promise<{ status: 200; body: T } | { status: 503; body: 'napping' }> {
+  try {
+    return { status: 200, body: await run() };
+  } catch {
+    return { status: 503, body: 'napping' };
+  }
+}
+
+/** First GET /state on an empty DO: boot + snapshot, or 503 napping — never throw. */
+export async function firstState(
+  storage: Pick<PersistStorage, 'get' | 'put'>,
+  now: number,
+  presence = 0,
+): Promise<{ status: 200; body: ReturnType<typeof snapshot> } | { status: 503; body: 'napping' }> {
+  return runOrNap(async () => {
+    const session = await RoomSession.boot(storage, now);
+    const decision = session.decay(now, 'read');
+    await flushIfNeeded(storage, session, decision);
+    return snapshot(session.room, now, presence);
+  });
 }
 
 export async function scheduleAlarm(
