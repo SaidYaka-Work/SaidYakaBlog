@@ -525,12 +525,7 @@ export default function WorldScene({
   const { scene, gl, camera } = useThree();
   const sun = useMemo(() => sunDirection(originLat, originLng, Date.now()), [originLat, originLng]);
   const night = nightHint ?? sun.night;
-  const here = useMemo(() => {
-    const bounds = tiles[0]?.bounds;
-    if (bounds) return { x: (bounds.minX + bounds.maxX) / 2, z: (bounds.minZ + bounds.maxZ) / 2 };
-    const point = lngLatToLocal(lat, lng, originLat, originLng);
-    return { x: Math.round(point.x / 48) * 48, z: Math.round(point.z / 48) * 48 };
-  }, [lat, lng, originLat, originLng, tiles]);
+  const here = useMemo(() => lngLatToLocal(lat, lng, originLat, originLng), [lat, lng, originLat, originLng]);
   const [slim, setSlim] = useState(false);
   useEffect(() => {
     const sync = () => setSlim(window.innerWidth < 700);
@@ -555,7 +550,8 @@ export default function WorldScene({
       : new Set(warming.map((tile) => tile.key));
     const evicted = evictTileCache(cache.current, keep, (_key, built) => disposeBuilt(built), MAX_CACHED_TILES);
     queue.current = queue.current.filter((tile) => keep.has(tile.key) && !cache.current.has(tile.key));
-    uploads.current = uploads.current.filter((item) => keep.has(item.tile.key) && !cache.current.has(item.tile.key));
+    // Keep half-uploaded tiles: their cache entry exists, but layers are still pending.
+    uploads.current = uploads.current.filter((item) => keep.has(item.tile.key));
     if (pending.current && !keep.has(pending.current.tile.key)) pending.current = null;
     for (const tile of warming) {
       if (cache.current.has(tile.key)) continue;

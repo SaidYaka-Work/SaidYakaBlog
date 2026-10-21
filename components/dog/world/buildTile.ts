@@ -104,10 +104,11 @@ export function tileIsLod(tile: WorldTileData, here: { x: number; z: number }, f
   return tileDistanceToPoint(tile, here) > far;
 }
 
-function shapeFrom(ring: { x: number; z: number }[]) {
+/** Shape Y is -Z so rotateX(-PI/2) maps it back to world +Z (no north/south mirror). */
+export function shapeFrom(ring: { x: number; z: number }[]) {
   const shape = new Shape();
-  shape.moveTo(ring[0].x, ring[0].z);
-  for (let i = 1; i < ring.length; i += 1) shape.lineTo(ring[i].x, ring[i].z);
+  shape.moveTo(ring[0].x, -ring[0].z);
+  for (let i = 1; i < ring.length; i += 1) shape.lineTo(ring[i].x, -ring[i].z);
   shape.closePath();
   return shape;
 }

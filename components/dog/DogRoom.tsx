@@ -803,8 +803,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
     ? null
     : {
         input,
-        server: previewing ? null : snapshot?.pose ?? null,
-        serverRef: previewing ? undefined : poseRef,
+        server: previewing || debugSpawn ? null : snapshot?.pose ?? null,
+        serverRef: previewing || debugSpawn ? undefined : poseRef,
         youHold: previewing || youHold || Boolean(debugSpawn),
         localOnly: previewing || !shared || Boolean(debugSpawn),
         realm: 'world' as const,

@@ -10,6 +10,7 @@ import {
   stepBuildJob,
   tileDistanceToPoint,
   tileIsLod,
+  type BuiltTile,
 } from '../components/dog/world/buildTile.ts';
 import {
   decodeTile,
@@ -159,6 +160,97 @@ const decodedFixture = decodeTile(
 );
 assert.ok(decodedFixture.buildings.length > 0, `decode lost buildings (${decodedFixture.buildings.length})`);
 assert.ok(decodedFixture.roads.length > 0, `decode lost roads (${decodedFixture.roads.length})`);
+
+function xzBoundsOfGeos(geos: { getAttribute: (name: string) => { count: number; getX: (i: number) => number; getZ: (i: number) => number } | undefined }[]) {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const geo of geos) {
+    const pos = geo.getAttribute('position');
+    if (!pos) continue;
+    for (let i = 0; i < pos.count; i += 1) {
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minZ = Math.min(minZ, z);
+      maxZ = Math.max(maxZ, z);
+    }
+  }
+  return { minX, maxX, minZ, maxZ };
+}
+
+function xzBoundsOfRings(rings: { x: number; z: number }[][]) {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const ring of rings) {
+    for (const p of ring) {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minZ = Math.min(minZ, p.z);
+      maxZ = Math.max(maxZ, p.z);
+    }
+  }
+  return { minX, maxX, minZ, maxZ };
+}
+
+function xzOverlaps(
+  a: { minX: number; maxX: number; minZ: number; maxZ: number },
+  b: { minX: number; maxX: number; minZ: number; maxZ: number },
+) {
+  return a.minX < b.maxX && a.maxX > b.minX && a.minZ < b.maxZ && a.maxZ > b.minZ;
+}
+
+function assertMeshMatchesFootprint(built: BuiltTile, tile: WorldTileData, label: string) {
+  assert.ok(built.buildings.length > 0, `${label}: no wall meshes`);
+  const walls = xzBoundsOfGeos(built.buildings);
+  const roofs = built.roofs.length ? xzBoundsOfGeos(built.roofs) : null;
+  const footprint = xzBoundsOfRings(tile.buildings.map((building) => building.ring));
+  const mirrored = { ...footprint, minZ: -footprint.maxZ, maxZ: -footprint.minZ };
+  assert.ok(
+    xzOverlaps(walls, footprint),
+    `${label}: wall meshes ${JSON.stringify(walls)} miss collision footprints ${JSON.stringify(footprint)}`,
+  );
+  const footprintCrossesOrigin = footprint.minZ < 0 && footprint.maxZ > 0;
+  if (!footprintCrossesOrigin) {
+    assert.equal(
+      xzOverlaps(walls, mirrored),
+      false,
+      `${label}: walls sit on the north-south mirror ${JSON.stringify(mirrored)} instead of ${JSON.stringify(footprint)}`,
+    );
+  }
+  if (roofs) {
+    assert.ok(xzOverlaps(roofs, footprint), `${label}: roof caps miss collision footprints`);
+    assert.ok(xzOverlaps(roofs, walls), `${label}: roof caps must sit on the wall meshes`);
+  }
+  if (built.parks && tile.parks.length) {
+    const parkMesh = xzBoundsOfGeos([built.parks]);
+    const parkFoot = xzBoundsOfRings(tile.parks);
+    assert.ok(xzOverlaps(parkMesh, parkFoot), `${label}: park mesh misses park rings`);
+  }
+}
+
+const northOnly: WorldTileData = {
+  key: '14/0/0',
+  bounds: { minX: -80, maxX: 80, minZ: 20, maxZ: 80 },
+  buildings: [{ ring: box(12, 48, 6, 5), height: 16, min: 0, area: 120 }],
+  roads: [{ line: [{ x: -20, z: 40 }, { x: 20, z: 40 }], width: 8, klass: 'primary' }],
+  water: [],
+  parks: [box(12, 48, 10, 8)],
+  labels: [],
+};
+const northBuilt = runBuildJob(northOnly, { x: 12, z: 48 }).built;
+assertMeshMatchesFootprint(northBuilt, northOnly, 'synthetic +Z tile');
+assert.ok(
+  xzBoundsOfGeos(northBuilt.buildings).minZ > 20,
+  'walls of a +Z-only footprint must stay in +Z after rotateX',
+);
+
+const fixtureBuilt = runBuildJob(decodedFixture, { x: 0, z: 0 }).built;
+assertMeshMatchesFootprint(fixtureBuilt, decodedFixture, 'OpenFreeMap fixture 14/4823/6157');
 
 const center = { z: 14, x: 4825, y: 6156 };
 const windowKeys = wantedTileKeys(center);
