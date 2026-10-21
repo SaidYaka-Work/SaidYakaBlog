@@ -2,7 +2,7 @@
  * Shared open-world location, presets, and geo.
  *
  * Later PRs plug in without rewriting pose or breaking old clients:
- * - Phase 2 Presence: optional companions[] + leash.queue on the snapshot (preset emotes only)
+ * - Phase 2 Presence: companions[] + leash.queue / nextId (preset emotes, fair handoff)
  * - Phase 3 Living world: Worker-cached weather + sunDirection() already keyed by lat/lng/UTC
  * - Phase 4 Passport: stamps/collectibles on the living dog and Memorial (Hall of Dogs)
  * - Phase 5 Events: goals/postcards keyed by placeId + lat/lng

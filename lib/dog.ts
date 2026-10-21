@@ -126,9 +126,21 @@ export type DogPose = {
   gait: DogGait;
 };
 
+export type DogEmote = 'wave' | 'heart' | 'sit' | 'treat' | 'clap';
+
+export type DogCompanion = {
+  id: string;
+  x: number;
+  z: number;
+  yaw: number;
+  emote: DogEmote | null;
+};
+
 export type DogLeash = {
   held: boolean;
   holderId: string | null;
+  queue?: string[];
+  nextId?: string | null;
 };
 
 export type DogFeeder = {
@@ -164,6 +176,7 @@ export type DogSnapshot = {
   leash?: DogLeash;
   feeder?: DogFeeder;
   location?: DogLocation;
+  companions?: DogCompanion[];
 };
 
 export function stageWord(stage: LifeStage) {

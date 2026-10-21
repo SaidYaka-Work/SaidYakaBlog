@@ -440,6 +440,39 @@
   white-space: nowrap;
 }
 
+.dog-leash.is-next {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+}
+
+.dog-emotes {
+  position: absolute;
+  right: 14px;
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.28rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-elevated) 90%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.dog-emotes button {
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.dog-emotes button:hover,
+.dog-emotes button:focus-visible {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
 .dog-hint {
   position: absolute;
   left: 50%;

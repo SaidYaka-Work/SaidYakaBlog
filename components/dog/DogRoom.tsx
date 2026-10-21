@@ -6,6 +6,8 @@ import {
   dogWorkerUrl,
   dogWsUrl,
   generateGenome,
+  type DogCompanion,
+  type DogEmote,
   type DogSnapshot,
 } from '@/lib/dog';
 import { reactionFromEvent } from './look';
@@ -29,7 +31,13 @@ const HistoryBoard = dynamic(() => import('./HistoryBoard'), { ssr: false });
 type PlayKind = 'feed' | 'walk' | 'catch' | null;
 type Reaction = 'idle' | 'pet' | 'walk' | 'feed' | 'sleep';
 type Panel = 'hall' | 'feed' | 'walk' | 'catch' | 'name' | null;
-type Preview = 'start' | 'hungry' | 'feed' | 'walk' | 'hall' | 'sleep' | 'eat' | 'sad' | 'pose-walk' | 'room' | 'leash' | 'world' | 'travel' | 'gate' | null;
+type Preview = 'start' | 'hungry' | 'feed' | 'walk' | 'hall' | 'sleep' | 'eat' | 'sad' | 'pose-walk' | 'room' | 'leash' | 'world' | 'travel' | 'gate' | 'presence' | null;
+
+const PREVIEW_VISITORS: DogCompanion[] = [
+  { id: 'visit-a', x: 1.15, z: 0.95, yaw: -0.7, emote: 'wave' },
+  { id: 'visit-b', x: -1.28, z: 0.62, yaw: 0.85, emote: null },
+  { id: 'visit-c', x: 0.42, z: -1.32, yaw: 2.5, emote: 'heart' },
+];
 
 const ERRORS: Record<string, string> = {
   cooldown: 'Give him a moment.',
@@ -39,7 +47,7 @@ const ERRORS: Record<string, string> = {
   too_soon: 'Give him a moment.',
   gone: 'Nobody is on the rug right now.',
   too_far: 'Feed him at the home feeder.',
-  busy: 'A visitor already has the leash.',
+  busy: 'A visitor already has the leash. You are in line.',
   home: 'A dog is already home.',
   missed: 'The stray slipped past. Try again.',
   invalid: 'Pick a name from the list.',
@@ -91,6 +99,9 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const socket = useRef<WebSocket | null>(null);
   const toastId = useRef(1);
   const lastMove = useRef(0);
+  const lastHere = useRef(0);
+  const mine = useRef({ x: 1.15, z: 0.85 });
+  const wasNext = useRef(false);
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
   const panelRef = useRef(panel);
@@ -115,7 +126,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       next === 'leash' ||
       next === 'world' ||
       next === 'travel' ||
-      next === 'gate'
+      next === 'gate' ||
+      next === 'presence'
     ) {
       setPreview(next);
       previewRef.current = next;
@@ -128,7 +140,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       if (next === 'pose-walk') setReaction('walk');
       if (next === 'world' || next === 'travel') setLocalWorld(true);
       if (next === 'world' || next === 'travel' || next === 'leash') setReaction(next === 'leash' ? 'idle' : 'walk');
-      if (next === 'room' || next === 'gate') setReaction('idle');
+      if (next === 'room' || next === 'gate' || next === 'presence') setReaction('idle');
       if (next === 'travel') {
         setLocalPlaceId('shibuya');
         setFlight(1);
@@ -231,7 +243,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           | { type: 'event'; text: string }
           | { type: 'name-please'; until: number }
           | { type: 'welcome'; clientId: string }
-          | { type: 'pose'; pose?: DogSnapshot['pose']; leash?: DogSnapshot['leash']; feeder?: DogSnapshot['feeder']; location?: DogSnapshot['location'] };
+          | { type: 'pose'; pose?: DogSnapshot['pose']; leash?: DogSnapshot['leash']; feeder?: DogSnapshot['feeder']; location?: DogSnapshot['location']; companions?: DogSnapshot['companions'] };
         try {
           message = JSON.parse(event.data) as typeof message;
         } catch {
@@ -252,6 +264,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
                   leash: pose.leash ?? current.leash,
                   feeder: pose.feeder ?? current.feeder,
                   location: pose.location ?? current.location,
+                  companions: pose.companions ?? current.companions,
                 }
               : current,
           );
@@ -397,6 +410,14 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const canTap = ready || progress >= 88 || napping;
   const shared = Boolean(snapshot?.pose);
   const youHold = Boolean(snapshot?.leash?.held && snapshot.leash.holderId && snapshot.leash.holderId === clientId);
+  const leashQueue = snapshot?.leash?.queue ?? [];
+  const nextId = snapshot?.leash?.nextId ?? leashQueue[0] ?? null;
+  const youNext = preview === 'presence' || Boolean(nextId && clientId && nextId === clientId && !youHold);
+  const queueAhead = youNext || !clientId ? 0 : Math.max(0, leashQueue.indexOf(clientId));
+  const guests =
+    preview === 'presence'
+      ? PREVIEW_VISITORS
+      : (snapshot?.companions ?? []).filter((guest) => guest.id !== clientId);
   const visitorWalking = preview === 'leash' || Boolean(snapshot?.leash?.held && snapshot.leash.holderId && snapshot.leash.holderId !== clientId);
   const hideDrive = preview === 'eat' || preview === 'sleep' || preview === 'pose-walk';
   const inRange = preview === 'eat' || Boolean(snapshot?.feeder?.near) || nearBowl;
@@ -491,6 +512,25 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         : {}),
     });
   }, [inWorld, input, overlay, playing, shared, snapshot?.location]);
+
+  useEffect(() => {
+    if (!playing || overlay || !shared || previewing || youHold) return;
+    const moving = Math.hypot(input.ax, input.az) > 0.12;
+    if (!moving) return;
+    const now = performance.now();
+    if (now - lastHere.current < 130) return;
+    lastHere.current = now;
+    mine.current = {
+      x: mine.current.x + input.ax * 0.18,
+      z: mine.current.z + input.az * 0.18,
+    };
+    send({ type: 'here', x: mine.current.x, z: mine.current.z });
+  }, [input, overlay, playing, previewing, shared, youHold]);
+
+  useEffect(() => {
+    if (wasNext.current && youHold) pushToast('The leash is yours.');
+    wasNext.current = youNext;
+  }, [pushToast, youHold, youNext]);
 
   useEffect(() => {
     if (previewRef.current) return;
@@ -606,6 +646,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           onWorldColliders={onWorldColliders}
           onReady={() => setReady(true)}
           onAnchor={setThoughtAnchor}
+          companions={guests}
         />
       ) : (
         <DogPortrait
@@ -627,6 +668,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           onWorldColliders={onWorldColliders}
           onReady={() => setReady(true)}
           onAnchor={setThoughtAnchor}
+          companions={guests}
         />
       )}
 
@@ -634,7 +676,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         <DogHud
           name={shownName}
           stageLabel={dog?.stageLabel || (awaitingName ? 'new' : napping ? 'napping' : 'away')}
-          presence={snapshot?.presence ?? 0}
+          presence={preview === 'presence' ? 4 : snapshot?.presence ?? 0}
           happiness={dog?.happiness ?? (previewing ? 72 : 0)}
           energy={dog?.energy ?? (previewing ? 64 : 0)}
           fullness={dog?.fullness ?? (previewing ? 38 : 0)}
@@ -673,6 +715,16 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           onTravel={goTravel}
           onToggleTravel={() => setTravelOpen((open) => !open)}
           thoughtAnchor={thoughtAnchor}
+          onEmote={(kind: DogEmote) => {
+            if (preview === 'presence') {
+              pushToast({ wave: '👋 waved', heart: '❤️ heart', sit: '🐾 sat nearby', treat: '🦴 treat', clap: '👏 clap' }[kind]);
+              return;
+            }
+            send({ type: 'emote', kind });
+          }}
+          youNext={youNext}
+          queueAhead={queueAhead}
+          neighborCount={guests.length + (clientId ? 1 : 0)}
         />
       )}
 

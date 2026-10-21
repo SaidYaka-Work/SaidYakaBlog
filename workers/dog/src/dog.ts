@@ -18,11 +18,18 @@ import {
   takeConnectionGap,
   takeRate,
   validateFinish,
+  applyCompanionEmote,
+  applyCompanionHere,
+  forgetVisitor,
+  takeEmoteRate,
+  welcomeCompanion,
   type CareGame,
+  type EmoteBucket,
   type RateBucket,
   type RoomState,
 } from './logic';
 import { flushIfNeeded, RoomSession, scheduleAlarm, type PersistKind } from './persist';
+import { HERE_GAP_MS } from './presence';
 import { MOVE_MIN_MS, migrateYard, releaseLeash } from './room';
 
 export interface Env {
@@ -40,6 +47,7 @@ type SocketMeta = {
   ip: string;
   lastAt: number;
   lastMoveAt: number;
+  lastHereAt: number;
   play: PlaySession | null;
   nameToken: string | null;
   clientId: string;
@@ -59,6 +67,7 @@ function corsHeaders(origin: string | null, env: Env): HeadersInit {
 export class DogRoom {
   private session: RoomSession | null = null;
   private rates: Record<string, RateBucket> = {};
+  private emoteRates: Record<string, EmoteBucket> = {};
   private readonly ready: Promise<void>;
 
   constructor(
@@ -133,15 +142,17 @@ export class DogRoom {
         ip,
         lastAt: 0,
         lastMoveAt: 0,
+        lastHereAt: 0,
         play: null,
         nameToken: null,
         clientId,
       } satisfies SocketMeta);
 
       const now = Date.now();
-      const room = await this.load(now, 'connect');
+      const seated = welcomeCompanion(await this.load(now, 'connect'), clientId, now);
+      await this.commit(seated, now, 'connect');
       server.send(JSON.stringify({ type: 'welcome', clientId }));
-      server.send(JSON.stringify(snapshot(room, now, this.sockets())));
+      server.send(JSON.stringify(snapshot(seated, now, this.sockets())));
       this.broadcastSnapshot();
       await this.safeSchedule(now);
 
@@ -174,6 +185,7 @@ export class DogRoom {
       ip: '0.0.0.0',
       lastAt: 0,
       lastMoveAt: 0,
+      lastHereAt: 0,
       play: null,
       nameToken: null,
       clientId: crypto.randomUUID(),
@@ -197,6 +209,32 @@ export class DogRoom {
         this.broadcast(snapshot(session.room, now, this.sockets()));
         this.broadcast({ type: 'event', text: moved.walk.event.text, at: moved.walk.event.at });
       }
+      return;
+    }
+
+    if (parsed.kind === 'here') {
+      const wait = meta.lastHereAt + HERE_GAP_MS - now;
+      if (wait > 0) {
+        ws.send(JSON.stringify({ type: 'error', code: 'rate_limited', retryAfterMs: wait }));
+        return;
+      }
+      const next = applyCompanionHere(await this.load(now, 'action'), meta.clientId, parsed.x, parsed.z, now);
+      ws.serializeAttachment({ ...meta, lastHereAt: now } satisfies SocketMeta);
+      await this.commit(next, now, 'action');
+      this.broadcastPose(next, now);
+      return;
+    }
+
+    if (parsed.kind === 'emote') {
+      const taken = takeEmoteRate(this.emoteRates[meta.clientId], now);
+      if (!taken.ok) {
+        ws.send(JSON.stringify({ type: 'error', code: 'rate_limited', retryAfterMs: taken.retryAfterMs }));
+        return;
+      }
+      this.emoteRates[meta.clientId] = taken.bucket;
+      const next = applyCompanionEmote(await this.load(now, 'action'), meta.clientId, parsed.emote, now);
+      await this.commit(next, now, 'action');
+      this.broadcastPose(next, now);
       return;
     }
 
@@ -359,13 +397,13 @@ export class DogRoom {
   }
 
   async webSocketClose(ws: WebSocket) {
-    await this.releaseIfHolder(ws);
+    await this.forgetSocket(ws);
     this.broadcastSnapshot();
     await this.safeSchedule(Date.now());
   }
 
   async webSocketError(ws: WebSocket) {
-    await this.releaseIfHolder(ws);
+    await this.forgetSocket(ws);
     this.broadcastSnapshot();
     await this.safeSchedule(Date.now());
   }
@@ -390,6 +428,13 @@ export class DogRoom {
     await this.safeSchedule(now);
   }
 
+  private liveIds(except?: string) {
+    return this.ctx
+      .getWebSockets()
+      .map((socket) => (socket.deserializeAttachment() as SocketMeta | null)?.clientId)
+      .filter((id): id is string => Boolean(id) && id !== except);
+  }
+
   private async releaseIfHolder(ws: WebSocket) {
     const meta = ws.deserializeAttachment() as SocketMeta | null;
     if (!meta?.clientId) return;
@@ -397,7 +442,15 @@ export class DogRoom {
     const room = await this.load(now, 'action');
     const yard = migrateYard(room.yard, now);
     if (yard.leash.holderId !== meta.clientId) return;
-    await this.commit({ ...room, yard: releaseLeash(yard, now) }, now, 'action');
+    await this.commit({ ...room, yard: releaseLeash(yard, now, this.liveIds(meta.clientId)) }, now, 'action');
+  }
+
+  private async forgetSocket(ws: WebSocket) {
+    const meta = ws.deserializeAttachment() as SocketMeta | null;
+    if (!meta?.clientId) return;
+    const now = Date.now();
+    const room = await this.load(now, 'action');
+    await this.commit(forgetVisitor(room, meta.clientId, now, this.liveIds(meta.clientId)), now, 'action');
   }
 
   private gate(ws: WebSocket, meta: SocketMeta, now: number): SocketMeta | null {
@@ -489,6 +542,7 @@ export class DogRoom {
       leash: snap.leash,
       feeder: snap.feeder,
       location: snap.location,
+      companions: snap.companions,
     });
   }
 

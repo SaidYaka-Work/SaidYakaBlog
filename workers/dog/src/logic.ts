@@ -23,6 +23,7 @@ import {
   publicFeeder,
   publicLeash,
   publicPose,
+  releaseLeash,
   startEating,
   tickYardAi,
   tryAcquireLeash,
@@ -40,7 +41,38 @@ import {
   tickWorldAi,
   type PublicLocation,
 } from './world';
+import {
+  applyEmote,
+  applyHere,
+  dropCompanion,
+  isEmote,
+  pruneCompanions,
+  publicCompanions,
+  seatCompanion,
+  type Companion,
+  type EmoteKind,
+  type PublicCompanion,
+} from './presence';
 
+export {
+  applyEmote,
+  applyHere,
+  dropCompanion,
+  isEmote,
+  pruneCompanions,
+  publicCompanions,
+  seatCompanion,
+  takeEmoteRate,
+  COMPANION_RADIUS,
+  EMOTE_GAP_MS,
+  EMOTE_MAX_PER_WINDOW,
+  EMOTES,
+  HERE_GAP_MS,
+  type Companion,
+  type EmoteBucket,
+  type EmoteKind,
+  type PublicCompanion,
+} from './presence';
 export {
   CARE_BY_STAGE,
   careFor,
@@ -186,6 +218,8 @@ export type RoomState = {
   lastCatchAt: number;
   pendingName: PendingName | null;
   yard?: YardState;
+  /** Absent on older rooms. Live visitors near Biscuit. */
+  companions?: Record<string, Companion>;
 };
 
 export type CareView = {
@@ -240,6 +274,8 @@ export type PublicPose = {
 export type PublicLeash = {
   held: boolean;
   holderId: string | null;
+  queue?: string[];
+  nextId?: string | null;
 };
 
 export type PublicFeeder = {
@@ -263,6 +299,7 @@ export type PublicSnapshot = {
   feeder?: PublicFeeder;
   /** Absent on older Workers. Later phases add optional companions, weather, stamps — never required fields. */
   location?: PublicLocation;
+  companions?: PublicCompanion[];
 };
 
 export function clamp(value: number, min = 0, max = 100) {
@@ -327,6 +364,7 @@ export function createRoom(now: number): RoomState {
     lastCatchAt: 0,
     pendingName: null,
     yard: createYard(now),
+    companions: {},
   };
 }
 
@@ -359,6 +397,7 @@ export function migrateRoom(room: RoomState, now = Date.now()): RoomState {
     memorial: room.memorial ? withGenome(room.memorial) : null,
     history: room.history.map((record) => withGenome(record)),
     yard: withLocation(migrateYard(room.yard, now), now),
+    companions: room.companions ?? {},
   };
 }
 
@@ -704,6 +743,7 @@ export function snapshot(room: RoomState, now: number, presence: number): Public
     leash: publicLeash(yard.leash, now),
     feeder: publicFeeder(yard.feeder, yard.pose, now),
     location: publicLocation(migrateLocation(yard.location, now)),
+    companions: publicCompanions(current.companions, yard.pose, now),
   };
 }
 
@@ -858,6 +898,61 @@ export function creditLeashWalk(room: RoomState, now: number): ActionResult | nu
   return {
     ...result,
     room: { ...result.room, yard: markWalkCredited(yard) },
+  };
+}
+
+export function applyCompanionHere(
+  room: RoomState,
+  clientId: string,
+  x: number,
+  z: number,
+  now: number,
+): RoomState {
+  const current = migrateRoom(room, now);
+  const yard = migrateYard(current.yard, now);
+  return {
+    ...current,
+    companions: applyHere(current.companions ?? {}, clientId, x, z, yard.pose, now),
+  };
+}
+
+export function applyCompanionEmote(
+  room: RoomState,
+  clientId: string,
+  emote: EmoteKind,
+  now: number,
+): RoomState {
+  const current = migrateRoom(room, now);
+  const yard = migrateYard(current.yard, now);
+  return {
+    ...current,
+    companions: applyEmote(current.companions ?? {}, clientId, emote, yard.pose, now),
+  };
+}
+
+export function welcomeCompanion(room: RoomState, clientId: string, now: number): RoomState {
+  const current = migrateRoom(room, now);
+  const yard = migrateYard(current.yard, now);
+  return {
+    ...current,
+    companions: seatCompanion(current.companions ?? {}, clientId, yard.pose, now),
+  };
+}
+
+export function forgetVisitor(room: RoomState, clientId: string, now: number, liveIds?: Iterable<string>): RoomState {
+  const current = migrateRoom(room, now);
+  const yard = migrateYard(current.yard, now);
+  const dropped = dropCompanion(current.companions ?? {}, clientId);
+  if (yard.leash.holderId === clientId) {
+    return { ...current, companions: pruneCompanions(dropped, now, liveIds), yard: releaseLeash(yard, now, liveIds) };
+  }
+  return {
+    ...current,
+    companions: pruneCompanions(dropped, now, liveIds),
+    yard: {
+      ...yard,
+      leash: { ...yard.leash, queue: (yard.leash.queue ?? []).filter((wait) => wait.id !== clientId) },
+    },
   };
 }
 
@@ -1048,6 +1143,8 @@ export type ClientMessage =
   | { ok: true; kind: 'leave' }
   | { ok: true; kind: 'home' }
   | { ok: true; kind: 'travel'; placeId: string }
+  | { ok: true; kind: 'emote'; emote: EmoteKind }
+  | { ok: true; kind: 'here'; x: number; z: number }
   | { ok: false; code: ErrorCode };
 
 const CLIENT_KEYS = [
@@ -1064,6 +1161,8 @@ const CLIENT_KEYS = [
   'wx',
   'wz',
   'placeId',
+  'x',
+  'z',
 ];
 
 export function parseClientMessage(raw: string): ClientMessage {
@@ -1104,6 +1203,13 @@ export function parseClientMessage(raw: string): ClientMessage {
   if (message.type === 'travel' && typeof message.placeId === 'string') {
     if (!/^[a-z0-9-]{2,40}$/.test(message.placeId)) return { ok: false, code: 'invalid' };
     return { ok: true, kind: 'travel', placeId: message.placeId };
+  }
+  if (message.type === 'emote' && isEmote(message.kind)) {
+    return { ok: true, kind: 'emote', emote: message.kind };
+  }
+  if (message.type === 'here' && typeof message.x === 'number' && typeof message.z === 'number') {
+    if (!Number.isFinite(message.x) || !Number.isFinite(message.z)) return { ok: false, code: 'invalid' };
+    return { ok: true, kind: 'here', x: message.x, z: message.z };
   }
   return { ok: false, code: 'invalid' };
 }
