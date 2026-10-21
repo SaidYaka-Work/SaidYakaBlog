@@ -30,13 +30,13 @@ function readTheme(node: HTMLElement): Theme {
   const dark = document.documentElement.classList.contains('dark');
   const styles = getComputedStyle(node);
   return {
-    ocean0: dark ? '#2a3a44' : '#b7d3e2',
-    ocean1: dark ? '#12181c' : '#6f9db3',
-    land: dark ? '#c4a57a' : '#e6d2ae',
-    landStroke: dark ? '#8d7352' : '#8b6f45',
-    grid: dark ? 'rgba(232, 214, 186, 0.16)' : 'rgba(28, 44, 52, 0.16)',
-    rim: dark ? 'rgba(232, 168, 124, 0.7)' : 'rgba(180, 83, 42, 0.45)',
-    glow: dark ? 'rgba(232, 168, 124, 0.28)' : 'rgba(180, 83, 42, 0.22)',
+    ocean0: dark ? '#2d4552' : '#8ec4d8',
+    ocean1: dark ? '#0c1216' : '#3d7a94',
+    land: dark ? '#e2c08a' : '#f3d7a2',
+    landStroke: dark ? '#f0d8ae' : '#6a4e28',
+    grid: dark ? 'rgba(232, 214, 186, 0.2)' : 'rgba(16, 32, 40, 0.2)',
+    rim: dark ? 'rgba(232, 168, 124, 0.75)' : 'rgba(180, 83, 42, 0.5)',
+    glow: dark ? 'rgba(232, 168, 124, 0.24)' : 'rgba(180, 83, 42, 0.18)',
     pin: styles.getPropertyValue('--un-out-bg').trim() || (dark ? '#e8a87c' : '#b4532a'),
     label: styles.getPropertyValue('--ink').trim() || (dark ? '#f3eee6' : '#161412'),
     labelBg: styles.getPropertyValue('--bg-elevated').trim() || (dark ? '#1d1916' : '#fffdf8'),

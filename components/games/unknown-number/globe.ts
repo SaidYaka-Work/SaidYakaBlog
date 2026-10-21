@@ -2,7 +2,7 @@ import type { Birthplace } from './types';
 
 export const GLOBE_STEPS = [
   { id: 'world', label: 'World', scale: 148, hintDeg: 86, pull: 0 },
-  { id: 'continent', label: 'Continent', scale: 252, hintDeg: 38, pull: 0.74 },
+  { id: 'continent', label: 'Continent', scale: 252, hintDeg: 26, pull: 0.74 },
   { id: 'subregion', label: 'Subregion', scale: 400, hintDeg: 18, pull: 0.88 },
   { id: 'country', label: 'Country', scale: 640, hintDeg: 8.5, pull: 0.96 },
   { id: 'region', label: 'Region', scale: 1020, hintDeg: 3.4, pull: 1 },
