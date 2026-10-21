@@ -634,6 +634,26 @@
   background: color-mix(in srgb, var(--ink) 28%, transparent);
 }
 
+.dog-nap {
+  align-items: center;
+  background: color-mix(in srgb, var(--ink) 22%, transparent);
+}
+
+.dog-nap .dog-modal {
+  width: min(22rem, 100%);
+  text-align: center;
+}
+
+.dog-nap .dog-modal-body {
+  padding-top: 0;
+}
+
+.dog-nap .dog-modal-body p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
 .dog-modal {
   width: min(36rem, 100%);
   max-height: min(82dvh, 40rem);

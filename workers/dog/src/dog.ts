@@ -1,34 +1,29 @@
 import {
-  DECAY_ALARM_MS,
   HISTORY_PAGE,
   MAX_CONNECTIONS,
   applyBowlAction,
   applyCare,
   applyCatch,
-  applyDecay,
   applyName,
   applyPet,
-  applyVisitorMove,
+  applyWorldAction,
   canStartCare,
   canStartCatch,
-  createRoom,
   fanout,
   listHistory,
-  migrateRoom,
   originAllowed,
   parseClientMessage,
   pruneBuckets,
   snapshot,
   takeConnectionGap,
   takeRate,
-  tickSharedYard,
   validateFinish,
-  applyWorldAction,
   type CareGame,
   type RateBucket,
   type RoomState,
 } from './logic';
-import { MOVE_MIN_MS, YARD_TICK_MS, migrateYard, releaseLeash } from './room';
+import { flushIfNeeded, RoomSession, scheduleAlarm, type PersistKind } from './persist';
+import { MOVE_MIN_MS, migrateYard, releaseLeash } from './room';
 
 export interface Env {
   DOG: DurableObjectNamespace;
@@ -62,21 +57,18 @@ function corsHeaders(origin: string | null, env: Env): HeadersInit {
 }
 
 export class DogRoom {
+  private session: RoomSession | null = null;
+  private rates: Record<string, RateBucket> = {};
+  private readonly ready: Promise<void>;
+
   constructor(
     private readonly ctx: DurableObjectState,
     private readonly env: Env,
   ) {
-    this.ctx.blockConcurrencyWhile(async () => {
-      const existing = await this.ctx.storage.get<RoomState>('room');
-      if (!existing) {
-        await this.ctx.storage.put('room', createRoom(Date.now()));
-      } else {
-        await this.ctx.storage.put('room', migrateRoom(existing));
-      }
-      const alarm = await this.ctx.storage.getAlarm();
-      if (!alarm) {
-        await this.ctx.storage.setAlarm(Date.now() + DECAY_ALARM_MS);
-      }
+    this.ready = this.ctx.blockConcurrencyWhile(async () => {
+      const now = Date.now();
+      this.session = await RoomSession.boot(this.storage(), now);
+      await this.safeSchedule(now);
     });
   }
 
@@ -97,8 +89,8 @@ export class DogRoom {
         return new Response('origin not allowed', { status: 403 });
       }
       const now = Date.now();
-      const room = await this.load(now);
-      return Response.json(snapshot(room, now, this.ctx.getWebSockets().length), {
+      const room = await this.load(now, 'read');
+      return Response.json(snapshot(room, now, this.sockets()), {
         headers: corsHeaders(origin, this.env),
       });
     }
@@ -108,7 +100,7 @@ export class DogRoom {
         return new Response('origin not allowed', { status: 403 });
       }
       const now = Date.now();
-      const room = await this.load(now);
+      const room = await this.load(now, 'read');
       const offset = Number(url.searchParams.get('offset') || 0);
       const limit = Number(url.searchParams.get('limit') || HISTORY_PAGE);
       return Response.json(listHistory(room, offset, limit), {
@@ -147,10 +139,11 @@ export class DogRoom {
       } satisfies SocketMeta);
 
       const now = Date.now();
-      const room = await this.load(now);
+      const room = await this.load(now, 'connect');
       server.send(JSON.stringify({ type: 'welcome', clientId }));
-      server.send(JSON.stringify(snapshot(room, now, this.ctx.getWebSockets().length)));
+      server.send(JSON.stringify(snapshot(room, now, this.sockets())));
       this.broadcastSnapshot();
+      await this.safeSchedule(now);
 
       return new Response(null, { status: 101, webSocket: client });
     }
@@ -173,7 +166,7 @@ export class DogRoom {
     }
 
     if (parsed.kind === 'hello') {
-      ws.send(JSON.stringify(snapshot(await this.load(now), now, this.ctx.getWebSockets().length)));
+      ws.send(JSON.stringify(snapshot(await this.load(now, 'read'), now, this.sockets())));
       return;
     }
 
@@ -192,56 +185,48 @@ export class DogRoom {
       const dt = meta.lastMoveAt ? Math.min(0.18, (now - meta.lastMoveAt) / 1000) : 0.08;
       const proposed =
         parsed.wx !== undefined && parsed.wz !== undefined ? { x: parsed.wx, z: parsed.wz } : null;
-      const moved = applyVisitorMove(
-        await this.load(now),
-        meta.clientId,
-        meta.ip,
-        parsed.ax,
-        parsed.az,
-        parsed.run,
-        dt,
-        now,
-        proposed,
-      );
+      const session = await this.ensure(now);
+      const moved = session.move(meta.clientId, meta.ip, parsed.ax, parsed.az, parsed.run, dt, now, proposed);
+      await this.flush(session, moved, now);
       ws.serializeAttachment({ ...meta, lastMoveAt: now } satisfies SocketMeta);
-      await this.commit(moved.room);
       if (!moved.acquired && moved.code) {
         ws.send(JSON.stringify({ type: 'error', code: moved.code, retryAfterMs: moved.retryAfterMs }));
       }
-      this.broadcastPose(moved.room, now);
+      this.broadcastPose(session.room, now);
       if (moved.walk && moved.walk.ok) {
-        this.broadcast(snapshot(moved.room, now, this.ctx.getWebSockets().length));
+        this.broadcast(snapshot(session.room, now, this.sockets()));
         this.broadcast({ type: 'event', text: moved.walk.event.text, at: moved.walk.event.at });
       }
       return;
     }
 
     if (parsed.kind === 'leave' || parsed.kind === 'home' || parsed.kind === 'travel') {
-      const gatedTravel = await this.gate(ws, meta, now);
+      const gatedTravel = this.gate(ws, meta, now);
       if (!gatedTravel) return;
+      const room = await this.load(now, 'action');
       const result = applyWorldAction(
-        await this.load(now),
+        room,
         meta.clientId,
         meta.ip,
         now,
         parsed.kind,
         parsed.kind === 'travel' ? parsed.placeId : undefined,
       );
-      await this.commit(result.room);
+      await this.commit(result.room, now, 'action');
       if (!result.acquired && result.code) {
         ws.send(JSON.stringify({ type: 'error', code: result.code, retryAfterMs: result.retryAfterMs }));
       } else if (result.code) {
         ws.send(JSON.stringify({ type: 'error', code: result.code }));
       }
-      this.broadcast(snapshot(result.room, now, this.ctx.getWebSockets().length));
+      this.broadcast(snapshot(result.room, now, this.sockets()));
       return;
     }
 
     if (parsed.kind === 'bowl') {
-      const gatedBowl = await this.gate(ws, meta, now);
+      const gatedBowl = this.gate(ws, meta, now);
       if (!gatedBowl) return;
-      const result = applyBowlAction(await this.load(now), now);
-      await this.commit(result.room);
+      const result = applyBowlAction(await this.load(now, 'action'), now);
+      await this.commit(result.room, now, 'action');
       if (result.code === 'too_far') {
         ws.send(JSON.stringify({ type: 'error', code: 'too_far', text: 'Walk him to the feeder.' }));
         this.broadcastPose(result.room, now);
@@ -258,7 +243,7 @@ export class DogRoom {
         this.sendSnapshot(ws, result.room, now);
         return;
       }
-      this.broadcast(snapshot(result.room, now, this.ctx.getWebSockets().length));
+      this.broadcast(snapshot(result.room, now, this.sockets()));
       if (result.fed && result.fed.ok) {
         this.broadcast({ type: 'event', text: result.fed.event.text, at: result.fed.event.at });
       }
@@ -266,8 +251,8 @@ export class DogRoom {
     }
 
     if (parsed.kind === 'name') {
-      const result = applyName(await this.load(now), parsed.nameId, meta.nameToken, now);
-      await this.commit(result.room);
+      const result = applyName(await this.load(now, 'action'), parsed.nameId, meta.nameToken, now);
+      await this.commit(result.room, now, 'action');
       if (!result.ok) {
         ws.send(
           JSON.stringify({
@@ -287,13 +272,13 @@ export class DogRoom {
         return;
       }
       ws.serializeAttachment({ ...meta, nameToken: null } satisfies SocketMeta);
-      this.broadcast(snapshot(result.room, now, this.ctx.getWebSockets().length));
+      this.broadcast(snapshot(result.room, now, this.sockets()));
       this.broadcast({ type: 'event', text: result.event.text, at: result.event.at });
       return;
     }
 
     if (parsed.kind === 'start') {
-      const room = await this.load(now);
+      const room = await this.load(now, 'read');
       const allowed =
         parsed.game === 'catch' ? canStartCatch(room, now) : canStartCare(room, parsed.game, now);
       if (!allowed.ok) {
@@ -316,18 +301,18 @@ export class DogRoom {
       return;
     }
 
-    const gated = await this.gate(ws, meta, now);
+    const gated = this.gate(ws, meta, now);
     if (!gated) return;
 
     if (parsed.kind === 'pet') {
-      const result = applyPet(await this.load(now), now);
-      await this.commit(result.room);
+      const result = applyPet(await this.load(now, 'action'), now);
+      await this.commit(result.room, now, 'action');
       if (!result.ok) {
         ws.send(JSON.stringify({ type: 'error', code: result.code, retryAfterMs: result.retryAfterMs }));
         this.sendSnapshot(ws, result.room, now);
         return;
       }
-      this.broadcast(snapshot(result.room, now, this.ctx.getWebSockets().length));
+      this.broadcast(snapshot(result.room, now, this.sockets()));
       this.broadcast({ type: 'event', text: result.event.text, at: result.event.at });
       return;
     }
@@ -345,7 +330,7 @@ export class DogRoom {
       return;
     }
 
-    const room = await this.load(now);
+    const room = await this.load(now, 'action');
     const result =
       meta.play.game === 'catch'
         ? applyCatch(room, parsed.score, now)
@@ -353,7 +338,7 @@ export class DogRoom {
 
     const nameToken = result.ok && result.kind === 'catch' ? result.nameToken : null;
     ws.serializeAttachment({ ...gated, play: null, nameToken: nameToken ?? meta.nameToken } satisfies SocketMeta);
-    await this.commit(result.room);
+    await this.commit(result.room, now, 'action');
 
     if (!result.ok) {
       ws.send(JSON.stringify({ type: 'error', code: result.code, retryAfterMs: result.retryAfterMs }));
@@ -361,7 +346,7 @@ export class DogRoom {
       return;
     }
 
-    this.broadcast(snapshot(result.room, now, this.ctx.getWebSockets().length));
+    this.broadcast(snapshot(result.room, now, this.sockets()));
     this.broadcast({ type: 'event', text: result.event.text, at: result.event.at });
     if (result.kind === 'catch' && result.room.pendingName) {
       ws.send(
@@ -376,88 +361,128 @@ export class DogRoom {
   async webSocketClose(ws: WebSocket) {
     await this.releaseIfHolder(ws);
     this.broadcastSnapshot();
+    await this.safeSchedule(Date.now());
   }
 
   async webSocketError(ws: WebSocket) {
     await this.releaseIfHolder(ws);
     this.broadcastSnapshot();
+    await this.safeSchedule(Date.now());
   }
 
   async alarm() {
     const now = Date.now();
-    const lastTick = (await this.ctx.storage.get<number>('yardTick')) ?? now;
-    const dt = Math.min(0.25, Math.max(0.05, (now - lastTick) / 1000));
-    const loaded = await this.load(now);
-    const ticked = tickSharedYard(loaded, now, dt);
-    await this.commit(ticked.room);
-    await this.ctx.storage.put('yardTick', now);
-    this.broadcastPose(ticked.room, now);
-    if (ticked.fed && ticked.fed.ok) {
-      this.broadcast(snapshot(ticked.room, now, this.ctx.getWebSockets().length));
-      this.broadcast({ type: 'event', text: ticked.fed.event.text, at: ticked.fed.event.at });
+    const session = await this.ensure(now);
+    const sockets = this.sockets();
+    const ticked = session.tick(now, sockets);
+    await this.flush(session, ticked, now);
+    if (sockets > 0) {
+      this.broadcastPose(session.room, now);
+      if (ticked.fed && ticked.fed.ok) {
+        this.broadcast(snapshot(session.room, now, sockets));
+        this.broadcast({ type: 'event', text: ticked.fed.event.text, at: ticked.fed.event.at });
+      }
+      if (now - session.lastFullSnapAt >= PERSIST_BROADCAST_MS) {
+        this.broadcast(snapshot(session.room, now, sockets));
+        session.lastFullSnapAt = now;
+      }
     }
-    const lastFull = (await this.ctx.storage.get<number>('fullSnap')) ?? 0;
-    if (now - lastFull >= DECAY_ALARM_MS) {
-      this.broadcast(snapshot(ticked.room, now, this.ctx.getWebSockets().length));
-      await this.ctx.storage.put('fullSnap', now);
-    }
-    const held = Boolean(ticked.room.yard?.leash.holderId);
-    await this.ctx.storage.setAlarm(now + (held ? 400 : YARD_TICK_MS * 3));
+    await this.safeSchedule(now);
   }
 
   private async releaseIfHolder(ws: WebSocket) {
     const meta = ws.deserializeAttachment() as SocketMeta | null;
     if (!meta?.clientId) return;
     const now = Date.now();
-    const room = await this.load(now);
+    const room = await this.load(now, 'action');
     const yard = migrateYard(room.yard, now);
     if (yard.leash.holderId !== meta.clientId) return;
-    await this.commit({ ...room, yard: releaseLeash(yard, now) });
+    await this.commit({ ...room, yard: releaseLeash(yard, now) }, now, 'action');
   }
 
-  private async gate(ws: WebSocket, meta: SocketMeta, now: number): Promise<SocketMeta | null> {
+  private gate(ws: WebSocket, meta: SocketMeta, now: number): SocketMeta | null {
     const gap = takeConnectionGap(meta.lastAt, now);
     if (!gap.ok) {
       ws.send(JSON.stringify({ type: 'error', code: 'rate_limited', retryAfterMs: gap.retryAfterMs }));
       return null;
     }
-    const rates = (await this.ctx.storage.get<Record<string, RateBucket>>('rates')) ?? {};
-    const taken = takeRate(rates[meta.ip], now);
+    const taken = takeRate(this.rates[meta.ip], now);
     if (!taken.ok) {
       ws.send(JSON.stringify({ type: 'error', code: 'rate_limited', retryAfterMs: taken.retryAfterMs }));
       return null;
     }
-    rates[meta.ip] = taken.bucket;
-    await this.ctx.storage.put('rates', pruneBuckets(rates, now));
+    this.rates[meta.ip] = taken.bucket;
+    this.rates = pruneBuckets(this.rates, now);
     const next = { ...meta, lastAt: now };
     ws.serializeAttachment(next);
     return next;
   }
 
-  private async load(now: number) {
-    const stored = migrateRoom((await this.ctx.storage.get<RoomState>('room')) ?? createRoom(now));
-    const next = applyDecay(stored, now);
-    if (next !== stored) await this.commit(next);
-    return next;
+  private async load(now: number, kind: PersistKind) {
+    const session = await this.ensure(now);
+    const decision = session.decay(now, kind);
+    await this.flush(session, decision, now);
+    return session.room;
   }
 
-  private async commit(room: RoomState) {
-    await this.ctx.storage.put('room', room);
+  private async commit(room: RoomState, now: number, kind: PersistKind) {
+    const session = await this.ensure(now);
+    const decision = session.adopt(room, now, kind);
+    await this.flush(session, decision, now);
+    return session.room;
+  }
+
+  private async flush(session: RoomSession, decision: { wrote: boolean }, now: number) {
+    try {
+      await flushIfNeeded(this.storage(), session, decision);
+    } catch {
+      session.lastPersistAt = Math.min(session.lastPersistAt, now - 1);
+      session.dirty = true;
+    }
+  }
+
+  private async ensure(now: number) {
+    await this.ready;
+    if (!this.session) {
+      this.session = await RoomSession.boot(this.storage(), now);
+    }
+    return this.session;
+  }
+
+  private storage() {
+    return {
+      get: <T,>(key: string) => this.ctx.storage.get<T>(key),
+      put: (entries: Record<string, unknown>) => this.ctx.storage.put(entries),
+      getAlarm: () => this.ctx.storage.getAlarm(),
+      setAlarm: (at: number) => this.ctx.storage.setAlarm(at),
+    };
+  }
+
+  private sockets() {
+    return this.ctx.getWebSockets().length;
+  }
+
+  private async safeSchedule(now: number) {
+    try {
+      await scheduleAlarm(this.storage(), now, this.sockets());
+    } catch {
+      // quota or transient alarm failure — next request retries
+    }
   }
 
   private sendSnapshot(ws: WebSocket, room: RoomState, now: number) {
-    ws.send(JSON.stringify(snapshot(room, now, this.ctx.getWebSockets().length)));
+    ws.send(JSON.stringify(snapshot(room, now, this.sockets())));
   }
 
   private broadcastSnapshot() {
     const now = Date.now();
-    void this.load(now).then((room) => {
-      this.broadcast(snapshot(room, now, this.ctx.getWebSockets().length));
+    void this.load(now, 'read').then((room) => {
+      this.broadcast(snapshot(room, now, this.sockets()));
     });
   }
 
   private broadcastPose(room: RoomState, now: number) {
-    const snap = snapshot(room, now, this.ctx.getWebSockets().length);
+    const snap = snapshot(room, now, this.sockets());
     this.broadcast({
       type: 'pose',
       pose: snap.pose,
@@ -482,3 +507,5 @@ export class DogRoom {
     );
   }
 }
+
+const PERSIST_BROADCAST_MS = 60_000;
