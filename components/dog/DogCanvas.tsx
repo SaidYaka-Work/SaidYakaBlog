@@ -234,7 +234,6 @@ export default function DogCanvas({
   asleep,
   night,
   happiness = 70,
-  hungry: _hungry = false,
   sad = false,
   compact = false,
   interactive = false,

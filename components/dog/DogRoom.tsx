@@ -8,6 +8,7 @@ import {
   generateGenome,
   type DogCompanion,
   type DogEmote,
+  type DogPose,
   type DogSnapshot,
 } from '@/lib/dog';
 import { reactionFromEvent } from './look';
@@ -95,7 +96,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const [selfHere, setSelfHere] = useState({ x: 0.95, z: -0.55 });
   const colliders = useRef<WorldColliders>({ buildings: [], roads: [], parks: [], label: '' });
   const localPose = useRef<{ x: number; z: number } | null>(null);
-  const poseRef = useRef<DogSnapshot['pose'] | null>(null);
+  const poseRef = useRef<DogPose | null>(null);
   const lastHudAt = useRef(0);
   const lastSelfHud = useRef(0);
   const feedRef = useRef<() => void>(() => undefined);

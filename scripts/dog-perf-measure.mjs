@@ -123,18 +123,27 @@ try {
       const loop = (now) => {
         frames.push(now - last);
         last = now;
-        if (frames.length > 240) frames.shift();
+        if (frames.length > 360) frames.shift();
         requestAnimationFrame(loop);
       };
       requestAnimationFrame(loop);
       window.__DOG_FRAMES = frames;
-      const play = document.querySelector('.dog-start-play');
-      if (play && !play.disabled) play.click();
+      const kick = () => {
+        const play = document.querySelector('.dog-start-play');
+        if (play && !play.disabled) play.click();
+        document.querySelectorAll('.biscuit-scene, canvas').forEach((node) => {
+          node.style.width = '100vw';
+          node.style.height = '100vh';
+        });
+        window.dispatchEvent(new Event('resize'));
+      };
+      kick();
+      setInterval(kick, 800);
       return true;
     })()`,
     awaitPromise: false,
   });
-  await sleep(seconds * 1000);
+  await sleep(Math.max(4000, seconds * 1000));
   const result = await cdp(target.webSocketDebuggerUrl, 'Runtime.evaluate', {
     expression: `(() => {
       const frames = window.__DOG_FRAMES || [];
