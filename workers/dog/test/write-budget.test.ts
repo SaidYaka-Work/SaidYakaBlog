@@ -3,11 +3,14 @@ import { test } from 'node:test';
 import {
   applyBowlAction,
   applyCatch,
+  applyCompanionEmote,
+  applyCompanionHere,
   applyName,
   applyPet,
   applyWorldAction,
   createRoom,
   toRecord,
+  welcomeCompanion,
 } from '../src/logic.ts';
 import {
   FAST_ALARM_MS,
@@ -133,6 +136,14 @@ test('moves, ticks, and connects stay in memory; feed/pet/catch/name/travel pers
   await flushIfNeeded(storage, session, connected);
   assert.equal(storage.rows, 1);
 
+  const seated = welcomeCompanion(session.room, 'aaa', T0 + 420);
+  await flushIfNeeded(storage, session, session.adopt(seated, T0 + 420, 'connect'));
+  const here = applyCompanionHere(session.room, 'aaa', 0.4, -0.2, T0 + 540);
+  await flushIfNeeded(storage, session, session.adopt(here, T0 + 540, 'action'));
+  const emote = applyCompanionEmote(session.room, 'aaa', 'wave', T0 + 2_600);
+  await flushIfNeeded(storage, session, session.adopt(emote, T0 + 2_600, 'action'));
+  assert.equal(storage.rows, 1);
+
   const petted = applyPet(session.room, T0 + 5_000);
   const petWrite = session.adopt(petted.room, T0 + 5_000, 'action');
   await flushIfNeeded(storage, session, petWrite);
@@ -239,6 +250,12 @@ test('write budget stays under 20k rows across a busy day of movers plus idle', 
           const az = Math.cos(now / 350 + index);
           const moved = session.move(client.id, client.ip, ax, az, index === 0, 0.08, now);
           await flushIfNeeded(storage, session, moved);
+          const here = applyCompanionHere(session.room, client.id, ax, az, now);
+          await flushIfNeeded(storage, session, session.adopt(here, now, 'action'));
+          if (Math.floor(now / 2_000) !== Math.floor((now - 80) / 2_000)) {
+            const emote = applyCompanionEmote(session.room, client.id, 'heart', now);
+            await flushIfNeeded(storage, session, session.adopt(emote, now, 'action'));
+          }
         }
       }
       if (now - lastTick >= FAST_ALARM_MS) {
