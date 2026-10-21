@@ -113,6 +113,22 @@ export type PublicLocation = {
 
 export type Ring = { x: number; z: number }[];
 
+export function formatPlaceLine(streetName?: string | null, placeName?: string | null) {
+  const street = (streetName || '').trim();
+  const place = (placeName || '').replace(/,\s*.*$/, '').trim();
+  const streetOk =
+    Boolean(street) && street.length <= 32 && !/subway|interchange|transfer|entrance|underground/i.test(street);
+  if (
+    streetOk &&
+    place &&
+    street.toLowerCase() !== place.toLowerCase() &&
+    !place.toLowerCase().includes(street.toLowerCase())
+  ) {
+    return `${street} · near ${place}`;
+  }
+  return streetOk ? street : place || street;
+}
+
 export function nearestPlace(lat: number, lng: number): Place {
   let best = HOME_PLACE;
   let bestD = Infinity;

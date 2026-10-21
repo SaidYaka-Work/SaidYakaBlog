@@ -1,6 +1,7 @@
 import { originAllowed } from './logic';
 import { DogRoom, type Env } from './dog';
 import { DailyStats, type DailyEnv } from './dailyStats';
+import { logDogError } from './persist';
 
 export { DogRoom, DailyStats };
 
@@ -45,7 +46,8 @@ export default {
     const id = env.DOG.idFromName('biscuit');
     try {
       return await env.DOG.get(id).fetch(request);
-    } catch {
+    } catch (error) {
+      logDogError('boot failed', error);
       const allowed = origin && originAllowed(origin, env.ALLOWED_ORIGINS) ? origin : '';
       return new Response('napping', {
         status: 503,

@@ -19,10 +19,10 @@ import DogStudio from './DogStudio';
 import FeedGame from './FeedGame';
 import NamePicker from './NamePicker';
 import WalkGame from './WalkGame';
-import { playDogSfx } from './dogSound';
+import { playDogSfx, warmDogAudio } from './dogSound';
 import useDogDrive from './useDogDrive';
 import { nearFeeder } from '../../workers/dog/src/room';
-import { ATTRIBUTION, HOME_PLACE, PLACES, nearestPlace, placeById, sunDirection } from '../../workers/dog/src/world';
+import { ATTRIBUTION, HOME_PLACE, PLACES, formatPlaceLine, nearestPlace, placeById, sunDirection } from '../../workers/dog/src/world';
 import type { WorldView } from './DogCanvas';
 import type { WorldColliders } from './world/useWorldTiles';
 import './dog.css';
@@ -150,6 +150,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         setLocalPlaceId('shibuya');
         setFlight(1);
       }
+      const place = params.get('place');
+      if (place && placeById(place)) setLocalPlaceId(place);
     } else if (initialPanel === 'hall') {
       setPlaying(true);
       setPanel('hall');
@@ -758,15 +760,21 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       {!playing && (
         <div className="dog-start">
           <p className="dog-start-kicker">
-            {snapshot?.location
-              ? nearestPlace(snapshot.location.lat, snapshot.location.lng).name
-              : activePlace.name}
+            {formatPlaceLine(
+              streetName,
+              snapshot?.location
+                ? nearestPlace(snapshot.location.lat, snapshot.location.lng).name
+                : activePlace.name,
+            )}
           </p>
           <p className="dog-start-title">{shownName}</p>
           <div className="dog-start-bar" aria-hidden="true">
             <i style={{ width: `${Math.min(100, progress)}%` }} />
           </div>
-          <button type="button" className="dog-start-play" disabled={!canTap && preview !== 'start'} onClick={() => setPlaying(true)}>
+          <button type="button" className="dog-start-play" disabled={!canTap && preview !== 'start'} onClick={() => {
+            warmDogAudio();
+            setPlaying(true);
+          }}>
             {canTap ? 'Tap to play' : 'Loading…'}
           </button>
         </div>

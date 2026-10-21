@@ -10,7 +10,7 @@ import { CAMERA_YAW, frameCamera, followYardCamera } from './frame';
 import DogRig, { type DriveControl } from './DogRig';
 import WorldBowl from './WorldBowl';
 import { HOME_PLACE } from '../../workers/dog/src/world';
-import type { WorldColliders } from './world/useWorldTiles';
+import type { TileStatus, WorldColliders } from './world/useWorldTiles';
 
 const WorldLayer = lazy(() => import('./world/WorldLayer'));
 
@@ -417,6 +417,7 @@ export default function DogCanvas({
   const [look, setLook] = useState({ x: 0, y: 0 });
   const [frameloop, setFrameloop] = useState<'always' | 'never'>('always');
   const [reduced, setReduced] = useState(false);
+  const [tileStatus, setTileStatus] = useState<TileStatus>('loading');
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -508,6 +509,7 @@ export default function DogCanvas({
                 lng={view.lng}
                 night={view.nightHint}
                 onColliders={onWorldColliders}
+                onStatus={setTileStatus}
               />
             );
           })()}
@@ -571,6 +573,11 @@ export default function DogCanvas({
       )}
       {!empty && (asleep || reaction === 'sleep') && <span className="biscuit-zzz">Zzz</span>}
       <DebugHud />
+      {tileStatus === 'failed' && (
+        <p className="dog-tile-warn" role="status">
+          City map didn’t load — park ground only. Check the network and reload.
+        </p>
+      )}
     </div>
   );
 }

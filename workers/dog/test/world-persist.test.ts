@@ -3,7 +3,15 @@ import { test } from 'node:test';
 import { applyCatch, applyVisitorMove, createRoom, migrateRoom, snapshot } from '../src/logic.ts';
 import { HOME_PLACE, createLocation, migrateLocation, settleWorldYard } from '../src/world.ts';
 import { createYard, releaseLeash } from '../src/room.ts';
-import { RoomSession, firstState, flushIfNeeded, persistReason, runOrNap, type PersistStorage } from '../src/persist.ts';
+import {
+  READ_RETRY_MIN_MS,
+  RoomSession,
+  firstState,
+  flushIfNeeded,
+  persistReason,
+  runOrNap,
+  type PersistStorage,
+} from '../src/persist.ts';
 
 const T0 = Date.parse('2026-10-21T16:00:00Z');
 
@@ -36,12 +44,13 @@ test('first GET /state on empty-storage DO boots a world room and never throws',
   assert.equal(await storage.get('room'), undefined);
 
   const session = await RoomSession.boot(storage, T0);
-  assert.ok(session.room.dog);
-  assert.equal(session.room.yard?.location?.mode, 'world');
-  assert.ok(session.room.yard?.location?.lat);
-  assert.ok(Array.isArray(session.room.history));
-  assert.equal(typeof session.room.companions, 'object');
-  const snap = snapshot(session.room, T0, 0);
+  assert.equal(session.loadedFromStorage, true);
+  assert.ok(session.room?.dog);
+  assert.equal(session.room?.yard?.location?.mode, 'world');
+  assert.ok(session.room?.yard?.location?.lat);
+  assert.ok(Array.isArray(session.room?.history));
+  assert.equal(typeof session.room?.companions, 'object');
+  const snap = snapshot(session.room!, T0, 0);
   assert.equal(snap.type, 'state');
   assert.equal(snap.location?.mode, 'world');
   assert.ok(snap.pose);
@@ -55,38 +64,58 @@ test('first GET /state on empty-storage DO boots a world room and never throws',
   }
 });
 
-test('first request still returns 503 napping when storage throws instead of crashing', async () => {
-  const broken: PersistStorage = {
-    async get() {
-      throw new Error('sqlite not ready');
+test('failing storage.get stays napping, never puts, and recovers the original dog', async () => {
+  const saved = migrateRoom(createRoom(T0), T0);
+  assert.ok(saved.dog);
+  saved.dog = { ...saved.dog, profile: { ...saved.dog.profile, name: 'Maple' } };
+
+  let failRead = true;
+  let puts = 0;
+  const storage: PersistStorage = {
+    async get<T>(key: string) {
+      if (failRead) throw new Error('sqlite not ready');
+      if (key === 'room') return saved as T;
+      return undefined;
     },
     async put() {
-      throw new Error('sqlite not ready');
+      puts += 1;
+      throw new Error('should not persist while napping');
     },
     async getAlarm() {
-      throw new Error('no alarm');
+      return null;
     },
     async setAlarm() {
-      throw new Error('no alarm');
+      return undefined;
     },
   };
-  const session = await RoomSession.boot(broken, T0);
-  assert.ok(session.room.dog);
-  assert.equal(session.room.yard?.location?.mode, 'world');
 
-  const recovered = await firstState(
-    {
-      async get() {
-        throw new Error('still down');
-      },
-      async put() {
-        throw new Error('still down');
-      },
-    },
-    T0,
-  );
-  assert.equal(recovered.status, 200);
-  if (recovered.status === 200) assert.equal(recovered.body.type, 'state');
+  const session = await RoomSession.boot(storage, T0);
+  assert.equal(session.loadedFromStorage, false);
+  assert.equal(session.mayPersist, false);
+  assert.equal(session.room, null);
+  assert.equal(puts, 0);
+
+  const first = await firstState(storage, T0, 0);
+  assert.equal(first.status, 503);
+  if (first.status === 503) assert.equal(first.body, 'napping');
+  assert.equal(puts, 0);
+
+  const moved = session.adopt(migrateRoom(createRoom(T0 + 1), T0 + 1), T0 + 1, 'action');
+  assert.equal(moved.wrote, false);
+  await flushIfNeeded(storage, session, { wrote: true, reason: 'feed' });
+  assert.equal(puts, 0);
+
+  failRead = false;
+  const tooSoon = await session.retryLoad(storage, T0 + 10);
+  assert.equal(tooSoon, false);
+  assert.equal(session.mayPersist, false);
+
+  const recovered = await session.retryLoad(storage, T0 + 10 + READ_RETRY_MIN_MS);
+  assert.equal(recovered, true);
+  assert.equal(session.loadedFromStorage, true);
+  assert.equal(session.mayPersist, true);
+  assert.equal(session.room?.dog?.profile.name, 'Maple');
+  assert.equal(session.room?.dog?.id, saved.dog?.id);
 
   const napping = await runOrNap(async () => {
     throw new Error('uncaught init');
@@ -153,6 +182,7 @@ test('home and yard rooms migrate to world at last lat/lng', () => {
 test('parked world position survives a RoomSession restart', async () => {
   const storage = new MemoryStorage();
   const session = await RoomSession.boot(storage, T0);
+  assert.ok(session.room);
   const walked = applyVisitorMove(session.room, 'aaa', '1.1.1.1', 1, 0, true, 0.12, T0 + 80);
   session.adopt(walked.room, T0 + 80, 'action');
   const released = {
@@ -170,11 +200,12 @@ test('parked world position survives a RoomSession restart', async () => {
   assert.ok(lat !== HOME_PLACE.lat || lng !== HOME_PLACE.lng || session.room.yard!.pose.x !== 0);
 
   const again = await RoomSession.boot(storage, T0 + 5_000);
+  assert.ok(again.room);
   assert.equal(again.room.yard!.location!.mode, 'world');
   assert.equal(again.room.yard!.location!.lat, lat);
   assert.equal(again.room.yard!.location!.lng, lng);
   assert.equal(again.room.yard!.location!.heading, heading);
-  assert.equal(persistReason(session.room, again.room), null);
+  assert.equal(persistReason(session.room!, again.room), null);
 });
 
 test('catch keeps a saved world position and defaults to WSP only when missing', () => {

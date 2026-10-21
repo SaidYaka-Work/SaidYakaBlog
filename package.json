@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --experimental-strip-types scripts/dog-frame-check.ts && node --experimental-strip-types scripts/dog-motion-check.ts && node --import ./workers/dog/node_modules/tsx/dist/loader.mjs scripts/dog-world-check.ts && node --import ./workers/dog/node_modules/tsx/dist/loader.mjs scripts/unknown-number-check.ts"
+    "test": "node --experimental-strip-types scripts/dog-frame-check.ts && node --experimental-strip-types scripts/dog-motion-check.ts && node --import ./workers/dog/node_modules/tsx/dist/loader.mjs scripts/dog-world-check.ts && node --import ./workers/dog/node_modules/tsx/dist/loader.mjs scripts/dog-tile-build-check.ts && node --import ./workers/dog/node_modules/tsx/dist/loader.mjs scripts/unknown-number-check.ts"
   },
   "dependencies": {
     "@mapbox/vector-tile": "^3.0.0",

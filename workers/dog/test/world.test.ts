@@ -12,6 +12,7 @@ import {
   HOME_PLACE,
   PLACES,
   applyTravel,
+  formatPlaceLine,
   haversineMeters,
   lngLatToLocal,
   localToLngLat,
@@ -118,6 +119,10 @@ test('walking W in local space increases latitude (north)', () => {
   assert.ok(north.lat > origin.lat);
   const tile = tileXY(origin.lat, origin.lng);
   assert.equal(tile.z, 14);
+  assert.equal(
+    formatPlaceLine('Patchin Place', 'Washington Square Park, New York'),
+    'Patchin Place · near Washington Square Park',
+  );
   const noon = sunDirection(origin.lat, origin.lng, Date.parse('2026-06-21T16:00:00Z'));
   const midnight = sunDirection(origin.lat, origin.lng, Date.parse('2026-06-21T04:00:00Z'));
   assert.equal(noon.night, false);

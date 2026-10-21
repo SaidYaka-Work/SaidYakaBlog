@@ -5,6 +5,7 @@ import { useRef, type CSSProperties, type PointerEvent } from 'react';
 import { englishPath } from '@/lib/site';
 import type { DogEmote } from '@/lib/dog';
 import { EMOTE_SET } from './emotes';
+import { formatPlaceLine } from '../../workers/dog/src/world';
 
 export type Toast = { id: number; emote: string; text: string };
 
@@ -111,6 +112,24 @@ export default function DogHud({
         <span className="dog-chip" title="Neighbors nearby">
           👥 {Math.max(presence, neighborCount)}
         </span>
+        {!empty && onTakeLeash && (
+          <button
+            type="button"
+            className={`dog-chip${youHold || youNext ? ' is-leash' : ''}`}
+            onClick={onTakeLeash}
+            aria-pressed={youHold}
+          >
+            {youHold
+              ? 'Leash yours'
+              : youNext
+                ? "You're next"
+                : queueAhead > 0
+                  ? `You're ${ordinal(queueAhead + 1)}`
+                  : visitorWalking
+                    ? 'Join queue'
+                    : 'Take the leash'}
+          </button>
+        )}
         {worldReady && (
           <button type="button" className="dog-chip" onClick={onToggleTravel} aria-expanded={travelOpen}>
             Travel
@@ -124,21 +143,20 @@ export default function DogHud({
         </button>
       </div>
 
-      {youHold && (
-        <p className="dog-leash is-next" role="status">
-          You have the leash
-        </p>
-      )}
-      {!youHold && (youNext || queueAhead > 0 || visitorWalking) && (
-        <p className="dog-leash" role="status">
-          {youNext
-            ? `You're next · ~20s`
-            : queueAhead > 0
-              ? `You're ${queueAhead + 1}${queueAhead + 1 === 2 ? 'nd' : queueAhead + 1 === 3 ? 'rd' : 'th'} · ~${(queueAhead + 1) * 20}s`
-              : `🐾 a visitor is walking ${name}`}
-          {onTakeLeash && (
+      {!empty && !flying && (
+        <p className={`dog-leash${youHold || youNext ? ' is-next' : ''}`} role="status">
+          {youHold
+            ? 'You have the leash'
+            : youNext
+              ? "You're next · ~20s"
+              : queueAhead > 0
+                ? `You're ${ordinal(queueAhead + 1)} · ~${(queueAhead + 1) * 20}s`
+                : visitorWalking
+                  ? `A visitor is walking ${name}`
+                  : `${name} is waiting`}
+          {!youHold && onTakeLeash && (
             <button type="button" className="dog-leash-take" onClick={onTakeLeash}>
-              Take the leash
+              {youNext || queueAhead > 0 || visitorWalking ? 'Join queue' : 'Take the leash'}
             </button>
           )}
         </p>
@@ -188,7 +206,7 @@ export default function DogHud({
       {(placeName || streetName) && (
         <p className="dog-place" role="status">
           <span aria-hidden="true">N</span>
-          {streetCaption(streetName, placeName)}
+          {formatPlaceLine(streetName, placeName)}
         </p>
       )}
 
@@ -237,12 +255,10 @@ export default function DogHud({
   );
 }
 
-function streetCaption(streetName?: string, placeName?: string) {
-  if (!streetName) return placeName;
-  if (streetName.length > 32 || /subway|interchange|transfer|entrance|underground/i.test(streetName)) {
-    return placeName || streetName;
-  }
-  return streetName;
+function ordinal(n: number) {
+  if (n === 2) return '2nd';
+  if (n === 3) return '3rd';
+  return `${n}th`;
 }
 
 function Meter({ icon, label, value }: { icon: string; label: string; value: number }) {

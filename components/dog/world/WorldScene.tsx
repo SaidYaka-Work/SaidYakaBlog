@@ -3,7 +3,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import {
-  BoxGeometry,
   BufferAttribute,
   Color,
   DoubleSide,
@@ -20,33 +19,14 @@ import {
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { lngLatToLocal, sunDirection } from '../../../workers/dog/src/world';
 import type { WorldTileData } from './decode';
-import { centroid, crossingsAtIntersections, dressPlants, facadeTint, hash2, isMajorRoad, lampsAlongRoads, ringBounds, type Crossing, type Plant } from './dress';
-
-function shapeFrom(ring: { x: number; z: number }[]) {
-  const shape = new Shape();
-  shape.moveTo(ring[0].x, ring[0].z);
-  for (let i = 1; i < ring.length; i += 1) shape.lineTo(ring[i].x, ring[i].z);
-  shape.closePath();
-  return shape;
-}
-
-function mergeAll(geos: BufferGeometry[]) {
-  if (!geos.length) return [] as BufferGeometry[];
-  const merged = mergeGeometries(geos, false);
-  geos.forEach((geo) => geo.dispose());
-  return merged ? [merged] : [];
-}
-
-type BuiltTile = {
-  key: string;
-  buildings: BufferGeometry[];
-  roofs: BufferGeometry[];
-  parks: BufferGeometry | null;
-  water: BufferGeometry | null;
-  sidewalks: BufferGeometry | null;
-  roads: BufferGeometry | null;
-  major: BufferGeometry | null;
-};
+import { crossingsAtIntersections, dressPlants, hash2, lampsAlongRoads, type Crossing, type Plant } from './dress';
+import {
+  createBuildJob,
+  stepBuildJob,
+  tileDistanceToPoint,
+  type BuildJob,
+  type BuiltTile,
+} from './buildTile';
 
 function disposeBuilt(tile: BuiltTile) {
   tile.buildings.forEach((geo) => geo.dispose());
@@ -56,150 +36,6 @@ function disposeBuilt(tile: BuiltTile) {
   tile.sidewalks?.dispose();
   tile.roads?.dispose();
   tile.major?.dispose();
-}
-
-function tileAnchor(tile: WorldTileData) {
-  if (tile.labels[0]) return tile.labels[0];
-  if (tile.buildings[0]) return centroid(tile.buildings[0].ring);
-  if (tile.roads[0]?.line[0]) return tile.roads[0].line[0];
-  return { x: 0, z: 0 };
-}
-
-function pushBuilding(building: WorldTileData['buildings'][number], walls: BufferGeometry[], roofs: BufferGeometry[], withRoof: boolean) {
-  try {
-    const height = Math.max(3.2, building.height - building.min);
-    const geo = new ExtrudeGeometry(shapeFrom(building.ring), {
-      depth: height,
-      bevelEnabled: false,
-      curveSegments: 1,
-    });
-    geo.rotateX(-Math.PI / 2);
-    geo.translate(0, building.min, 0);
-    const mid = centroid(building.ring);
-    paintBuilding(geo, facadeTint(mid.x, mid.z), height);
-    walls.push(geo);
-    if (!withRoof) return;
-    const box = ringBounds(building.ring);
-    if (box.w > 1.2 && box.d > 1.2) {
-      const cap = new BoxGeometry(box.w + 0.2, 0.32, box.d + 0.2);
-      cap.translate((box.minX + box.maxX) / 2, building.min + height + 0.1, (box.minZ + box.maxZ) / 2);
-      roofs.push(cap);
-    }
-  } catch {
-    // skip a broken ring
-  }
-}
-
-function paintBuilding(geo: BufferGeometry, tint: readonly number[], height: number) {
-  const count = geo.getAttribute('position').count;
-  const colors = new Float32Array(count * 3);
-  const heights = new Float32Array(count);
-  for (let i = 0; i < count; i += 1) {
-    colors[i * 3] = tint[0];
-    colors[i * 3 + 1] = tint[1];
-    colors[i * 3 + 2] = tint[2];
-    heights[i] = height;
-  }
-  geo.setAttribute('color', new BufferAttribute(colors, 3));
-  geo.setAttribute('aHeight', new BufferAttribute(heights, 1));
-}
-
-function emptyTile(key: string): BuiltTile {
-  return {
-    key,
-    buildings: [],
-    roofs: [],
-    parks: null,
-    water: null,
-    sidewalks: null,
-    roads: null,
-    major: null,
-  };
-}
-
-type RibbonCursor = { road: number; seg: number; geos: BufferGeometry[] };
-
-function pushRibbonSegs(tile: WorldTileData, pad: number, y: number, majorOnly: boolean, cursor: RibbonCursor, limit: number) {
-  let made = 0;
-  while (cursor.road < tile.roads.length && made < limit) {
-    const road = tile.roads[cursor.road];
-    if (majorOnly && !isMajorRoad(road.width, road.klass)) {
-      cursor.road += 1;
-      cursor.seg = 1;
-      continue;
-    }
-    if (cursor.seg < 1) cursor.seg = 1;
-    while (cursor.seg < road.line.length && made < limit) {
-      const a = road.line[cursor.seg - 1];
-      const b = road.line[cursor.seg];
-      cursor.seg += 1;
-      const dx = b.x - a.x;
-      const dz = b.z - a.z;
-      const len = Math.hypot(dx, dz);
-      if (len < 0.4) continue;
-      const half = road.width * 0.5 + pad;
-      const nx = (-dz / len) * half;
-      const nz = (dx / len) * half;
-      const ring = [
-        { x: a.x + nx, z: a.z + nz },
-        { x: b.x + nx, z: b.z + nz },
-        { x: b.x - nx, z: b.z - nz },
-        { x: a.x - nx, z: a.z - nz },
-      ];
-      try {
-        const geo = new ExtrudeGeometry(shapeFrom(ring), { depth: 0.05, bevelEnabled: false, curveSegments: 1 });
-        geo.rotateX(-Math.PI / 2);
-        geo.translate(0, y, 0);
-        const count = geo.getAttribute('position').count;
-        const uv = new Float32Array(count * 2);
-        const pos = geo.getAttribute('position');
-        for (let v = 0; v < count; v += 1) {
-          const px = pos.getX(v);
-          const pz = pos.getZ(v);
-          const along = ((px - a.x) * dx + (pz - a.z) * dz) / (len * len);
-          const across = ((px - a.x) * -dz + (pz - a.z) * dx) / (len * half * 2) + 0.5;
-          uv[v * 2] = across;
-          uv[v * 2 + 1] = along * len;
-        }
-        geo.setAttribute('uv', new BufferAttribute(uv, 2));
-        cursor.geos.push(geo);
-        made += 1;
-      } catch {
-        // skip
-      }
-    }
-    if (cursor.seg >= road.line.length) {
-      cursor.road += 1;
-      cursor.seg = 1;
-    }
-  }
-  return cursor.road >= tile.roads.length;
-}
-
-function takeMerged(geos: BufferGeometry[]) {
-  if (!geos.length) return null;
-  const merged = mergeGeometries(geos, false);
-  geos.forEach((geo) => geo.dispose());
-  return merged ?? null;
-}
-
-function flattenRings(rings: { x: number; z: number }[][], y = 0.012) {
-  const geos: BufferGeometry[] = [];
-  for (const ring of rings) {
-    if (ring.length < 3) continue;
-    try {
-      const geo = new ExtrudeGeometry(shapeFrom(ring), { depth: 0.04, bevelEnabled: false, curveSegments: 1 });
-      geo.rotateX(-Math.PI / 2);
-      geo.translate(0, y, 0);
-      geos.push(geo);
-    } catch {
-      // skip
-    }
-  }
-  if (!geos.length) return null;
-  const merged = mergeGeometries(geos, false);
-  geos.forEach((geo) => geo.dispose());
-  return merged;
 }
 
 function facadeMaterial(night: boolean) {
@@ -387,6 +223,14 @@ function crossingMaterial(night: boolean) {
       }
     `,
   });
+}
+
+function shapeFrom(ring: { x: number; z: number }[]) {
+  const shape = new Shape();
+  shape.moveTo(ring[0].x, ring[0].z);
+  for (let i = 1; i < ring.length; i += 1) shape.lineTo(ring[i].x, ring[i].z);
+  shape.closePath();
+  return shape;
 }
 
 function crossingMesh(crossings: Crossing[]) {
@@ -621,6 +465,7 @@ export default function WorldScene({
   originLat,
   originLng,
   nightHint,
+  failed = false,
 }: {
   tiles: WorldTileData[];
   lat: number;
@@ -628,8 +473,9 @@ export default function WorldScene({
   originLat: number;
   originLng: number;
   nightHint?: boolean;
+  failed?: boolean;
 }) {
-  const { scene, gl } = useThree();
+  const { scene, gl, camera } = useThree();
   const sun = useMemo(() => sunDirection(lat, lng, Date.now()), [lat, lng]);
   const night = nightHint ?? sun.night;
   const here = useMemo(() => lngLatToLocal(lat, lng, originLat, originLng), [lat, lng, originLat, originLng]);
@@ -638,17 +484,7 @@ export default function WorldScene({
   hereRef.current = here;
   const cache = useRef(new Map<string, BuiltTile>());
   const queue = useRef<WorldTileData[]>([]);
-  const pending = useRef<{
-    tile: WorldTileData;
-    lod: boolean;
-    walls: BufferGeometry[];
-    roofs: BufferGeometry[];
-    index: number;
-    list: WorldTileData['buildings'];
-    dress: 'buildings' | 'merge' | 'parks' | 'water' | 'sidewalks' | 'roads' | 'major';
-    built: BuiltTile;
-    ribbon: RibbonCursor | null;
-  } | null>(null);
+  const pending = useRef<BuildJob | null>(null);
   const [ready, setReady] = useState<BuiltTile[]>([]);
 
   useEffect(() => {
@@ -668,6 +504,9 @@ export default function WorldScene({
       if (pending.current?.tile.key === tile.key) continue;
       queue.current.push(tile);
     }
+    queue.current.sort(
+      (a, b) => tileDistanceToPoint(a, hereRef.current) - tileDistanceToPoint(b, hereRef.current),
+    );
     if (removed) setReady(Array.from(cache.current.values()));
   }, [tiles]);
 
@@ -744,6 +583,19 @@ export default function WorldScene({
     }
   }, [facade, night, sun.x, sun.y, sun.z]);
 
+  const warmed = useRef(false);
+  useEffect(() => {
+    if (warmed.current) return;
+    warmed.current = true;
+    try {
+      const renderer = gl as typeof gl & { compileAsync?: (s: object, c: object) => Promise<void> };
+      if (typeof renderer.compileAsync === 'function') void renderer.compileAsync(scene, camera);
+      else gl.compile(scene, camera);
+    } catch (error) {
+      console.warn('[dog] shader prewarm failed', error);
+    }
+  }, [camera, gl, scene]);
+
   useFrame((_, dt) => {
     const clock = water.userData.uTime;
     if (clock) clock.value = (clock.value + dt) % 1000;
@@ -755,87 +607,20 @@ export default function WorldScene({
         const next = queue.current.shift();
         if (!next) break;
         if (cache.current.has(next.key)) continue;
-        const anchor = tileAnchor(next);
-        const lod = Math.hypot(anchor.x - hereRef.current.x, anchor.z - hereRef.current.z) > 88;
-        const list = lod
-          ? next.buildings.filter((building) => building.area > 28).slice(0, 80)
-          : next.buildings.slice(0, 160);
-        pending.current = {
-          tile: next,
-          lod,
-          walls: [],
-          roofs: [],
-          index: 0,
-          list,
-          dress: 'buildings',
-          built: emptyTile(next.key),
-          ribbon: null,
-        };
+        pending.current = createBuildJob(next, hereRef.current);
       }
-      const job = pending.current;
-      if (job.dress === 'buildings') {
-        const end = Math.min(job.list.length, job.index + 8);
-        for (; job.index < end; job.index += 1) {
-          pushBuilding(job.list[job.index], job.walls, job.roofs, !job.lod);
-        }
-        if (job.index < job.list.length) break;
-        job.dress = 'merge';
-        break;
-      }
-      if (job.dress === 'merge') {
-        if (job.walls.length) {
-          job.built.buildings.push(...mergeAll(job.walls.splice(0, 16)));
-          break;
-        }
-        if (job.roofs.length) {
-          job.built.roofs.push(...mergeAll(job.roofs.splice(0, 16)));
-          break;
-        }
-        cache.current.set(job.tile.key, job.built);
+      const current = pending.current;
+      const result = stepBuildJob(current);
+      if (result.changed || result.done) {
+        cache.current.set(current.tile.key, { ...(result.job?.built ?? current.built) });
         changed = true;
-        job.dress = 'parks';
-        break;
       }
-      if (job.dress === 'parks') {
-        const rings = job.lod ? job.tile.parks.slice(0, 6) : job.tile.parks.slice(0, 16);
-        const cursor = job.ribbon ?? { road: 0, seg: 1, geos: [] };
-        const next = Math.min(rings.length, cursor.road + 3);
-        const chunk = flattenRings(rings.slice(cursor.road, next), 0.004);
-        if (chunk) cursor.geos.push(chunk);
-        cursor.road = next;
-        job.ribbon = cursor;
-        if (cursor.road < rings.length) break;
-        job.built.parks = takeMerged(cursor.geos);
-        job.dress = 'water';
-        job.ribbon = { road: 0, seg: 1, geos: [] };
-        break;
-      }
-      if (job.dress === 'sidewalks' || job.dress === 'roads' || job.dress === 'major') {
-        const cursor = job.ribbon ?? { road: 0, seg: 1, geos: [] };
-        job.ribbon = cursor;
-        const pad = job.dress === 'sidewalks' ? 1.15 : 0;
-        const y = job.dress === 'sidewalks' ? 0.002 : job.dress === 'major' ? 0.01 : 0.008;
-        const done = pushRibbonSegs(job.tile, pad, y, job.dress === 'major', cursor, 8);
-        if (!done) break;
-        const merged = takeMerged(cursor.geos);
-        if (job.dress === 'sidewalks') job.built.sidewalks = merged;
-        else if (job.dress === 'roads') job.built.roads = merged;
-        else job.built.major = merged;
-        cache.current.set(job.tile.key, { ...job.built });
-        changed = true;
-        if (job.dress === 'sidewalks') {
-          job.dress = 'roads';
-          job.ribbon = { road: 0, seg: 1, geos: [] };
-          break;
-        }
-        if (job.dress === 'roads' && !job.lod) {
-          job.dress = 'major';
-          job.ribbon = { road: 0, seg: 1, geos: [] };
-          break;
-        }
+      if (result.done) {
         pending.current = null;
-        break;
+        continue;
       }
+      pending.current = result.job;
+      break;
     }
     if (changed) setReady(Array.from(cache.current.values()));
   });
@@ -871,6 +656,20 @@ export default function WorldScene({
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={groundMat}>
         <planeGeometry args={[2400, 2400]} />
       </mesh>
+      {failed && ready.every((tile) => !tile.buildings.length && !tile.roads) && (
+        <group>
+          {([[12, 8, 8, 14], [-14, 6, 7, 16], [8, -12, 9, 12], [-10, -8, 6, 10], [18, 2, 10, 18]] as const).map(
+            ([x, z, w, h], index) => (
+              <mesh key={`fallback-${index}`} position={[x, h / 2, z]} material={roofMat} userData={{ occlude: true }}>
+                <boxGeometry args={[w, h, 6]} />
+              </mesh>
+            ),
+          )}
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} material={asphalt} renderOrder={2}>
+            <planeGeometry args={[10, 90]} />
+          </mesh>
+        </group>
+      )}
       <ambientLight intensity={night ? 0.62 : 0.26} color={night ? '#b4c6e4' : '#fff4e6'} />
       <hemisphereLight args={[night ? '#9eb6e6' : '#fff1dc', night ? '#3a342c' : '#c4a888', night ? 1.32 : 0.82]} />
       <directionalLight
