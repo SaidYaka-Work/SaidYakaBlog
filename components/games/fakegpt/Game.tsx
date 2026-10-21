@@ -24,6 +24,7 @@ import {
   planRun,
   rankFor,
   shareGlyph,
+  startCustomerCount,
   tickRequest,
   type PlannedCustomer,
 } from './lanes';
@@ -189,6 +190,7 @@ export default function FakeGptGame() {
   const [plan, setPlan] = useState<PlannedCustomer<Prompt>[]>([]);
   const [seed, setSeed] = useState(1);
   const [typed, setTyped] = useState('');
+  const typedRef = useRef('');
   const [busy, setBusy] = useState(false);
   const [offline, setOffline] = useState(false);
   const [daily, setDaily] = useState<DailySet | null>(null);
@@ -295,6 +297,7 @@ export default function FakeGptGame() {
       setLevelLeftMs(0);
       setLanes(nextLanes);
       setFocusedId(nextLanes[0]?.id ?? '');
+      typedRef.current = '';
       setTyped('');
       setBusy(false);
       setPhase('playing');
@@ -342,7 +345,8 @@ export default function FakeGptGame() {
       finishingIds.current.add(laneId);
       setBusy(true);
       const clock = tickRequest(lane.startedAt, lane.totalMs, Date.now());
-      const playerAnswer = choice ?? (isChoiceKind(current.kind, current.options) || isBonusKind(current.kind) ? '' : typed.trim());
+      const playerAnswer =
+        (choice ?? (isChoiceKind(current.kind, current.options) || isBonusKind(current.kind) ? '' : typedRef.current)).trim();
       const draw = current.kind === 'draw' ? drawRef.current?.snapshot() : null;
       const sound =
         current.kind === 'sound'
@@ -505,6 +509,7 @@ export default function FakeGptGame() {
       setArtifacts((currentArtifacts) => [...currentArtifacts, artifact]);
       setServed((value) => value + 1);
       setServedTotal((value) => value + 1);
+      typedRef.current = '';
       setTyped('');
       setPop(result.thumbs === 'up' ? `+${result.points}` : result.empty ? 'miss' : 'wrong');
       later(() => setPop(null), 800);
@@ -542,7 +547,7 @@ export default function FakeGptGame() {
         );
       }, 520);
     },
-    [beep, daily?.date, endRun, later, offline, typed],
+    [beep, daily?.date, endRun, later, offline],
   );
 
   const failExpired = useCallback(
@@ -561,7 +566,7 @@ export default function FakeGptGame() {
       setLanes((current) => {
         let changed = false;
         const next = current.map((lane) => {
-          if (!lane.current || finishingIds.current.has(lane.id)) return lane;
+          if (!lane.current || finishingIds.current.has(lane.id) || lane.startedAt <= 0 || lane.totalMs <= 0) return lane;
           const clock = tickRequest(lane.startedAt, lane.totalMs, now);
           const elapsedRatio = lane.totalMs > 0 ? 1 - clock.remainingMs / lane.totalMs : 1;
           const shown = nudgeShown.current[lane.id] ?? 0;
@@ -627,6 +632,7 @@ export default function FakeGptGame() {
   const focusLane = useCallback((id: string) => {
     setFocusedId(id);
     setLanes((current) => current.map((lane) => (lane.id === id ? { ...lane, unread: 0 } : lane)));
+    typedRef.current = '';
     setTyped('');
   }, []);
 
@@ -771,7 +777,7 @@ export default function FakeGptGame() {
             <p className="fgpt-daily">Daily shift · {formatUtcDate(daily?.date ?? utcDate())}</p>
             <p className="fgpt-assistant">
               You are not a model. You are a person doing every job by hand while the users think you are AI.
-              Start with {seed % 2 === 0 ? 'two customers' : 'one customer'}. More join as levels get harder.
+              Start with {startCustomerCount(dateSeed(daily?.date ?? utcDate())) === 2 ? 'two customers' : 'one customer'}. More join as levels get harder.
               Each has a queue and a patience meter. Three hallucinations and they walk.
             </p>
             <p className="fgpt-user">
@@ -817,9 +823,8 @@ export default function FakeGptGame() {
                   <article
                     key={lane.id}
                     className={`fgpt-lane ${active ? 'is-focus' : ''} ${lane.flash ? `is-${lane.flash}` : ''} ${lane.joining ? 'is-joining' : ''}`}
-                    onClick={() => focusLane(lane.id)}
                   >
-                    <header className="fgpt-lane-top">
+                    <header className="fgpt-lane-top" onClick={() => focusLane(lane.id)}>
                       <span className="fgpt-face" style={{ background: `hsl(${lane.hue} 42% 42%)` }}>
                         {lane.name.slice(0, 1).toUpperCase()}
                       </span>
@@ -845,16 +850,21 @@ export default function FakeGptGame() {
                         }}
                       />
                     </div>
-                    {active && phase === 'playing' && lane.current ? (
-                      <div className="fgpt-composer" onClick={(event) => event.stopPropagation()}>
+                    {phase === 'playing' && lane.current ? (
+                      <div className="fgpt-composer">
                         {isChoiceKind(lane.current.kind, lane.current.options) ? (
                           <div className="fgpt-choices">
                             {lane.current.options.map((option, index) => (
                               <button
                                 key={option}
                                 type="button"
-                                disabled={busy}
-                                onClick={() => void finishLane(lane.id, true, option)}
+                                disabled={busy && active}
+                                onPointerDown={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  focusLane(lane.id);
+                                  void finishLane(lane.id, true, option);
+                                }}
                                 className="fgpt-choice pressable"
                               >
                                 <span className="fgpt-key">{index + 1}</span>
@@ -872,11 +882,15 @@ export default function FakeGptGame() {
                             }}
                           >
                             <input
-                              value={typed}
+                              value={active ? typed : ''}
                               maxLength={80}
-                              onChange={(event) => setTyped(event.target.value)}
+                              onChange={(event) => {
+                                typedRef.current = event.target.value;
+                                setTyped(event.target.value);
+                              }}
+                              onFocus={() => focusLane(lane.id)}
                               placeholder="type it, fast"
-                              disabled={busy}
+                              disabled={busy && active}
                               className="min-w-0 flex-1 rounded-full border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm"
                               aria-label="Short answer"
                             />

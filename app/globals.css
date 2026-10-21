@@ -936,6 +936,12 @@ html[data-motion='on'] .fgpt-board.is-shake {
 .fgpt-lanes.is-grid,
 .fgpt-lanes.is-three-two { grid-template-columns: 1fr; }
 
+@media (max-width: 859px) {
+  .fgpt-lane:not(.is-focus) {
+    display: none;
+  }
+}
+
 .fgpt-lane {
   display: flex;
   flex-direction: column;
