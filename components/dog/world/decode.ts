@@ -1,4 +1,4 @@
-import Pbf from 'pbf';
+import { PbfReader } from 'pbf';
 import { VectorTile } from '@mapbox/vector-tile';
 import { lngLatToLocal, type Ring } from '../../../workers/dog/src/world';
 
@@ -78,7 +78,7 @@ export function decodeTile(
   originLat: number,
   originLng: number,
 ): WorldTileData {
-  const tile = new VectorTile(new Pbf(new Uint8Array(buffer)));
+  const tile = new VectorTile(new PbfReader(new Uint8Array(buffer)));
   const buildings: BuildingFeat[] = [];
   const roads: RoadFeat[] = [];
   const water: Ring[] = [];

@@ -118,9 +118,9 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
       if (dead) return;
       setTiles(next);
       const wantedKeys = new Set(wanted.map((tile) => tile.key));
-      for (const key of [...cache.current.keys()]) {
+      Array.from(cache.current.keys()).forEach((key) => {
         if (!wantedKeys.has(key)) cache.current.delete(key);
-      }
+      });
       const buildings = next.flatMap((tile) => tile.buildings.map((b) => b.ring));
       const roads = next.flatMap((tile) => tile.roads.map((r) => r.line));
       const parks = next.flatMap((tile) => tile.parks);

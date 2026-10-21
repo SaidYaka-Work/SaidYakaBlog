@@ -434,7 +434,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
     setLocalWorld(false);
     leftGate.current = false;
     setLocalPlaceId(HOME_PLACE.id);
-  }, [snapshot?.location?.mode, snapshot?.location?.placeId]);
+  }, [snapshot?.location]);
 
   useEffect(() => {
     if (!inWorld) setStreetName('');
