@@ -270,6 +270,19 @@ test('leave or disconnect while holding releases without cooldown; same client r
   assert.equal(reclaim.ok, true, 'same client id reclaims after a pagehide disconnect');
 });
 
+test('same clientId keeps the leash when an old leave or disconnect is still in flight', () => {
+  let room = createRoom(T0);
+  room = applyVisitorMove(room, 'alice', '10.0.0.1', 1, 0, false, 0.08, T0).room;
+  assert.equal(room.yard?.leash.holderId, 'alice');
+  const lateLeave = applyWorldAction(room, 'alice', '10.0.0.1', T0 + 200, 'leave', undefined, ['alice']);
+  assert.equal(lateLeave.room.yard?.leash.holderId, 'alice', 'leave is ignored while another socket still has that clientId');
+  const join = tryAcquireLeash(lateLeave.room.yard!, 'alice', '10.0.0.1', T0 + 220);
+  assert.equal(join.ok, true, 'join from the same clientId reclaims while the old socket is still listed');
+  assert.equal(join.yard.leash.holderId, 'alice');
+  const staleForget = forgetVisitor(lateLeave.room, 'alice', T0 + 240, ['alice']);
+  assert.equal(staleForget.yard?.leash.holderId, 'alice', 'old-socket forget does not drop a reclaimed hold');
+});
+
 test('after an idle drop the same walker can take the leash again without cooldown', () => {
   const held = tryAcquireLeash(createYard(T0), 'alice', '10.0.0.1', T0);
   assert.equal(held.ok, true);

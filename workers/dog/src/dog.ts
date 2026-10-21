@@ -163,7 +163,8 @@ export class DogRoom {
         '0.0.0.0';
 
       this.ctx.acceptWebSocket(server);
-      const clientId = crypto.randomUUID();
+      const requested = url.searchParams.get('clientId');
+      const clientId = requested && /^[a-f0-9-]{36}$/i.test(requested) ? requested : crypto.randomUUID();
       server.serializeAttachment({
         ip,
         lastAt: 0,
@@ -253,8 +254,15 @@ export class DogRoom {
           nameToken: null,
           clientId: parsed.clientId,
         };
+        const previousId = current.clientId;
         ws.serializeAttachment({ ...current, clientId: parsed.clientId } satisfies SocketMeta);
         ws.send(JSON.stringify({ type: 'welcome', clientId: parsed.clientId }));
+        if (previousId !== parsed.clientId) {
+          const room = await this.mustLoad(now, 'connect');
+          const dropped = previousId ? forgetVisitor(room, previousId, now, this.peerClientIds(ws)) : room;
+          const seated = welcomeCompanion(dropped, parsed.clientId, now);
+          await this.commit(seated, now, 'connect');
+        }
       }
       ws.send(JSON.stringify(snapshot(await this.mustLoad(now, 'read'), now, this.sockets())));
       return;
@@ -340,6 +348,7 @@ export class DogRoom {
         now,
         parsed.kind,
         parsed.kind === 'travel' ? parsed.placeId : undefined,
+        this.peerClientIds(ws),
       );
       await this.commit(result.room, now, 'action');
       if (!result.acquired && result.code) {
@@ -534,6 +543,14 @@ export class DogRoom {
       .filter((id): id is string => Boolean(id) && id !== except);
   }
 
+  private peerClientIds(except?: WebSocket) {
+    return this.ctx
+      .getWebSockets()
+      .filter((socket) => socket !== except)
+      .map((socket) => (socket.deserializeAttachment() as SocketMeta | null)?.clientId)
+      .filter((id): id is string => Boolean(id));
+  }
+
   private async releaseIfHolder(ws: WebSocket) {
     const meta = ws.deserializeAttachment() as SocketMeta | null;
     if (!meta?.clientId) return;
@@ -543,6 +560,7 @@ export class DogRoom {
       if (!room) return;
       const yard = migrateYard(room.yard, now);
       if (yard.leash.holderId !== meta.clientId) return;
+      if (this.peerClientIds(ws).includes(meta.clientId)) return;
       await this.commit({ ...room, yard: releaseLeash(yard, now, this.liveIds(meta.clientId), 'idle') }, now, 'action');
     } catch (error) {
       logDogError('leash release failed', error);
@@ -556,7 +574,7 @@ export class DogRoom {
       const now = Date.now();
       const room = await this.load(now, 'action');
       if (!room) return;
-      await this.commit(forgetVisitor(room, meta.clientId, now, this.liveIds(meta.clientId)), now, 'action');
+      await this.commit(forgetVisitor(room, meta.clientId, now, this.peerClientIds(ws)), now, 'action');
     } catch (error) {
       logDogError('socket forget failed', error);
     }

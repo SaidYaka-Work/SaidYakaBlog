@@ -31,6 +31,20 @@ import './dog.css';
 
 const HistoryBoard = dynamic(() => import('./HistoryBoard'), { ssr: false });
 
+const CLIENT_ID_RE = /^[a-f0-9-]{36}$/i;
+
+function readStoredClientId() {
+  try {
+    const existing = sessionStorage.getItem('biscuit-client');
+    if (existing && CLIENT_ID_RE.test(existing)) return existing;
+    const next = crypto.randomUUID();
+    sessionStorage.setItem('biscuit-client', next);
+    return next;
+  } catch {
+    return null;
+  }
+}
+
 type PlayKind = 'feed' | 'walk' | 'catch' | null;
 type Reaction = 'idle' | 'pet' | 'walk' | 'feed' | 'sleep';
 type Panel = 'hall' | 'feed' | 'walk' | 'catch' | 'name' | null;
@@ -86,6 +100,9 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const [panel, setPanel] = useState<Panel>(initialPanel);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [clientId, setClientId] = useState<string | null>(null);
+  const clientIdRef = useRef<string | null>(null);
+  const [compactHud, setCompactHud] = useState(false);
+  const gameRef = useRef<HTMLDivElement>(null);
   const [hint, setHint] = useState(true);
   const [nearBowl, setNearBowl] = useState(false);
   const [localPlaceId, setLocalPlaceId] = useState(HOME_PLACE.id);
@@ -260,7 +277,12 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
     const open = () => {
       if (closed) return;
       void pullState();
-      const ws = new WebSocket(dogWsUrl());
+      const storedId = clientIdRef.current || readStoredClientId();
+      if (storedId) {
+        clientIdRef.current = storedId;
+        setClientId(storedId);
+      }
+      const ws = new WebSocket(dogWsUrl(storedId));
       socket.current = ws;
       ws.onopen = () => {
         if (closed || socket.current !== ws) {
@@ -273,11 +295,10 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         }
         wsPause = 800;
         setReach('up');
-        let storedId: string | null = null;
-        try {
-          storedId = sessionStorage.getItem('biscuit-client');
-        } catch {
-          storedId = null;
+        const storedId = clientIdRef.current || readStoredClientId();
+        if (storedId) {
+          clientIdRef.current = storedId;
+          setClientId(storedId);
         }
         ws.send(JSON.stringify(storedId ? { type: 'hello', clientId: storedId } : { type: 'hello' }));
       };
@@ -297,9 +318,11 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           return;
         }
         if (message.type === 'welcome') {
-          setClientId(message.clientId);
+          const kept = clientIdRef.current || readStoredClientId() || message.clientId;
+          clientIdRef.current = kept;
+          setClientId(kept);
           try {
-            sessionStorage.setItem('biscuit-client', message.clientId);
+            if (!sessionStorage.getItem('biscuit-client')) sessionStorage.setItem('biscuit-client', kept);
           } catch {
             // ignore
           }
@@ -519,7 +542,11 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const overlay = play || (awaitingName && canName) || panel;
   const canTap = ready || progress >= 88 || napping;
   const shared = Boolean(snapshot?.pose);
-  const youHold = Boolean(snapshot?.leash?.held && snapshot.leash.holderId && snapshot.leash.holderId === clientId);
+  const youHold = Boolean(
+    snapshot?.leash?.held &&
+      snapshot.leash.holderId &&
+      (snapshot.leash.holderId === clientId || snapshot.leash.holderId === clientIdRef.current),
+  );
   youHoldRef.current = youHold;
   const leashQueue = snapshot?.leash?.queue ?? [];
   const nextId = snapshot?.leash?.nextId ?? leashQueue[0] ?? null;
@@ -724,6 +751,32 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   }, [leashWaitMs]);
 
   useEffect(() => {
+    const id = readStoredClientId();
+    if (!id) return;
+    clientIdRef.current = id;
+    setClientId(id);
+  }, []);
+
+  useEffect(() => {
+    const node = gameRef.current;
+    if (!node) return;
+    const sync = () => {
+      const visual = window.visualViewport?.width ?? Number.POSITIVE_INFINITY;
+      setCompactHud(node.clientWidth <= 400 || window.innerWidth <= 400 || visual <= 400);
+    };
+    sync();
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(sync);
+    ro?.observe(node);
+    window.addEventListener('resize', sync);
+    window.visualViewport?.addEventListener('resize', sync);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', sync);
+      window.visualViewport?.removeEventListener('resize', sync);
+    };
+  }, [playing]);
+
+  useEffect(() => {
     if (!playing) return;
     const html = document.documentElement;
     const body = document.body;
@@ -765,7 +818,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   if (studio) return <DogStudio />;
 
   return (
-    <div className="dog-game">
+    <div ref={gameRef} className={`dog-game${compactHud ? ' is-compact' : ''}`}>
       {dog ? (
         <DogPortrait
           genome={dog.genome}

@@ -113,7 +113,7 @@ function DebugHud() {
       const perf = (window as Window & { __DOG_PERF?: { fps: number; p95: number; hitch: number; calls: number; triangles: number; tiles?: number; geometries?: number; textures?: number; driveMs?: number; cameraMs?: number; tileMs?: number } }).__DOG_PERF;
       if (!perf) return;
       setLine(
-        `${perf.fps.toFixed(0)} fps · p95 ${perf.p95.toFixed(1)}ms · hitch ${perf.hitch.toFixed(0)}ms · ${perf.calls} calls · ${perf.triangles} tris · ${perf.tiles ?? 0} tiles · geo ${perf.geometries ?? 0} · drv ${ (perf.driveMs ?? 0).toFixed(1)} cam ${(perf.cameraMs ?? 0).toFixed(1)} til ${(perf.tileMs ?? 0).toFixed(1)}`,
+        `${perf.fps.toFixed(0)} fps · p95 ${perf.p95.toFixed(1)}ms · hitch ${perf.hitch.toFixed(0)}ms · ${perf.calls} calls · ${perf.triangles} tris · ${perf.tiles ?? 0} tiles · geo ${perf.geometries ?? 0} · tex ${perf.textures ?? 0} · drv ${(perf.driveMs ?? 0).toFixed(1)} cam ${(perf.cameraMs ?? 0).toFixed(1)} til ${(perf.tileMs ?? 0).toFixed(1)}`,
       );
     };
     tick();

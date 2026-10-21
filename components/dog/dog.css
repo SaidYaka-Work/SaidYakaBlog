@@ -130,6 +130,8 @@
   height: 100dvh;
   overflow: hidden;
   background: linear-gradient(180deg, #eef3f8 0%, #f7f1e6 46%, #f3d2b0 100%);
+  container-type: inline-size;
+  container-name: dog;
 }
 
 .dog-game > .biscuit-scene,
@@ -957,9 +959,67 @@
   }
 }
 
-@media (max-width: 640px) and (min-width: 361px) {
+@media (max-width: 640px) and (min-width: 401px) {
   .dog-leash {
     top: calc(88px + env(safe-area-inset-top));
+  }
+}
+
+@media (max-width: 400px) {
+  .dog-place {
+    display: none !important;
+  }
+
+  .dog-meter em {
+    display: none;
+  }
+
+  .dog-leash {
+    top: auto !important;
+    bottom: calc(172px + env(safe-area-inset-bottom));
+    left: 50%;
+    max-width: min(12rem, 68%);
+    white-space: normal;
+    text-align: center;
+    z-index: 5;
+  }
+
+  .dog-toasts {
+    left: 8px;
+    right: auto;
+    transform: none;
+    top: calc(118px + env(safe-area-inset-top));
+    width: min(12rem, 50%);
+  }
+
+  .dog-debug {
+    top: auto;
+    left: 8px;
+    right: auto;
+    transform: none;
+    bottom: calc(118px + env(safe-area-inset-bottom));
+    max-width: min(9.4rem, 40%);
+    z-index: 4;
+  }
+
+  .dog-emotes {
+    right: 8px;
+    left: auto;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    transform: scale(0.74);
+    transform-origin: bottom right;
+    z-index: 5;
+  }
+
+  .dog-stick {
+    width: 76px;
+    height: 76px;
+    left: 8px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .dog-chips {
+    max-width: min(13rem, 52%);
   }
 }
 
@@ -981,4 +1041,118 @@
     animation: none !important;
     transition: none !important;
   }
+}
+
+@container dog (max-width: 400px) {
+  .dog-place {
+    display: none !important;
+  }
+
+  .dog-meter em {
+    display: none;
+  }
+
+  .dog-leash {
+    top: auto !important;
+    bottom: calc(172px + env(safe-area-inset-bottom));
+    left: 50%;
+    max-width: min(12rem, 68%);
+    white-space: normal;
+    text-align: center;
+    z-index: 5;
+  }
+
+  .dog-toasts {
+    left: 8px;
+    right: auto;
+    transform: none;
+    top: calc(118px + env(safe-area-inset-top));
+    width: min(12rem, 50%);
+  }
+
+  .dog-debug {
+    top: auto;
+    left: 8px;
+    right: auto;
+    transform: none;
+    bottom: calc(118px + env(safe-area-inset-bottom));
+    max-width: min(9.4rem, 40%);
+    z-index: 4;
+  }
+
+  .dog-emotes {
+    right: 8px;
+    left: auto;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    transform: scale(0.74);
+    transform-origin: bottom right;
+    z-index: 5;
+  }
+
+  .dog-stick {
+    width: 76px;
+    height: 76px;
+    left: 8px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .dog-chips {
+    max-width: min(13rem, 52%);
+  }
+}
+
+.dog-game.is-compact .dog-place {
+  display: none !important;
+}
+
+.dog-game.is-compact .dog-meter em {
+  display: none;
+}
+
+.dog-game.is-compact .dog-leash {
+  top: auto !important;
+  bottom: calc(172px + env(safe-area-inset-bottom));
+  left: 50%;
+  max-width: min(12rem, 68%);
+  white-space: normal;
+  text-align: center;
+  z-index: 5;
+}
+
+.dog-game.is-compact .dog-toasts {
+  left: 8px;
+  right: auto;
+  transform: none;
+  top: calc(118px + env(safe-area-inset-top));
+  width: min(12rem, 50%);
+}
+
+.dog-game.is-compact .dog-debug {
+  top: auto;
+  left: 8px;
+  right: auto;
+  transform: none;
+  bottom: calc(118px + env(safe-area-inset-bottom));
+  max-width: min(9.4rem, 40%);
+  z-index: 4;
+}
+
+.dog-game.is-compact .dog-emotes {
+  right: 8px;
+  left: auto;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  transform: scale(0.74);
+  transform-origin: bottom right;
+  z-index: 5;
+}
+
+.dog-game.is-compact .dog-stick {
+  width: 76px;
+  height: 76px;
+  left: 8px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+}
+
+.dog-game.is-compact .dog-chips {
+  max-width: min(13rem, 52%);
 }

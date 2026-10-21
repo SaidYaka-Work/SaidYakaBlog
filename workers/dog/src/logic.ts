@@ -948,7 +948,8 @@ export function forgetVisitor(room: RoomState, clientId: string, now: number, li
   const current = migrateRoom(room, now);
   const yard = migrateYard(current.yard, now);
   const dropped = dropCompanion(current.companions ?? {}, clientId);
-  if (yard.leash.holderId === clientId) {
+  const stillHere = liveIds ? Array.from(liveIds).includes(clientId) : false;
+  if (yard.leash.holderId === clientId && !stillHere) {
     return {
       ...current,
       companions: pruneCompanions(dropped, now, liveIds),
@@ -1003,11 +1004,13 @@ export function applyWorldAction(
   now: number,
   kind: 'leave' | 'home' | 'travel',
   placeId?: string,
+  liveIds?: Iterable<string>,
 ): { room: RoomState; acquired: boolean; code?: ErrorCode; retryAfterMs?: number } {
   const current = applyDecay(room, now);
   if (kind === 'leave' || kind === 'home') {
     let yard = withLocation(migrateYard(current.yard, now), now);
-    if (yard.leash.holderId === clientId) yard = releaseLeash(yard, now, undefined, 'idle');
+    const stillHere = liveIds ? Array.from(liveIds).includes(clientId) : false;
+    if (yard.leash.holderId === clientId && !stillHere) yard = releaseLeash(yard, now, liveIds, 'idle');
     return { room: { ...current, yard }, acquired: true };
   }
   const yard = withLocation(migrateYard(current.yard, now), now);
