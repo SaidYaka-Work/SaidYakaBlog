@@ -104,67 +104,83 @@ function paintBuilding(geo: BufferGeometry, tint: readonly number[], height: num
   geo.setAttribute('aHeight', new BufferAttribute(heights, 1));
 }
 
-function finishTile(tile: WorldTileData, walls: BufferGeometry[], roofs: BufferGeometry[], lod: boolean): BuiltTile {
+function emptyTile(key: string): BuiltTile {
   return {
-    key: tile.key,
-    buildings: mergeAll(walls),
-    roofs: mergeAll(roofs),
-    parks: flattenRings(tile.parks, 0.004),
-    water: flattenRings(tile.water, 0.002),
-    sidewalks: ribbon([tile], 1.15, 0.002),
-    roads: ribbon([tile], 0, 0.008),
-    major: lod ? null : ribbon([tile], 0, 0.01, true),
+    key,
+    buildings: [],
+    roofs: [],
+    parks: null,
+    water: null,
+    sidewalks: null,
+    roads: null,
+    major: null,
   };
 }
 
-function ribbon(tiles: WorldTileData[], pad: number, y: number, majorOnly = false) {
-  const geos: BufferGeometry[] = [];
-  for (const tile of tiles) {
-    for (const road of tile.roads) {
-      if (majorOnly && !isMajorRoad(road.width, road.klass)) continue;
-      for (let i = 1; i < road.line.length; i += 1) {
-        const a = road.line[i - 1];
-        const b = road.line[i];
-        const dx = b.x - a.x;
-        const dz = b.z - a.z;
-        const len = Math.hypot(dx, dz);
-        if (len < 0.4) continue;
-        const half = (road.width * 0.5 + pad);
-        const nx = (-dz / len) * half;
-        const nz = (dx / len) * half;
-        const ring = [
-          { x: a.x + nx, z: a.z + nz },
-          { x: b.x + nx, z: b.z + nz },
-          { x: b.x - nx, z: b.z - nz },
-          { x: a.x - nx, z: a.z - nz },
-        ];
-        try {
-          const geo = new ExtrudeGeometry(shapeFrom(ring), { depth: 0.05, bevelEnabled: false, curveSegments: 1 });
-          geo.rotateX(-Math.PI / 2);
-          geo.translate(0, y, 0);
-          const count = geo.getAttribute('position').count;
-          const uv = new Float32Array(count * 2);
-          const pos = geo.getAttribute('position');
-          for (let v = 0; v < count; v += 1) {
-            const px = pos.getX(v);
-            const pz = pos.getZ(v);
-            const along = ((px - a.x) * dx + (pz - a.z) * dz) / (len * len);
-            const across = ((px - a.x) * -dz + (pz - a.z) * dx) / (len * half * 2) + 0.5;
-            uv[v * 2] = across;
-            uv[v * 2 + 1] = along * len;
-          }
-          geo.setAttribute('uv', new BufferAttribute(uv, 2));
-          geos.push(geo);
-        } catch {
-          // skip
+type RibbonCursor = { road: number; seg: number; geos: BufferGeometry[] };
+
+function pushRibbonSegs(tile: WorldTileData, pad: number, y: number, majorOnly: boolean, cursor: RibbonCursor, limit: number) {
+  let made = 0;
+  while (cursor.road < tile.roads.length && made < limit) {
+    const road = tile.roads[cursor.road];
+    if (majorOnly && !isMajorRoad(road.width, road.klass)) {
+      cursor.road += 1;
+      cursor.seg = 1;
+      continue;
+    }
+    if (cursor.seg < 1) cursor.seg = 1;
+    while (cursor.seg < road.line.length && made < limit) {
+      const a = road.line[cursor.seg - 1];
+      const b = road.line[cursor.seg];
+      cursor.seg += 1;
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      const len = Math.hypot(dx, dz);
+      if (len < 0.4) continue;
+      const half = road.width * 0.5 + pad;
+      const nx = (-dz / len) * half;
+      const nz = (dx / len) * half;
+      const ring = [
+        { x: a.x + nx, z: a.z + nz },
+        { x: b.x + nx, z: b.z + nz },
+        { x: b.x - nx, z: b.z - nz },
+        { x: a.x - nx, z: a.z - nz },
+      ];
+      try {
+        const geo = new ExtrudeGeometry(shapeFrom(ring), { depth: 0.05, bevelEnabled: false, curveSegments: 1 });
+        geo.rotateX(-Math.PI / 2);
+        geo.translate(0, y, 0);
+        const count = geo.getAttribute('position').count;
+        const uv = new Float32Array(count * 2);
+        const pos = geo.getAttribute('position');
+        for (let v = 0; v < count; v += 1) {
+          const px = pos.getX(v);
+          const pz = pos.getZ(v);
+          const along = ((px - a.x) * dx + (pz - a.z) * dz) / (len * len);
+          const across = ((px - a.x) * -dz + (pz - a.z) * dx) / (len * half * 2) + 0.5;
+          uv[v * 2] = across;
+          uv[v * 2 + 1] = along * len;
         }
+        geo.setAttribute('uv', new BufferAttribute(uv, 2));
+        cursor.geos.push(geo);
+        made += 1;
+      } catch {
+        // skip
       }
     }
+    if (cursor.seg >= road.line.length) {
+      cursor.road += 1;
+      cursor.seg = 1;
+    }
   }
+  return cursor.road >= tile.roads.length;
+}
+
+function takeMerged(geos: BufferGeometry[]) {
   if (!geos.length) return null;
   const merged = mergeGeometries(geos, false);
   geos.forEach((geo) => geo.dispose());
-  return merged;
+  return merged ?? null;
 }
 
 function flattenRings(rings: { x: number; z: number }[][], y = 0.012) {
@@ -629,7 +645,9 @@ export default function WorldScene({
     roofs: BufferGeometry[];
     index: number;
     list: WorldTileData['buildings'];
-    dress: boolean;
+    dress: 'buildings' | 'merge' | 'parks' | 'water' | 'sidewalks' | 'roads' | 'major';
+    built: BuiltTile;
+    ribbon: RibbonCursor | null;
   } | null>(null);
   const [ready, setReady] = useState<BuiltTile[]>([]);
 
@@ -742,21 +760,79 @@ export default function WorldScene({
         const list = lod
           ? next.buildings.filter((building) => building.area > 28).slice(0, 80)
           : next.buildings.slice(0, 160);
-        pending.current = { tile: next, lod, walls: [], roofs: [], index: 0, list, dress: false };
+        pending.current = {
+          tile: next,
+          lod,
+          walls: [],
+          roofs: [],
+          index: 0,
+          list,
+          dress: 'buildings',
+          built: emptyTile(next.key),
+          ribbon: null,
+        };
       }
       const job = pending.current;
-      const end = Math.min(job.list.length, job.index + 10);
-      for (; job.index < end; job.index += 1) {
-        pushBuilding(job.list[job.index], job.walls, job.roofs, !job.lod);
-      }
-      if (job.index < job.list.length) break;
-      if (!job.dress) {
-        job.dress = true;
+      if (job.dress === 'buildings') {
+        const end = Math.min(job.list.length, job.index + 8);
+        for (; job.index < end; job.index += 1) {
+          pushBuilding(job.list[job.index], job.walls, job.roofs, !job.lod);
+        }
+        if (job.index < job.list.length) break;
+        job.dress = 'merge';
         break;
       }
-      cache.current.set(job.tile.key, finishTile(job.tile, job.walls, job.roofs, job.lod));
-      pending.current = null;
-      changed = true;
+      if (job.dress === 'merge') {
+        if (job.walls.length) {
+          job.built.buildings.push(...mergeAll(job.walls.splice(0, 16)));
+          break;
+        }
+        if (job.roofs.length) {
+          job.built.roofs.push(...mergeAll(job.roofs.splice(0, 16)));
+          break;
+        }
+        cache.current.set(job.tile.key, job.built);
+        changed = true;
+        job.dress = 'parks';
+        break;
+      }
+      if (job.dress === 'parks') {
+        job.built.parks = flattenRings(job.lod ? job.tile.parks.slice(0, 6) : job.tile.parks.slice(0, 18), 0.004);
+        job.dress = 'water';
+        break;
+      }
+      if (job.dress === 'water') {
+        job.built.water = flattenRings(job.tile.water.slice(0, job.lod ? 4 : 10), 0.002);
+        job.dress = job.lod ? 'roads' : 'sidewalks';
+        job.ribbon = { road: 0, seg: 1, geos: [] };
+        break;
+      }
+      if (job.dress === 'sidewalks' || job.dress === 'roads' || job.dress === 'major') {
+        const cursor = job.ribbon ?? { road: 0, seg: 1, geos: [] };
+        job.ribbon = cursor;
+        const pad = job.dress === 'sidewalks' ? 1.15 : 0;
+        const y = job.dress === 'sidewalks' ? 0.002 : job.dress === 'major' ? 0.01 : 0.008;
+        const done = pushRibbonSegs(job.tile, pad, y, job.dress === 'major', cursor, 8);
+        if (!done) break;
+        const merged = takeMerged(cursor.geos);
+        if (job.dress === 'sidewalks') job.built.sidewalks = merged;
+        else if (job.dress === 'roads') job.built.roads = merged;
+        else job.built.major = merged;
+        cache.current.set(job.tile.key, { ...job.built });
+        changed = true;
+        if (job.dress === 'sidewalks') {
+          job.dress = 'roads';
+          job.ribbon = { road: 0, seg: 1, geos: [] };
+          break;
+        }
+        if (job.dress === 'roads' && !job.lod) {
+          job.dress = 'major';
+          job.ribbon = { road: 0, seg: 1, geos: [] };
+          break;
+        }
+        pending.current = null;
+        break;
+      }
     }
     if (changed) setReady(Array.from(cache.current.values()));
   });

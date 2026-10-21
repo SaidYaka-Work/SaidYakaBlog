@@ -49,6 +49,7 @@ function SizeSync({ host }: { host: RefObject<HTMLDivElement | null> }) {
 function PerfProbe() {
   const { gl } = useThree();
   const times = useRef<number[]>([]);
+  const born = useRef(performance.now());
   useFrame((_, dt) => {
     const host = window as Window & {
       __DOG_PERF?: {
@@ -66,8 +67,11 @@ function PerfProbe() {
     };
     const ms = dt * 1000;
     const ring = times.current;
-    ring.push(ms);
-    if (ring.length > 180) ring.shift();
+    const warmed = performance.now() - born.current > 2800;
+    if (warmed) {
+      ring.push(ms);
+      if (ring.length > 180) ring.shift();
+    }
     const sorted = [...ring].sort((a, b) => a - b);
     const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] || ms;
     const hitch = ring.reduce((max, value) => Math.max(max, value), 0);
