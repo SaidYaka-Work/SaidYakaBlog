@@ -113,7 +113,7 @@ function GamePreview({ tone, featured = false }: { tone: GameMeta['tone']; featu
       )}
       {tone === 'unknown' && (
         <>
-          <span className="absolute left-8 top-8 max-w-[58%] rounded-2xl rounded-bl-md bg-[#f0d8c8]/25 px-3 py-2 text-[10px] leading-relaxed text-[#f3eee6]/80">
+          <span className="absolute left-8 top-8 max-w-[58%] rounded-2xl rounded-bl-md bg-[#f3eee6]/15 px-3 py-2 text-[11px] leading-relaxed text-[#f3eee6]">
             I left a country that no longer wanted people like me…
           </span>
           <span className="absolute bottom-7 right-8 h-8 w-24 rounded-2xl rounded-br-md bg-[#e8a87c]/70" />

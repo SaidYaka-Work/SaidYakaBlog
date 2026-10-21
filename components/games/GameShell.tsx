@@ -16,6 +16,7 @@ type GameShellProps = {
   onRestart?: () => void;
   restartLabel?: string;
   extraActions?: React.ReactNode;
+  tight?: boolean;
   children: React.ReactNode;
 };
 
@@ -32,10 +33,11 @@ export default function GameShell({
   onRestart,
   restartLabel = 'Restart',
   extraActions,
+  tight = false,
   children,
 }: GameShellProps) {
   return (
-    <section className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
+    <section className={`mx-auto max-w-3xl px-5 ${tight ? 'py-6 sm:px-8 sm:py-8' : 'py-10 sm:px-8 sm:py-14'}`}>
       <Link
         href={englishPath('/games')}
         className="link-underline text-sm text-[var(--muted)] hover:text-[var(--ink)]"
@@ -43,13 +45,13 @@ export default function GameShell({
         ← All games
       </Link>
 
-      <header className="mt-6">
+      <header className={tight ? 'mt-4' : 'mt-6'}>
         <p className="hero-kicker text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Game</p>
-        <h1 className="hero-title mt-2 font-serif text-4xl tracking-tight sm:text-5xl">{title}</h1>
-        <p className="hero-copy mt-4 max-w-xl text-[var(--muted)] leading-relaxed">{howTo}</p>
+        <h1 className={`hero-title mt-2 font-serif tracking-tight ${tight ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl'}`}>{title}</h1>
+        {howTo ? <p className="hero-copy mt-3 max-w-xl text-[var(--muted)] leading-relaxed">{howTo}</p> : null}
       </header>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className={`${tight ? 'mt-4' : 'mt-6'} grid grid-cols-2 gap-3 sm:grid-cols-4`}>
         <Stat label={scoreLabel} value={score} />
         <Stat label={bestLabel} value={best ?? '—'} />
         <div className="col-span-2 rounded-2xl border border-[var(--line)] bg-[var(--bg-elevated)] px-4 py-3">
@@ -74,7 +76,7 @@ export default function GameShell({
         </button>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-[1.6rem] border border-[var(--line)] bg-[var(--bg-elevated)]">
+      <div className={`${tight ? 'mt-4' : 'mt-6'} overflow-hidden rounded-[1.6rem] border border-[var(--line)] bg-[var(--bg-elevated)]`}>
         {children}
       </div>
     </section>

@@ -235,6 +235,7 @@ export default function UnknownNumberGame() {
       status={statusLabel}
       muted={muted}
       onMute={toggleMute}
+      tight
       extraActions={
         <>
           <button
@@ -256,7 +257,7 @@ export default function UnknownNumberGame() {
         </>
       }
     >
-      <div className="flex min-h-[34rem] flex-col bg-[color-mix(in_srgb,var(--bg)_55%,var(--bg-elevated))]">
+      <div className="flex h-[min(22.5rem,calc(100svh-28rem))] min-h-[16rem] flex-col bg-[color-mix(in_srgb,var(--bg)_55%,var(--bg-elevated))] sm:h-[min(28rem,calc(100svh-20rem))]">
         <header className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3">
           <span className="grid h-10 w-10 place-items-center rounded-full bg-[var(--accent-soft)] text-lg" aria-hidden="true">
             {finished ? figure.contactEmoji : '❓'}
@@ -290,9 +291,15 @@ export default function UnknownNumberGame() {
           {finished ? <RevealCard figure={figure} globalStats={globalStats} /> : null}
         </div>
 
-        <div className="border-t border-[var(--line)] px-3 py-3 sm:px-4">
-          <GuessInput disabled={finished || typing} onGuess={onGuess} />
-          <p className="mt-2 text-[11px] text-[var(--faint)]">
+        <div className="sticky bottom-0 border-t border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_70%,var(--bg-elevated))] px-3 py-3 sm:px-4">
+          {finished ? null : (
+            <GuessInput
+              disabled={typing}
+              placeholder={typing ? 'Incoming…' : 'Type a name…'}
+              onGuess={onGuess}
+            />
+          )}
+          <p className={`${finished ? '' : 'mt-2'} text-[11px] text-[var(--faint)]`}>
             #{day.puzzleNumber} · {FIGURES.length} figures in the book · Anonymous results only — no accounts, cookies, or identifiers.
           </p>
         </div>

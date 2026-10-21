@@ -6,10 +6,11 @@ import type { Figure } from './types';
 
 type GuessInputProps = {
   disabled: boolean;
+  placeholder?: string;
   onGuess: (figure: Figure) => void;
 };
 
-export default function GuessInput({ disabled, onGuess }: GuessInputProps) {
+export default function GuessInput({ disabled, placeholder, onGuess }: GuessInputProps) {
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
@@ -54,7 +55,7 @@ export default function GuessInput({ disabled, onGuess }: GuessInputProps) {
           autoComplete="off"
           spellCheck={false}
           disabled={disabled}
-          placeholder={disabled ? 'The thread is closed' : 'Type a name…'}
+          placeholder={placeholder ?? (disabled ? 'The thread is closed' : 'Type a name…')}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
