@@ -125,7 +125,7 @@ test('walking W in local space increases latitude (north)', () => {
 });
 
 test('world drive eases in and slides off building walls onto nearby pavement', () => {
-  const yard = createYard(T0);
+  const yard = { ...createYard(T0), pose: { ...createYard(T0).pose, yaw: Math.PI } };
   const first = applyWorldDrive(yard, 0, -1, false, 0.05, T0 + 50);
   const speed = Math.hypot(first.pose.vx, first.pose.vz);
   assert.ok(speed > 0.05 && speed < WALK_SPEED, `eased speed ${speed}`);
