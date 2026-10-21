@@ -5,7 +5,7 @@ import { englishUrl } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'Games',
-  description: 'A shelf of original browser games: skill, puzzle, timing, words, and logic.',
+  description: 'A shelf of original browser games: skill, puzzle, timing, words, logic, and herding.',
   alternates: {
     canonical: englishUrl('/games'),
     languages: {

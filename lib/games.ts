@@ -2,7 +2,7 @@ import { englishPath } from '@/lib/site';
 
 export type GameKind = 'react' | 'external';
 
-export type GameTone = 'rush' | 'market' | 'orbit' | 'lantern' | 'pulse' | 'glyph' | 'shade';
+export type GameTone = 'rush' | 'market' | 'orbit' | 'lantern' | 'pulse' | 'glyph' | 'shade' | 'herd';
 
 export type GameMeta = {
   slug: string;
@@ -104,6 +104,17 @@ export const games: GameMeta[] = [
     kind: 'react',
     href: englishPath('/games/shade-shift'),
     tone: 'shade',
+  },
+  {
+    slug: 'fold-herd',
+    title: 'Fold Herd',
+    tagline: 'Ease the flock through the gate before the fold closes.',
+    description: 'A herding game: steer a sheepdog and fold a wandering flock into the pen, field by field.',
+    howTo: 'Steer the dog with WASD, arrows, or a drag. Sheep fold away from you — ease them through the gate before time runs out. Space whistles strays back.',
+    genre: 'Herding',
+    kind: 'react',
+    href: englishPath('/games/fold-herd'),
+    tone: 'herd',
   },
 ];
 

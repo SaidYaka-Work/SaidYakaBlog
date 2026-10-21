@@ -85,6 +85,15 @@ function GamePreview({ tone }: { tone: GameMeta['tone'] }) {
           <span className="absolute bottom-6 right-10 h-12 w-16 rounded-t-lg bg-[#f0d8c8]/30" />
         </>
       )}
+      {tone === 'herd' && (
+        <>
+          <span className="absolute right-8 top-7 h-[4.6rem] w-14 rounded-sm border border-[#e8a87c]/40" />
+          <span className="absolute left-[20%] top-[44%] h-3 w-4 rounded-full bg-[#f0d8c8]/85" />
+          <span className="absolute left-[30%] top-[54%] h-3 w-4 rounded-full bg-[#f0d8c8]/75" />
+          <span className="absolute left-[24%] top-[62%] h-3 w-4 rounded-full bg-[#f0d8c8]/65" />
+          <span className="absolute left-[46%] bottom-9 h-3.5 w-5 rounded-full bg-[#e8a87c]" />
+        </>
+      )}
     </div>
   );
 }
