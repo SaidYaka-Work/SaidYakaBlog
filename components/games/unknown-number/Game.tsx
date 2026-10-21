@@ -40,10 +40,28 @@ function debugFigure(): Figure | null {
 
 function TypingDots() {
   return (
-    <div className="un-bubble flex max-w-[70%] items-center gap-1 rounded-2xl rounded-bl-md bg-[var(--accent-soft)] px-3 py-2.5" aria-label="Typing">
-      <span className="un-dot h-1.5 w-1.5 rounded-full bg-[var(--muted)]" />
-      <span className="un-dot h-1.5 w-1.5 rounded-full bg-[var(--muted)]" />
-      <span className="un-dot h-1.5 w-1.5 rounded-full bg-[var(--muted)]" />
+    <div className="un-bubble un-in flex w-fit max-w-[70%] items-center gap-1 px-3 py-2.5" aria-label="Typing">
+      <span className="un-dot h-1.5 w-1.5 rounded-full bg-current" />
+      <span className="un-dot h-1.5 w-1.5 rounded-full bg-current" />
+      <span className="un-dot h-1.5 w-1.5 rounded-full bg-current" />
+    </div>
+  );
+}
+
+function IncomingBubble({ text, time }: { text: string; time?: string }) {
+  return (
+    <div>
+      {time ? <p className="mb-1 text-center text-[11px] text-[var(--faint)]">{time}</p> : null}
+      <p className="un-bubble un-in max-w-[84%] whitespace-pre-wrap px-3.5 py-2 text-[15px] leading-relaxed">{text}</p>
+    </div>
+  );
+}
+
+function OutgoingBubble({ text, receipt }: { text: string; receipt: 'Delivered' | 'Read' }) {
+  return (
+    <div className="flex flex-col items-end">
+      <p className="un-bubble un-out max-w-[80%] px-3.5 py-2 text-[15px] leading-relaxed">{text}</p>
+      <p className="mt-0.5 text-[10px] tracking-wide text-[var(--faint)]">{receipt}</p>
     </div>
   );
 }
@@ -103,7 +121,9 @@ export default function UnknownNumberGame() {
   }, []);
 
   useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' });
+    const node = logRef.current;
+    if (!node) return;
+    node.scrollIntoView({ block: 'end', behavior: 'smooth' });
   }, [day?.revealed, day?.guesses.length, typing, finished]);
 
   useEffect(() => {
@@ -236,12 +256,13 @@ export default function UnknownNumberGame() {
       muted={muted}
       onMute={toggleMute}
       tight
+      hud="line"
       extraActions={
         <>
           <button
             type="button"
             onClick={() => setStatsOpen(true)}
-            className="pressable rounded-full border border-[var(--line)] px-5 py-2.5 text-sm text-[var(--ink)]"
+            className="pressable rounded-full border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--ink)]"
           >
             Stats
           </button>
@@ -249,7 +270,7 @@ export default function UnknownNumberGame() {
             <button
               type="button"
               onClick={() => void share()}
-              className="pressable rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm text-[var(--bg)]"
+              className="pressable rounded-full bg-[var(--ink)] px-3 py-1.5 text-xs text-[var(--bg)]"
             >
               {shareNote || 'Share'}
             </button>
@@ -257,53 +278,59 @@ export default function UnknownNumberGame() {
         </>
       }
     >
-      <div className="flex h-[min(22.5rem,calc(100svh-28rem))] min-h-[16rem] flex-col bg-[color-mix(in_srgb,var(--bg)_55%,var(--bg-elevated))] sm:h-[min(28rem,calc(100svh-20rem))]">
-        <header className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3">
-          <span className="grid h-10 w-10 place-items-center rounded-full bg-[var(--accent-soft)] text-lg" aria-hidden="true">
-            {finished ? figure.contactEmoji : '❓'}
+      <div className="un-phone">
+        <header className="flex items-center gap-3 border-b border-[var(--line)] bg-[var(--un-phone-bar)] px-4 py-3">
+          <span
+            className="grid h-10 w-10 place-items-center rounded-full bg-[var(--un-in-bg)] text-lg font-medium text-[var(--un-in-ink)]"
+            aria-hidden="true"
+          >
+            {finished ? figure.contactEmoji : '?'}
           </span>
           <div>
-            <p className="text-sm text-[var(--ink)]">{finished ? figure.name : 'Unknown Number'}</p>
-            <p className="text-xs text-[var(--faint)]">{finished ? `${figure.field}` : 'Today’s number · iMessage'}</p>
+            <p className="text-sm font-medium text-[var(--ink)]">{finished ? figure.name : 'Unknown Number'}</p>
+            <p className="text-xs text-[var(--faint)]">{finished ? figure.field : 'Text Message'}</p>
           </div>
         </header>
 
-        <div ref={logRef} role="log" aria-live="polite" className="flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-4">
-          {figure.clues.slice(0, day.revealed).map((clue, index) => (
-            <div key={`clue-${index}`} className="space-y-3">
-              <div>
-                <p className="mb-1 text-[11px] text-[var(--faint)]">{day.timestamps[Math.min(index, Math.max(0, day.timestamps.length - 1))]}</p>
-                <p className="un-bubble max-w-[92%] whitespace-pre-wrap rounded-2xl rounded-bl-md bg-[var(--accent-soft)] px-3 py-2 text-[15px] leading-relaxed text-[var(--ink)]">
-                  {clue}
-                </p>
+        <div ref={logRef} role="log" aria-live="polite" className="space-y-3 px-4 py-4">
+          {figure.clues.slice(0, day.revealed).map((clue, index) => {
+            const guess = day.guesses[index];
+            const read = Boolean(guess && (guess.correct || index + 1 < day.revealed || finished));
+            return (
+              <div key={`clue-${index}`} className="space-y-2.5">
+                <IncomingBubble text={clue} time={day.timestamps[Math.min(index, Math.max(0, day.timestamps.length - 1))]} />
+                {guess ? (
+                  <OutgoingBubble
+                    text={guess.correct ? guess.text : `${guess.text}?`}
+                    receipt={read ? 'Read' : 'Delivered'}
+                  />
+                ) : null}
               </div>
-              {day.guesses[index] ? (
-                <div className="flex justify-end">
-                  <p className="un-bubble max-w-[80%] rounded-2xl rounded-br-md bg-[var(--ink)] px-3 py-2 text-sm text-[var(--bg)]">
-                    {day.guesses[index].text}
-                    {day.guesses[index].correct ? '' : '?'}
-                  </p>
-                </div>
-              ) : null}
-            </div>
-          ))}
+            );
+          })}
           {typing ? <TypingDots /> : null}
-          {finished ? <RevealCard figure={figure} globalStats={globalStats} /> : null}
         </div>
 
-        <div className="sticky bottom-0 border-t border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_70%,var(--bg-elevated))] px-3 py-3 sm:px-4">
-          {finished ? null : (
+        {finished ? null : (
+          <div className="border-t border-[var(--line)] bg-[var(--un-phone-bar)] px-3 py-3 sm:px-4">
             <GuessInput
               disabled={typing}
-              placeholder={typing ? 'Incoming…' : 'Type a name…'}
+              placeholder={typing ? 'Incoming…' : 'Text Message'}
               onGuess={onGuess}
             />
-          )}
-          <p className={`${finished ? '' : 'mt-2'} text-[11px] text-[var(--faint)]`}>
-            #{day.puzzleNumber} · {FIGURES.length} figures in the book · Anonymous results only — no accounts, cookies, or identifiers.
-          </p>
-        </div>
+          </div>
+        )}
       </div>
+
+      {finished ? (
+        <div className="mt-5">
+          <RevealCard figure={figure} globalStats={globalStats} />
+        </div>
+      ) : null}
+
+      <p className="mt-3 text-[11px] text-[var(--faint)]">
+        #{day.puzzleNumber} · {FIGURES.length} figures in the book · Anonymous results only — no accounts, cookies, or identifiers.
+      </p>
 
       {statsOpen ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 px-4" role="presentation" onClick={() => setStatsOpen(false)}>

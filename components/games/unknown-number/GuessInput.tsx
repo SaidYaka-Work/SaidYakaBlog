@@ -42,7 +42,7 @@ export default function GuessInput({ disabled, placeholder, onGuess }: GuessInpu
       <label htmlFor="unknown-guess" className="sr-only">
         Guess the name
       </label>
-      <div className="flex gap-2">
+      <div className="flex items-end gap-2">
         <input
           ref={inputRef}
           id="unknown-guess"
@@ -55,7 +55,7 @@ export default function GuessInput({ disabled, placeholder, onGuess }: GuessInpu
           autoComplete="off"
           spellCheck={false}
           disabled={disabled}
-          placeholder={placeholder ?? (disabled ? 'The thread is closed' : 'Type a name…')}
+          placeholder={placeholder ?? (disabled ? 'The thread is closed' : 'Text Message')}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
@@ -72,15 +72,16 @@ export default function GuessInput({ disabled, placeholder, onGuess }: GuessInpu
               setOpen(false);
             }
           }}
-          className="min-h-11 flex-1 rounded-full border border-[var(--line)] bg-[var(--bg)] px-4 text-sm text-[var(--ink)] placeholder:text-[var(--faint)] disabled:opacity-60"
+          className="min-h-11 flex-1 rounded-[1.3rem] border border-[var(--line)] bg-[var(--un-phone)] px-4 text-sm text-[var(--ink)] placeholder:text-[var(--faint)] disabled:opacity-60"
         />
         <button
           type="button"
-          className="pressable rounded-full bg-[var(--ink)] px-4 text-sm text-[var(--bg)] disabled:opacity-50"
+          className="pressable grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[var(--un-out-bg)] text-sm font-medium text-[var(--un-out-ink)] disabled:opacity-50"
           disabled={disabled || !choices.length}
           onClick={submitCurrent}
+          aria-label="Send"
         >
-          Send
+          ↑
         </button>
       </div>
       {open ? (

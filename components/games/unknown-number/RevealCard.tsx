@@ -11,14 +11,14 @@ export default function RevealCard({ figure, globalStats }: { figure: Figure; gl
   const crowd = globalStats && globalStats.played > 0 ? globalSummary(globalStats) : null;
 
   return (
-    <article className="un-reveal mx-3 mb-4 rounded-[1.3rem] border border-[var(--line)] bg-[var(--bg)] p-4 sm:mx-4 sm:p-5">
+    <article className="un-reveal rounded-[1.3rem] border border-[var(--line)] bg-[var(--bg-elevated)] p-4 sm:p-5">
       <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--accent)]">Meet</p>
       <h2 className="mt-1 font-serif text-3xl tracking-tight text-[var(--ink)]">{figure.name}</h2>
       <p className="mt-1 text-sm text-[var(--muted)]">
         {figure.years} · {figure.field} · {figure.country}
       </p>
 
-      <div className="mt-4 overflow-hidden rounded-[1.1rem] bg-[var(--accent-soft)]">
+      <div className="mt-4 overflow-hidden rounded-[1.1rem] bg-[var(--un-in-bg)]">
         {portrait ? (
           // Portrait is mounted only after a win/loss so the file is never requested during play.
           // eslint-disable-next-line @next/next/no-img-element
@@ -26,12 +26,12 @@ export default function RevealCard({ figure, globalStats }: { figure: Figure; gl
             src={portrait.path}
             alt={`Portrait of ${figure.name}`}
             width={480}
-            height={480}
-            className="aspect-square w-full object-cover object-top"
+            height={320}
+            className="h-[min(320px,70vw)] w-full object-cover object-top"
             onError={() => setFailed(true)}
           />
         ) : (
-          <div className="grid aspect-square place-items-center" aria-hidden="true">
+          <div className="grid h-[200px] place-items-center" aria-hidden="true">
             <span className="font-serif text-6xl text-[var(--accent)]">{figure.contactEmoji || initials(figure.name)}</span>
           </div>
         )}
