@@ -975,10 +975,10 @@
   }
 
   .dog-leash {
-    top: auto !important;
-    bottom: calc(172px + env(safe-area-inset-bottom));
+    top: calc(112px + env(safe-area-inset-top)) !important;
+    bottom: auto !important;
     left: 50%;
-    max-width: min(12rem, 68%);
+    max-width: min(11.5rem, 58%);
     white-space: normal;
     text-align: center;
     z-index: 5;
@@ -988,7 +988,7 @@
     left: 8px;
     right: auto;
     transform: none;
-    top: calc(118px + env(safe-area-inset-top));
+    top: calc(168px + env(safe-area-inset-top));
     width: min(12rem, 50%);
   }
 
@@ -997,8 +997,10 @@
     left: 8px;
     right: auto;
     transform: none;
-    bottom: calc(118px + env(safe-area-inset-bottom));
-    max-width: min(9.4rem, 40%);
+    bottom: calc(98px + env(safe-area-inset-bottom));
+    max-width: min(11.2rem, 48%);
+    font-size: 10px;
+    line-height: 1.25;
     z-index: 4;
   }
 
@@ -1053,10 +1055,10 @@
   }
 
   .dog-leash {
-    top: auto !important;
-    bottom: calc(172px + env(safe-area-inset-bottom));
+    top: calc(112px + env(safe-area-inset-top)) !important;
+    bottom: auto !important;
     left: 50%;
-    max-width: min(12rem, 68%);
+    max-width: min(11.5rem, 58%);
     white-space: normal;
     text-align: center;
     z-index: 5;
@@ -1066,7 +1068,7 @@
     left: 8px;
     right: auto;
     transform: none;
-    top: calc(118px + env(safe-area-inset-top));
+    top: calc(168px + env(safe-area-inset-top));
     width: min(12rem, 50%);
   }
 
@@ -1075,8 +1077,10 @@
     left: 8px;
     right: auto;
     transform: none;
-    bottom: calc(118px + env(safe-area-inset-bottom));
-    max-width: min(9.4rem, 40%);
+    bottom: calc(98px + env(safe-area-inset-bottom));
+    max-width: min(11.2rem, 48%);
+    font-size: 10px;
+    line-height: 1.25;
     z-index: 4;
   }
 
@@ -1110,10 +1114,10 @@
 }
 
 .dog-game.is-compact .dog-leash {
-  top: auto !important;
-  bottom: calc(172px + env(safe-area-inset-bottom));
+  top: calc(112px + env(safe-area-inset-top)) !important;
+  bottom: auto !important;
   left: 50%;
-  max-width: min(12rem, 68%);
+  max-width: min(11.5rem, 58%);
   white-space: normal;
   text-align: center;
   z-index: 5;
@@ -1123,7 +1127,7 @@
   left: 8px;
   right: auto;
   transform: none;
-  top: calc(118px + env(safe-area-inset-top));
+  top: calc(168px + env(safe-area-inset-top));
   width: min(12rem, 50%);
 }
 
@@ -1132,8 +1136,10 @@
   left: 8px;
   right: auto;
   transform: none;
-  bottom: calc(118px + env(safe-area-inset-bottom));
-  max-width: min(9.4rem, 40%);
+  bottom: calc(98px + env(safe-area-inset-bottom));
+  max-width: min(11.2rem, 48%);
+  font-size: 10px;
+  line-height: 1.25;
   z-index: 4;
 }
 
