@@ -1,11 +1,15 @@
 import { originAllowed } from './logic';
 import { DogRoom, type Env } from './dog';
+import { DailyStats, type DailyEnv } from './dailyStats';
 
-export { DogRoom };
+export { DogRoom, DailyStats };
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env & DailyEnv): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname.startsWith('/daily/')) {
+      return env.DAILY.get(env.DAILY.idFromName('global')).fetch(request);
+    }
     const origin = request.headers.get('Origin');
 
     if (request.method === 'OPTIONS') {

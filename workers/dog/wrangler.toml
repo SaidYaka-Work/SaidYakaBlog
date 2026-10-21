@@ -5,8 +5,15 @@ account_id = "06bf4532eebfba00e18e7c9bf7ba85c2"
 workers_dev = true
 
 [durable_objects]
-bindings = [{ name = "DOG", class_name = "DogRoom" }]
+bindings = [
+  { name = "DOG", class_name = "DogRoom" },
+  { name = "DAILY", class_name = "DailyStats" },
+]
 
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["DogRoom"]
+
+[[migrations]]
+tag = "v2-daily-stats"
+new_sqlite_classes = ["DailyStats"]

@@ -2,7 +2,7 @@ import { englishPath } from '@/lib/site';
 
 export type GameKind = 'react' | 'external';
 
-export type GameTone = 'rush' | 'market' | 'orbit' | 'lantern' | 'pulse' | 'glyph' | 'shade' | 'herd';
+export type GameTone = 'rush' | 'market' | 'orbit' | 'lantern' | 'pulse' | 'glyph' | 'shade' | 'herd' | 'unknown';
 
 export type GameMeta = {
   slug: string;
@@ -14,6 +14,7 @@ export type GameMeta = {
   kind: GameKind;
   href: string;
   tone: GameTone;
+  daily?: boolean;
 };
 
 /**
@@ -28,6 +29,19 @@ export type GameMeta = {
  */
 
 export const games: GameMeta[] = [
+  {
+    slug: 'unknown-number',
+    title: 'Unknown Number',
+    tagline: 'A mystery figure texts you. Name them before the sixth bubble.',
+    description:
+      'A daily chat puzzle: an unknown historical figure texts six clues, vague then specific. Guess who is writing before the thread goes quiet.',
+    howTo: 'Six incoming texts from a mystery figure. Name them before the thread goes quiet. After you finish, a Meet card tells you who they were.',
+    genre: 'Daily',
+    kind: 'react',
+    href: englishPath('/games/unknown-number'),
+    tone: 'unknown',
+    daily: true,
+  },
   {
     slug: 'click-rush',
     title: 'Click Rush',
