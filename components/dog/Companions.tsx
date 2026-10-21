@@ -20,8 +20,8 @@ function hash01(id: string) {
 
 function pastelFromId(id: string, night: boolean) {
   const hue = hash01(id) * 360;
-  const sat = night ? 42 : 48;
-  const lit = night ? 70 : 74;
+  const sat = night ? 58 : 64;
+  const lit = night ? 64 : 62;
   return new Color(`hsl(${hue.toFixed(1)}, ${sat}%, ${lit}%)`);
 }
 
@@ -78,7 +78,7 @@ function Spirit({
   const last = useRef(new Vector3(companion.x, 0, companion.z));
   const history = useRef<Vector3[]>([]);
   const coat = useMemo(() => pastelFromId(companion.id, night), [companion.id, night]);
-  const glow = useMemo(() => coat.clone().lerp(new Color('#fff6e8'), 0.45), [coat]);
+  const glow = useMemo(() => coat.clone().offsetHSL(0, 0.04, 0.12), [coat]);
   const phase = hash01(companion.id) * Math.PI * 2;
 
   useFrame((state) => {
@@ -133,16 +133,24 @@ function Spirit({
             opacity={0.94}
           />
         </mesh>
-        <mesh position={[-0.07, 0.12, 0.02]} rotation={[0.15, 0, -0.45]} scale={[0.55, 0.7, 0.4]}>
+        <mesh position={[-0.08, 0.14, 0.01]} rotation={[0.2, 0, -0.5]} scale={[0.62, 0.82, 0.42]}>
           <sphereGeometry args={[0.08, 8, 8]} />
           <meshStandardMaterial color={coat} roughness={0.5} />
         </mesh>
-        <mesh position={[0.07, 0.12, 0.02]} rotation={[0.15, 0, 0.45]} scale={[0.55, 0.7, 0.4]}>
+        <mesh position={[0.08, 0.14, 0.01]} rotation={[0.2, 0, 0.5]} scale={[0.62, 0.82, 0.42]}>
           <sphereGeometry args={[0.08, 8, 8]} />
           <meshStandardMaterial color={coat} roughness={0.5} />
         </mesh>
-        <mesh position={[0, 0, 0.12]}>
-          <sphereGeometry args={[0.035, 8, 8]} />
+        <mesh position={[-0.045, 0.04, 0.13]}>
+          <sphereGeometry args={[0.022, 8, 8]} />
+          <meshBasicMaterial color="#2c221c" />
+        </mesh>
+        <mesh position={[0.045, 0.04, 0.13]}>
+          <sphereGeometry args={[0.022, 8, 8]} />
+          <meshBasicMaterial color="#2c221c" />
+        </mesh>
+        <mesh position={[0, -0.01, 0.145]}>
+          <sphereGeometry args={[0.02, 8, 8]} />
           <meshBasicMaterial color="#3a2e28" />
         </mesh>
         <mesh position={[0, -0.02, 0]}>
