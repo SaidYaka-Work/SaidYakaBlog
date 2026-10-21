@@ -12,14 +12,24 @@ import {
   localTriviaPool,
   mulberry32,
   nextNudge,
+  pickJobs,
   pickPrompts,
   roundSeconds,
+  scoreJob,
   scoreRound,
   scoreTrivia,
   scoreWithJudge,
   shuffle,
   totalScore,
 } from '../components/games/fakegpt/logic.ts';
+import { JOBS, asTriviaItems, checkJob, localJobPool } from '../components/games/fakegpt/jobs.ts';
+import {
+  customersForLevel,
+  isLevelComplete,
+  joinNotice,
+  planRun,
+  startCustomerCount,
+} from '../components/games/fakegpt/lanes.ts';
 import { matchChoice, matchTypedAnswer } from '../components/games/fakegpt/match.ts';
 import { BONUS, TRIVIA } from '../components/games/fakegpt/trivia.ts';
 import { fallbackDailySet } from '../workers/fakegpt/src/fallback';
@@ -136,4 +146,21 @@ assert.match(utcDate(Date.parse('2026-10-21T12:00:00Z')), /^2026-10-21$/);
 assert.equal(takeBudget(279, 2, 280).ok, false);
 assert.equal(parseJudgeRequest({ date: '2026-10-21', kind: 'draw', request: 'no' }).ok, false);
 
-console.log(`fakegpt dataset ok: ${TRIVIA.length} trivia, ${BONUS.length} bonus, run ${picked.length}`);
+assert.ok(JOBS.length >= 60, `need job bank, got ${JOBS.length}`);
+assert.equal(checkJob('math', '25', '25'), 'correct');
+assert.equal(checkJob('order', '1 2 3 4', '1, 2, 3, 4'), 'correct');
+assert.equal(startCustomerCount(2), 2);
+assert.deepEqual(
+  [1, 2, 3, 4, 5].map((level) => customersForLevel(level, 3)),
+  [1, 2, 3, 4, 5],
+);
+assert.equal(isLevelComplete(5, 0, 1), true);
+assert.equal(joinNotice('Dana'), '🟢 Dana joined the chat');
+const jobs = pickJobs(asTriviaItems(localJobPool()), 20, mulberry32(9), 9);
+assert.equal(jobs.length, 20);
+assert.equal(planRun([], jobs, 3).length, 5);
+assert.ok(scoreJob({ submittedInTime: true, remainingMs: 8000, totalMs: 16000, correct: true, empty: false }, 3, () => 0).points > 100);
+
+console.log(
+  `fakegpt dataset ok: ${TRIVIA.length} trivia, ${JOBS.length} jobs, ${BONUS.length} bonus, run ${picked.length}, daily ${seeded.rounds.length}, customers ${seeded.personas.length}`,
+);

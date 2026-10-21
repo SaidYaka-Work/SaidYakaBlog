@@ -23,7 +23,9 @@ test('fallback daily set is deterministic and valid', () => {
   const valid = validateDailySet({ ...a, source: 'fallback' }, '2026-10-21');
   assert.ok(valid);
   assert.equal(valid.source, 'fallback');
-  assert.ok(valid.rounds.filter((round) => round.kind === 'mc').length >= 2);
-  assert.ok(valid.rounds.filter((round) => round.kind === 'typed').length >= 2);
+  assert.ok(valid.rounds.length >= 20);
+  assert.equal(valid.personas.length, 5);
+  assert.ok(valid.rounds.filter((round) => round.kind === 'mc' || round.kind === 'tone' || round.kind === 'order').length >= 2);
+  assert.ok(valid.rounds.filter((round) => round.kind !== 'draw' && round.kind !== 'sound').length >= 2);
   assert.ok(valid.rounds.filter((round) => round.kind === 'draw' || round.kind === 'sound').length <= 1);
 });

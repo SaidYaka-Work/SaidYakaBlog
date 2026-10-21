@@ -1,8 +1,24 @@
+import { MAX_CUSTOMERS, fillPersonas, type DailyPersona } from '../../../components/games/fakegpt/lanes';
 import { matchChoice, normalizeAnswer } from '../../../components/games/fakegpt/match';
-import { DAILY_ROUNDS, DAILY_ROUNDS_MAX, MAX_BONUS_PER_RUN, PLAYER_TEXT_MAX } from './models';
+
+export type { DailyPersona };
+import { DAILY_PERSONAS, DAILY_ROUNDS, DAILY_ROUNDS_MAX, MAX_BONUS_PER_RUN, PLAYER_TEXT_MAX } from './models';
 import { clipText, isUnsafeText, looksLikeInjection, sanitizeLine } from './safety';
 
-export type PromptKind = 'mc' | 'typed' | 'draw' | 'sound';
+export type PromptKind =
+  | 'mc'
+  | 'typed'
+  | 'translate'
+  | 'math'
+  | 'unit'
+  | 'weekday'
+  | 'spell'
+  | 'unscramble'
+  | 'order'
+  | 'tone'
+  | 'fill'
+  | 'draw'
+  | 'sound';
 export type BonusKind = 'draw' | 'sound';
 
 export type DailyRound = {
@@ -24,6 +40,7 @@ export type DailyRound = {
 export type DailySet = {
   date: string;
   source: 'ai' | 'fallback';
+  personas: DailyPersona[];
   rounds: DailyRound[];
 };
 
@@ -120,12 +137,45 @@ export function dateSeed(date: string): number {
   return hash >>> 0;
 }
 
+const KINDS: readonly PromptKind[] = [
+  'mc',
+  'typed',
+  'translate',
+  'math',
+  'unit',
+  'weekday',
+  'spell',
+  'unscramble',
+  'order',
+  'tone',
+  'fill',
+  'draw',
+  'sound',
+];
+
 function asKind(value: unknown): PromptKind | null {
-  return value === 'mc' || value === 'typed' || value === 'draw' || value === 'sound' ? value : null;
+  return typeof value === 'string' && KINDS.includes(value as PromptKind) ? (value as PromptKind) : null;
+}
+
+export function parseDailyPersona(raw: unknown): DailyPersona | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  const name = sanitizeLine(row.name ?? row.persona, 40);
+  if (!name) return null;
+  const id = sanitizeLine(row.id, 24).replace(/[^a-z0-9-]/gi, '') || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 24);
+  return {
+    id: id || 'user',
+    name,
+    vibe: sanitizeLine(row.vibe, 80) || 'impatient, funny, slightly unhinged',
+  };
 }
 
 function asBonusKind(value: unknown): BonusKind | null {
   return value === 'draw' || value === 'sound' ? value : null;
+}
+
+function needsChoices(kind: PromptKind, options: readonly string[]): boolean {
+  return kind === 'mc' || kind === 'tone' || kind === 'order' || (kind === 'fill' && options.length === 4);
 }
 
 function asDifficulty(value: unknown): 1 | 2 | 3 {
@@ -153,7 +203,7 @@ export function parseDailyRound(raw: unknown): DailyRound | null {
     .map((option) => sanitizeLine(option, 80))
     .filter(Boolean)
     .slice(0, 4);
-  if (kind === 'mc') {
+  if (kind === 'mc' || kind === 'tone' || kind === 'order' || (kind === 'fill' && options.length === 4)) {
     if (options.length !== 4) return null;
     const hits = options.filter((option) => matchChoice(option, answer)).length;
     if (hits !== 1) return null;
@@ -198,19 +248,29 @@ export function validateDailySet(raw: unknown, date: string): DailySet | null {
     rounds.push(parsed);
   }
 
-  const picked = rounds.slice(0, DAILY_ROUNDS);
+  const picked = rounds.slice(0, Math.max(DAILY_ROUNDS, rounds.length));
   if (picked.length < DAILY_ROUNDS) return null;
   const bonus = picked.filter((round) => round.kind === 'draw' || round.kind === 'sound').length;
-  const mc = picked.filter((round) => round.kind === 'mc').length;
-  const typed = picked.filter((round) => round.kind === 'typed').length;
+  const choice = picked.filter((round) => needsChoices(round.kind, round.options)).length;
+  const typedLike = picked.filter((round) => !needsChoices(round.kind, round.options) && round.kind !== 'draw' && round.kind !== 'sound').length;
   if (bonus > MAX_BONUS_PER_RUN) return null;
-  if (mc < 2 || typed < 2) return null;
+  if (choice < 2 || typedLike < 2) return null;
   const categories = new Set(picked.map((round) => round.category));
-  if (categories.size < 3) return null;
+  const kinds = new Set(picked.map((round) => round.kind));
+  if (categories.size < 3 && kinds.size < 4) return null;
+
+  const personasIn = Array.isArray(input.personas) ? input.personas : [];
+  const fromRounds = picked.map((round) => ({ id: '', name: round.persona, vibe: round.vibe }));
+  const personas = fillPersonas(
+    [...personasIn.map(parseDailyPersona).filter((row): row is DailyPersona => Boolean(row)), ...fromRounds],
+    dateSeed(date),
+  );
+  if (personas.length < Math.min(DAILY_PERSONAS, MAX_CUSTOMERS)) return null;
 
   return {
     date,
     source: input.source === 'fallback' ? 'fallback' : 'ai',
+    personas,
     rounds: picked,
   };
 }

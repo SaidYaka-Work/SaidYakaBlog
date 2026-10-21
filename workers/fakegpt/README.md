@@ -1,6 +1,6 @@
 # FakeGPT Worker
 
-Daily trivia set, rare draw/sound bonus judging, typed-answer grading, and short in-character chat for `/en/fakegpt/`.
+Daily multi-customer job set (personas + mixed desk tasks), rare draw/sound bonus judging, typed-answer grading, and short in-character chat for `/en/fakegpt/`.
 
 Nothing the player makes is stored. Images and audio are scored in memory and discarded.
 

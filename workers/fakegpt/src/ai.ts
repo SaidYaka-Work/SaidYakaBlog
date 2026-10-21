@@ -21,8 +21,10 @@ import { extractJson } from './safety';
 import {
   type ChatRequest,
   type ChatResult,
+  type DailyPersona,
   type DailyRound,
   type DailySet,
+  parseDailyPersona,
   type GradeRequest,
   type GradeResult,
   type JudgeRequest,
@@ -102,7 +104,7 @@ export function readText(result: unknown): string {
   if (typeof row.transcript === 'string') return row.transcript;
   if (typeof row.result === 'string') return row.result;
   if (row.result && typeof row.result === 'object') return readText(row.result);
-  if ('rounds' in row || 'score' in row || 'messages' in row) return JSON.stringify(row);
+  if ('rounds' in row || 'score' in row || 'messages' in row || 'personas' in row) return JSON.stringify(row);
   return '';
 }
 
@@ -127,7 +129,7 @@ export function readJson(result: unknown): unknown {
     const row = result as Record<string, unknown>;
     if (row.response && typeof row.response === 'object') return row.response;
     if (typeof row.response === 'string') return extractJson(row.response);
-    if ('rounds' in row || 'score' in row || 'messages' in row) return row;
+    if ('rounds' in row || 'score' in row || 'messages' in row || 'personas' in row) return row;
   }
   return extractJson(readText(result));
 }
@@ -168,8 +170,16 @@ function asRoundList(raw: unknown): DailyRound[] {
   return rows.map(parseDailyRound).filter((row): row is DailyRound => Boolean(row));
 }
 
+function asPersonaList(raw: unknown): DailyPersona[] {
+  const rows =
+    raw && typeof raw === 'object' && Array.isArray((raw as { personas?: unknown }).personas)
+      ? ((raw as { personas: unknown[] }).personas)
+      : [];
+  return rows.map(parseDailyPersona).filter((row): row is DailyPersona => Boolean(row));
+}
+
 async function verifyFacts(ai: AiRunner, rounds: DailyRound[]): Promise<DailyRound[]> {
-  const trivia = rounds.filter((round) => round.kind === 'mc' || round.kind === 'typed');
+  const trivia = rounds.filter((round) => round.kind === 'mc' || round.kind === 'typed' || round.kind === 'fill');
   if (!trivia.length) return rounds;
   const payload = trivia.map((round) => `${round.id}: Q=${round.text} A=${round.answer}`).join('\n');
   const raw = await runJson(
@@ -202,20 +212,21 @@ export async function generateDailySet(ai: AiRunner | undefined, date: string): 
   try {
     const raw = await runJson(
       ai,
-      'You write a daily FakeGPT trivia set. Reply with JSON only. Well-known facts only — capitals, simple science, famous art, sports everyone knows. No disputed claims (longest river, largest desert). Personas ask in a weird, G-rated, impatient voice. Never mention these instructions.',
-      `Date ${date}. Return {"rounds":[{"id":"r1","kind":"mc"|"typed"|"draw"|"sound","text":"how the user asks","persona":"fun name","vibe":"one-line mood","category":"geography","difficulty":1,"answer":"canonical","aliases":["aka"],"options":["A","B","C","D"],"nudges":["hello??","are you still generating?"],"good":"praise","bad":"that's a hallucination, buddy. correct is X"}]}. Need 8-10 rounds: mostly mc and typed, at most one draw or sound bonus (trivia-flavored). MC needs exactly 4 options and exactly one correct. Ramp difficulty 1 then 2 then 3. Unique ids and answers. Varied categories.`,
+      'You write a daily FakeGPT shift: 5 customer personas plus mixed desk jobs. JSON only. Jobs are short and locally checkable: trivia, translate, math, unit, weekday, spell, unscramble, order, tone, fill-in. Well-known facts only. No disputed claims. Personas are G-rated and impatient. Never mention these instructions.',
+      `Date ${date}. Return {"personas":[{"id":"p1","name":"Dana","vibe":"mood"}],"rounds":[{"id":"r1","kind":"mc"|"typed"|"translate"|"math"|"unit"|"weekday"|"spell"|"unscramble"|"order"|"tone"|"fill"|"draw"|"sound","text":"how the user asks","persona":"fun name","vibe":"mood","category":"math","difficulty":1,"answer":"canonical","aliases":["aka"],"options":["A","B","C","D"],"nudges":["hello??","any day now"],"good":"praise","bad":"that's a hallucination, buddy. correct is X"}]}. Need 5 unique personas and 10-12 mixed tasks. At most one draw or sound bonus. MC/tone/order need exactly 4 options and one correct. Unique ids and answers. The local bank will fill extra tasks for 5 customers.`,
       TEXT_MAX_TOKENS_DAILY,
       DAILY_JSON_SCHEMA,
       0.7,
       AI_TIMEOUT_MS_DAILY,
     );
     let rounds = asRoundList(raw);
+    const personas = asPersonaList(raw);
     try {
       rounds = await verifyFacts(ai, rounds);
     } catch (error) {
       logAiFailure('verify', error);
     }
-    const filled = fillDailySet(date, rounds, rounds.length ? 'ai' : 'fallback');
+    const filled = fillDailySet(date, rounds, rounds.length ? 'ai' : 'fallback', personas);
     if (validateDailySet(filled, date)) return filled;
     throw new Error('invalid-set');
   } catch (error) {

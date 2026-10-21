@@ -32,6 +32,7 @@ export type ScoreResult = {
 
 export type Artifact = {
   prompt: Prompt;
+  customer?: string;
   points: number;
   thumbs: Thumbs;
   reaction: string;
@@ -60,6 +61,7 @@ export type ChatMessage =
   | { id: string; role: 'user'; kind: 'text'; text: string; persona?: string }
   | { id: string; role: 'user'; kind: 'nudge'; text: string }
   | { id: string; role: 'user'; kind: 'rating'; thumbs: Thumbs; text: string }
+  | { id: string; role: 'user'; kind: 'join'; text: string }
   | { id: string; role: 'assistant'; kind: 'drawing'; src: string }
   | { id: string; role: 'assistant'; kind: 'audio'; src: string; hits?: SynthHit[] }
   | { id: string; role: 'assistant'; kind: 'answer'; text: string }

@@ -61,21 +61,63 @@ function eight() {
   ];
 }
 
-test('validateDailySet accepts a trivia-first eight-round set', () => {
-  const set = validateDailySet({ rounds: eight() }, date);
+function twenty() {
+  const base = eight();
+  return [
+    ...base,
+    typed({ id: 'i', category: 'math', kind: 'math', text: 'what is seventeen plus eight please', answer: '25' }),
+    typed({ id: 'j', category: 'translate', kind: 'translate', text: 'quick what does hola mean in english', answer: 'hello' }),
+    typed({ id: 'k', category: 'spelling', kind: 'spell', text: 'fix the word recieve for me now', answer: 'receive' }),
+    typed({ id: 'l', category: 'words', kind: 'unscramble', text: 'unscramble pplea it is a fruit', answer: 'apple' }),
+    typed({ id: 'm', category: 'units', kind: 'unit', text: 'how many minutes are in one hour', answer: '60' }),
+    typed({ id: 'n', category: 'calendar', kind: 'weekday', text: 'what day of the week was 1 january 2024', answer: 'Monday' }),
+    typed({ id: 'o', category: 'fill', kind: 'fill', text: 'earth orbits which star in our sky', answer: 'Sun' }),
+    mc({
+      id: 'p',
+      category: 'tone',
+      kind: 'tone',
+      text: 'rewrite polite the report is late today',
+      answer: 'Sorry, the report is running late.',
+      options: ['Sorry, the report is running late.', 'REPORT LATE. FIX.', 'lol report goes brrr', 'I ate the report.'],
+    }),
+    mc({
+      id: 'q',
+      category: 'order',
+      kind: 'order',
+      text: 'smallest to largest please 3 1 4 2',
+      answer: '1, 2, 3, 4',
+      options: ['1, 2, 3, 4', '3, 1, 4, 2', '4, 3, 2, 1', '2, 1, 4, 3'],
+    }),
+    typed({ id: 'r', category: 'math', kind: 'math', text: 'nine times six before my coffee cools', answer: '54' }),
+    typed({ id: 's', category: 'translate', kind: 'translate', text: 'merci means what in english, go', answer: 'thank you' }),
+    typed({ id: 't', category: 'units', kind: 'unit', text: 'one hundred centimeters is how many meters', answer: '1' }),
+  ];
+}
+
+test('validateDailySet accepts a mixed job set with five personas', () => {
+  const set = validateDailySet(
+    {
+      rounds: twenty(),
+      personas: [
+        { id: 'dana', name: 'Dana', vibe: 'calm' },
+        { id: 'kira', name: 'Kira', vibe: ' intern' },
+      ],
+    },
+    date,
+  );
   assert.ok(set);
-  assert.equal(set.rounds.length, 8);
+  assert.ok(set.rounds.length >= 20);
   assert.equal(set.date, date);
-  assert.ok(set.rounds.every((round) => round.kind === 'mc' || round.kind === 'typed'));
+  assert.equal(set.personas.length, 5);
 });
 
 test('validateDailySet rejects a second bonus and a wrong MC key', () => {
   assert.equal(validateDailySet({ rounds: [mc()] }, date), null);
-  const twoBonus = eight();
+  const twoBonus = twenty();
   twoBonus[0] = { ...twoBonus[0], kind: 'draw', answer: 'flag', options: [] };
   twoBonus[1] = { ...twoBonus[1], kind: 'sound', answer: 'tune', options: [] };
   assert.equal(validateDailySet({ rounds: twoBonus }, date), null);
-  const badMc = eight();
+  const badMc = twenty();
   badMc[0] = mc({ id: 'a', options: ['Lyon', 'Nice', 'Lille', 'Bordeaux'] });
   assert.equal(validateDailySet({ rounds: badMc }, date), null);
 });
@@ -136,8 +178,10 @@ test('utcDate is YYYY-MM-DD', () => {
   assert.match(utcDate(Date.parse('2026-10-21T01:02:03Z')), /^2026-10-21$/);
 });
 
-test('fallback daily set stays trivia-first', () => {
+test('fallback daily set covers max customers', () => {
   const set = fallbackDailySet(date);
   assert.ok(validateDailySet(set, date));
+  assert.ok(set.rounds.length >= 20);
+  assert.equal(set.personas.length, 5);
   assert.ok(set.rounds.filter((round) => round.kind === 'draw' || round.kind === 'sound').length <= 1);
 });

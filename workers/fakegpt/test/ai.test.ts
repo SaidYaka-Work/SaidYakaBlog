@@ -47,7 +47,8 @@ test('generateDailySet uses JSON schema and accepts an object response', async (
   );
   assert.equal(model, TEXT_MODEL);
   assert.equal(set.source, 'ai');
-  assert.equal(set.rounds.length, 8);
+  assert.ok(set.rounds.length >= 20);
+  assert.equal(set.personas.length, 5);
   const format = seen?.response_format as { type?: string; json_schema?: { type?: string } };
   assert.equal(format?.type, 'json_schema');
   assert.equal(format?.json_schema?.type, 'object');

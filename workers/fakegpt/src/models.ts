@@ -17,7 +17,7 @@ export const AI_TIMEOUT_MS_DAILY = 8000;
 /** Full-day cache for a validated AI set. Fallback is cached only briefly so we retry. */
 export const AI_DAILY_CACHE_TTL_SEC = 26 * 60 * 60;
 export const FALLBACK_DAILY_CACHE_TTL_SEC = 3 * 60;
-export const DAILY_CACHE_KEY_PREFIX = 'daily:v3:';
+export const DAILY_CACHE_KEY_PREFIX = 'daily:v4:';
 
 export function dailyCacheTtlSec(source: 'ai' | 'fallback'): number {
   return source === 'ai' ? AI_DAILY_CACHE_TTL_SEC : FALLBACK_DAILY_CACHE_TTL_SEC;
@@ -27,11 +27,38 @@ export function dailyCacheKey(date: string): string {
   return `${DAILY_CACHE_KEY_PREFIX}${date}`;
 }
 
+const PERSONA_SCHEMA = {
+  type: 'object',
+  properties: {
+    id: { type: 'string' },
+    name: { type: 'string' },
+    vibe: { type: 'string' },
+  },
+  required: ['id', 'name'],
+};
+
 const ROUND_SCHEMA = {
   type: 'object',
   properties: {
     id: { type: 'string' },
-    kind: { type: 'string', enum: ['mc', 'typed', 'draw', 'sound'] },
+    kind: {
+      type: 'string',
+      enum: [
+        'mc',
+        'typed',
+        'translate',
+        'math',
+        'unit',
+        'weekday',
+        'spell',
+        'unscramble',
+        'order',
+        'tone',
+        'fill',
+        'draw',
+        'sound',
+      ],
+    },
     text: { type: 'string' },
     persona: { type: 'string' },
     vibe: { type: 'string' },
@@ -50,9 +77,10 @@ const ROUND_SCHEMA = {
 export const DAILY_JSON_SCHEMA = {
   type: 'object',
   properties: {
+    personas: { type: 'array', items: PERSONA_SCHEMA },
     rounds: { type: 'array', items: ROUND_SCHEMA },
   },
-  required: ['rounds'],
+  required: ['personas', 'rounds'],
 };
 
 export const JUDGE_JSON_SCHEMA = {
@@ -94,8 +122,9 @@ export const GRADE_JSON_SCHEMA = {
   required: ['correct', 'reason'],
 };
 
-export const DAILY_ROUNDS = 8;
-export const DAILY_ROUNDS_MAX = 10;
+export const DAILY_ROUNDS = 20;
+export const DAILY_ROUNDS_MAX = 32;
+export const DAILY_PERSONAS = 5;
 export const MAX_BONUS_PER_RUN = 1;
 export const IMAGE_MAX_CHARS = 180_000;
 export const AUDIO_MAX_CHARS = 420_000;

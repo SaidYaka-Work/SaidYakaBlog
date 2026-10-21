@@ -1,13 +1,20 @@
-import { localTriviaPool, mulberry32, pickPrompts } from '../../../components/games/fakegpt/logic';
+import { asTriviaItems, localJobPool } from '../../../components/games/fakegpt/jobs';
+import { PERSONA_BANK, fillPersonas } from '../../../components/games/fakegpt/lanes';
+import { mulberry32, pickJobs } from '../../../components/games/fakegpt/logic';
 import { DAILY_ROUNDS } from './models';
-import { dateSeed, parseDailyRound, validateDailySet, type DailyRound, type DailySet } from './schema';
+import { dateSeed, parseDailyPersona, parseDailyRound, validateDailySet, type DailyPersona, type DailyRound, type DailySet } from './schema';
 
 export function fallbackDailySet(date: string): DailySet {
   return fillDailySet(date, [], 'fallback');
 }
 
-/** Keep valid AI rounds, cap bonus at one, fill remaining slots from the local bank. */
-export function fillDailySet(date: string, incoming: DailyRound[], source: DailySet['source'] = 'ai'): DailySet {
+/** Keep valid AI rounds and personas, cap bonus at one, fill remaining slots from the local bank. */
+export function fillDailySet(
+  date: string,
+  incoming: DailyRound[],
+  source: DailySet['source'] = 'ai',
+  incomingPersonas: DailyPersona[] = [],
+): DailySet {
   const random = mulberry32(dateSeed(date));
   const kept: DailyRound[] = [];
   const usedAnswers = new Set<string>();
@@ -31,7 +38,7 @@ export function fillDailySet(date: string, incoming: DailyRound[], source: Daily
   }
 
   if (kept.length < DAILY_ROUNDS) {
-    const local = pickPrompts(localTriviaPool(), DAILY_ROUNDS, random, dateSeed(date));
+    const local = pickJobs(asTriviaItems(localJobPool()), DAILY_ROUNDS, random, dateSeed(date));
     for (const row of local) {
       if (kept.length >= DAILY_ROUNDS) break;
       if (usedIds.has(row.id)) continue;
@@ -45,10 +52,27 @@ export function fillDailySet(date: string, incoming: DailyRound[], source: Daily
     }
   }
 
-  const assembled = validateDailySet({ rounds: kept, source }, date);
+  const personas = fillPersonas(
+    [
+      ...incomingPersonas.map(parseDailyPersona).filter((row): row is DailyPersona => Boolean(row)),
+      ...kept.map((row) => ({ id: '', name: row.persona, vibe: row.vibe })),
+      ...PERSONA_BANK,
+    ],
+    dateSeed(date),
+  );
+
+  const assembled = validateDailySet({ rounds: kept, personas, source }, date);
   if (assembled) return assembled;
-  const pureLocal = pickPrompts(localTriviaPool(), DAILY_ROUNDS, mulberry32(dateSeed(`${date}-local`)), dateSeed(date));
-  const fallback = validateDailySet({ rounds: pureLocal, source: 'fallback' }, date);
-  if (!fallback) throw new Error('local trivia bank failed validation');
+  const pureLocal = pickJobs(
+    asTriviaItems(localJobPool()),
+    DAILY_ROUNDS,
+    mulberry32(dateSeed(`${date}-local`)),
+    dateSeed(date),
+  );
+  const fallback = validateDailySet(
+    { rounds: pureLocal, personas: fillPersonas(PERSONA_BANK, dateSeed(`${date}-local`)), source: 'fallback' },
+    date,
+  );
+  if (!fallback) throw new Error('local job bank failed validation');
   return fallback;
 }
