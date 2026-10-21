@@ -866,7 +866,7 @@
 
   .dog-debug {
     top: auto;
-    bottom: calc(108px + env(safe-area-inset-bottom));
+    bottom: calc(176px + env(safe-area-inset-bottom));
     max-width: calc(100% - 6.8rem);
   }
 
