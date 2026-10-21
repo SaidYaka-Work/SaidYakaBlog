@@ -195,7 +195,15 @@
   font-size: clamp(1.7rem, 4vw, 2.4rem);
   font-weight: 400;
   line-height: 1;
-  text-shadow: 0 1px 0 color-mix(in srgb, var(--bg) 70%, transparent);
+  color: var(--ink);
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+  paint-order: normal;
+  background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 0.45rem;
+  padding: 0.12rem 0.42rem 0.18rem;
+  width: fit-content;
 }
 
 .dog-id span {
@@ -367,8 +375,8 @@
 
 .dog-thought {
   left: 50%;
-  top: 26%;
-  transform: translateX(-50%);
+  top: 42%;
+  transform: translate(-50%, -130%);
   display: flex;
   gap: 0.45rem;
   padding: 0.45rem 0.8rem;
@@ -378,6 +386,13 @@
   box-shadow: 0 10px 28px -22px rgba(22, 20, 18, 0.55);
   font-size: 0.82rem;
   color: var(--ink);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.dog-thought.is-anchored {
+  left: clamp(11.2rem, var(--thought-x, 50%), calc(100% - 5.5rem));
+  top: clamp(calc(9.6rem + env(safe-area-inset-top)), var(--thought-y, 42%), calc(100% - 7.5rem));
 }
 
 .dog-thought span + span::before {
@@ -688,6 +703,11 @@
 @media (max-width: 640px) {
   .dog-left {
     width: min(10.5rem, 48vw);
+  }
+
+  .dog-thought {
+    font-size: 0.76rem;
+    padding: 0.38rem 0.7rem;
   }
 
   .dog-toasts {

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef, type PointerEvent } from 'react';
+import { useRef, type CSSProperties, type PointerEvent } from 'react';
 import { englishPath } from '@/lib/site';
 
 export type Toast = { id: number; emote: string; text: string };
@@ -39,6 +39,7 @@ export default function DogHud({
   onHome,
   onTravel,
   onToggleTravel,
+  thoughtAnchor = null,
 }: {
   name: string;
   stageLabel: string;
@@ -72,6 +73,7 @@ export default function DogHud({
   onHome?: () => void;
   onTravel?: (placeId: string) => void;
   onToggleTravel?: () => void;
+  thoughtAnchor?: { x: number; y: number } | null;
 }) {
   return (
     <div className={`dog-hud ${touch ? 'is-touch' : ''}`}>
@@ -122,7 +124,18 @@ export default function DogHud({
       )}
 
       {(hungry || wantsWalk) && !empty && (
-        <div className="dog-thought" role="status">
+        <div
+          className={`dog-thought${thoughtAnchor ? ' is-anchored' : ''}`}
+          role="status"
+          style={
+            thoughtAnchor
+              ? ({
+                  '--thought-x': `${thoughtAnchor.x * 100}%`,
+                  '--thought-y': `${thoughtAnchor.y * 100}%`,
+                } as CSSProperties)
+              : undefined
+          }
+        >
           {hungry && <span>hungry</span>}
           {wantsWalk && <span>wants a walk</span>}
         </div>

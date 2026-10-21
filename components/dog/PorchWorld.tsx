@@ -97,7 +97,7 @@ function FenceSide({
 
 function PorchLamp({ night }: { night: boolean }) {
   return (
-    <group position={[2.15, 0, 2.05]}>
+    <group position={[-2.55, 0, -2.55]}>
       <mesh position={[0, 1.05, 0]} castShadow>
         <cylinderGeometry args={[0.045, 0.06, 2.1, 8]} />
         <meshStandardMaterial color={night ? '#4a4038' : '#6a5850'} metalness={0.35} roughness={0.45} />

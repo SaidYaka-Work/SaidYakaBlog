@@ -56,6 +56,7 @@ function FramedCamera({
   stage,
   world,
   onReady,
+  onAnchor,
 }: {
   target: RefObject<Group | null>;
   host: RefObject<HTMLDivElement | null>;
@@ -65,6 +66,7 @@ function FramedCamera({
   stage?: LifeStage;
   world?: WorldView | null;
   onReady?: () => void;
+  onAnchor?: (pos: { x: number; y: number } | null) => void;
 }) {
   const camera = useThree((state) => state.camera) as PerspectiveCamera;
   const size = useThree((state) => state.size);
@@ -73,6 +75,7 @@ function FramedCamera({
   const ready = useRef(false);
 
   const street = useRef(new Vector3());
+  const lastAnchor = useRef({ x: -1, y: -1 });
 
   useFrame((_, dt) => {
     const object = target.current;
@@ -153,6 +156,12 @@ function FramedCamera({
     if (host.current && bounds) {
       host.current.dataset.inView = bounds.inView ? '1' : '0';
       host.current.dataset.fills = bounds.fills ? '1' : '0';
+      const x = (bounds.minX + bounds.maxX) * 0.5 * 0.5 + 0.5;
+      const y = (1 - bounds.maxY) * 0.5;
+      if (Math.abs(x - lastAnchor.current.x) > 0.012 || Math.abs(y - lastAnchor.current.y) > 0.012) {
+        lastAnchor.current = { x, y };
+        onAnchor?.({ x: Math.max(0.08, Math.min(0.92, x)), y: Math.max(0.12, Math.min(0.78, y)) });
+      }
     }
   });
   return null;
@@ -202,6 +211,7 @@ export default function DogCanvas({
   world = null,
   onWorldColliders,
   onReady,
+  onAnchor,
 }: {
   genome?: DogGenome | null;
   stage?: LifeStage;
@@ -221,6 +231,7 @@ export default function DogCanvas({
   world?: WorldView | null;
   onWorldColliders?: (colliders: WorldColliders) => void;
   onReady?: () => void;
+  onAnchor?: (pos: { x: number; y: number } | null) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const dogRef = useRef<Group>(null);
@@ -341,6 +352,7 @@ export default function DogCanvas({
               stage={stage}
               world={world}
               onReady={onReady}
+              onAnchor={onAnchor}
             />
           )}
           {empty && <EmptyReady onReady={onReady} />}

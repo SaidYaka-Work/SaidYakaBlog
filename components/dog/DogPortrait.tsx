@@ -31,6 +31,7 @@ export default function DogPortrait({
   world = null,
   onWorldColliders,
   onReady,
+  onAnchor,
 }: {
   genome?: DogGenome | null;
   asleep: boolean;
@@ -50,6 +51,7 @@ export default function DogPortrait({
   world?: WorldView | null;
   onWorldColliders?: (colliders: WorldColliders) => void;
   onReady?: () => void;
+  onAnchor?: (pos: { x: number; y: number } | null) => void;
 }) {
   if (compact) {
     return <DogStill genome={genome} stage={stage} reaction={reaction} asleep={asleep} night={night} sad={sad} />;
@@ -73,6 +75,7 @@ export default function DogPortrait({
       world={world}
       onWorldColliders={onWorldColliders}
       onReady={onReady}
+      onAnchor={onAnchor}
     />
   );
 }
