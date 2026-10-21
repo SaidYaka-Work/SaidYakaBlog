@@ -6,16 +6,18 @@ import { useGameChrome } from '../useGameChrome';
 import { getGameBySlug } from '@/lib/games';
 import DrawPad, { type DrawPadHandle } from './DrawPad';
 import SoundPad, { replayHits, type MicMode, type SoundPadHandle } from './SoundPad';
-import { fetchDailySet, readOffline, requestChat, requestJudge, writeOffline } from './api';
+import { fetchDailySet, readOffline, requestChat, requestGrade, requestJudge, writeOffline } from './api';
 import {
   STORAGE_KEY,
   formatTimer,
   nextNudge,
   roundSeconds,
   scoreRound,
+  scoreTrivia,
   scoreWithJudge,
   totalScore,
 } from './logic';
+import { matchChoice, matchTypedAnswer } from './match';
 import { capAudio, downscaleImage } from './media';
 import type { Artifact, ChatMessage, Prompt, SynthHit } from './types';
 import { formatUtcDate, utcDate, type DailySet } from '../../../workers/fakegpt/src/schema';
@@ -76,6 +78,9 @@ function MessageView({ message }: { message: ChatMessage }) {
       </p>
     );
   }
+  if (message.kind === 'answer') {
+    return <p className="fgpt-assistant">{message.text}</p>;
+  }
   if (message.kind === 'drawing') {
     return (
       <div className="fgpt-assistant">
@@ -108,6 +113,7 @@ export default function FakeGptGame() {
   const [offline, setOffline] = useState(false);
   const [daily, setDaily] = useState<DailySet | null>(null);
   const [reply, setReply] = useState('');
+  const [typed, setTyped] = useState('');
   const [chatting, setChatting] = useState(false);
   const drawRef = useRef<DrawPadHandle>(null);
   const soundRef = useRef<SoundPadHandle>(null);
@@ -161,7 +167,7 @@ export default function FakeGptGame() {
           ...current,
           { id: uid('user'), role: 'user', kind: 'text', text: next.text, persona: next.persona },
         ]);
-        const ms = roundSeconds(nextRound) * 1000;
+        const ms = roundSeconds(nextRound, next.kind) * 1000;
         deadlineRef.current = Date.now() + ms;
         setTotalMs(ms);
         setRemainingMs(ms);
@@ -186,6 +192,7 @@ export default function FakeGptGame() {
     setRound(0);
     setBusy(false);
     setReply('');
+    setTyped('');
     beginRound(0, nextQueue);
   }, [artifacts, beginRound, clearTimers, daily, offline]);
 
@@ -194,6 +201,7 @@ export default function FakeGptGame() {
       setBusy(false);
       setChatting(false);
       setReply('');
+      setTyped('');
       const upcoming = round + 1;
       if (upcoming >= queue.length) {
         commitBest(nextScore);
@@ -206,11 +214,12 @@ export default function FakeGptGame() {
   );
 
   const finishRound = useCallback(
-    async (submittedInTime: boolean) => {
+    async (submittedInTime: boolean, choice?: string) => {
       if (!prompt || finishingRef.current || phase !== 'responding') return;
       finishingRef.current = true;
       setBusy(true);
       const left = Math.max(0, deadlineRef.current - Date.now());
+      const playerAnswer = choice ?? (prompt.kind === 'typed' ? typed.trim() : '');
       const draw = prompt.kind === 'draw' ? drawRef.current?.snapshot() : null;
       const sound =
         prompt.kind === 'sound'
@@ -232,13 +241,54 @@ export default function FakeGptGame() {
         audioMs: sound?.audioMs ?? 0,
         peakLevel: sound?.peakLevel ?? 0,
         padHits: sound?.padHits ?? 0,
+        correct: false,
+        empty: false,
       };
       let result = scoreRound(attempt);
       let seen = '';
       let heard = '';
       let judged = false;
-      const empty = result.empty;
-      if (!offline && !empty) {
+      if (prompt.kind === 'mc' || prompt.kind === 'typed') {
+        const verdict =
+          prompt.kind === 'mc'
+            ? playerAnswer
+              ? matchChoice(playerAnswer, prompt.answer)
+                ? 'correct'
+                : 'wrong'
+              : 'empty'
+            : matchTypedAnswer(playerAnswer, prompt.answer, prompt.aliases);
+        let correct = verdict === 'correct';
+        if (prompt.kind === 'typed' && verdict === 'ambiguous' && !offline) {
+          const graded = await requestGrade(
+            {
+              date: daily?.date ?? utcDate(),
+              roundId: prompt.id,
+              persona: prompt.persona,
+              question: prompt.text,
+              answer: prompt.answer,
+              aliases: prompt.aliases,
+              playerText: playerAnswer,
+            },
+            offline,
+          );
+          correct = Boolean(graded && !graded.fallback && graded.correct);
+        }
+        result = scoreTrivia(
+          {
+            submittedInTime,
+            remainingMs: attempt.remainingMs,
+            totalMs,
+            correct,
+            empty: verdict === 'empty',
+          },
+          Math.random,
+        );
+        if (!correct && !result.empty) {
+          result = { ...result, reaction: prompt.bad || result.reaction };
+        } else if (correct) {
+          result = { ...result, reaction: prompt.good || result.reaction };
+        }
+      } else if (!offline && !result.empty) {
         const image = prompt.kind === 'draw' && draw?.dataUrl ? await downscaleImage(draw.dataUrl) : undefined;
         const audio =
           prompt.kind === 'sound' && sound?.usedMic && sound.blob ? await capAudio(sound.blob) : undefined;
@@ -246,7 +296,7 @@ export default function FakeGptGame() {
           {
             date: daily?.date ?? utcDate(),
             roundId: prompt.id,
-            kind: prompt.kind,
+            kind: prompt.kind === 'sound' ? 'sound' : 'draw',
             request: prompt.text,
             persona: prompt.persona ?? 'a impatient user',
             submittedInTime,
@@ -277,10 +327,14 @@ export default function FakeGptGame() {
           if (judgedRemote.messages[0]) result = { ...result, reaction: judgedRemote.messages.join(' ') };
         }
       }
-      if (!judged) {
+      if (!judged && prompt.kind !== 'mc' && prompt.kind !== 'typed') {
         result = {
           ...result,
-          reaction: empty ? result.reaction : result.thumbs === 'up' ? prompt.good ?? result.reaction : prompt.bad ?? result.reaction,
+          reaction: result.empty
+            ? result.reaction
+            : result.thumbs === 'up'
+              ? prompt.good ?? result.reaction
+              : prompt.bad ?? result.reaction,
         };
       }
       const artifact: Artifact = {
@@ -291,6 +345,8 @@ export default function FakeGptGame() {
         stars: result.stars,
         empty: result.empty,
         late: result.late,
+        playerAnswer: playerAnswer || (result.empty ? '' : undefined),
+        correctAnswer: prompt.answer,
         drawingUrl: draw?.dataUrl || undefined,
         audioUrl: sound?.usedMic && sound.blobUrl ? sound.blobUrl : undefined,
         replayHits: sound?.hits,
@@ -300,15 +356,17 @@ export default function FakeGptGame() {
       };
       const assistant: ChatMessage = result.empty
         ? { id: uid('miss'), role: 'assistant', kind: 'miss', text: '…' }
-        : prompt.kind === 'draw' && artifact.drawingUrl
-          ? { id: uid('draw'), role: 'assistant', kind: 'drawing', src: artifact.drawingUrl }
-          : {
-              id: uid('audio'),
-              role: 'assistant',
-              kind: 'audio',
-              src: artifact.audioUrl ?? '',
-              hits: artifact.replayHits,
-            };
+        : prompt.kind === 'mc' || prompt.kind === 'typed'
+          ? { id: uid('ans'), role: 'assistant', kind: 'answer', text: playerAnswer }
+          : prompt.kind === 'draw' && artifact.drawingUrl
+            ? { id: uid('draw'), role: 'assistant', kind: 'drawing', src: artifact.drawingUrl }
+            : {
+                id: uid('audio'),
+                role: 'assistant',
+                kind: 'audio',
+                src: artifact.audioUrl ?? '',
+                hits: artifact.replayHits,
+              };
       setMessages((current) => [...current, assistant]);
       setArtifacts((current) => [...current, artifact]);
       setPhase('rating');
@@ -322,7 +380,7 @@ export default function FakeGptGame() {
         setPhase('talking');
       }, 380);
     },
-    [beep, daily?.date, later, offline, phase, prompt, totalMs],
+    [beep, daily?.date, later, offline, phase, prompt, totalMs, typed],
   );
 
   useEffect(() => {
@@ -392,7 +450,7 @@ export default function FakeGptGame() {
           : phase === 'rating' || phase === 'talking'
             ? 'They are talking back'
             : prompt
-              ? `Round ${round + 1}/${queue.length} · ${prompt.kind === 'draw' ? 'Draw' : 'Sound'}`
+              ? `Round ${round + 1}/${queue.length} · ${prompt.kind === 'mc' ? 'Multiple choice' : prompt.kind === 'typed' ? 'Short answer' : prompt.kind === 'draw' ? 'Bonus draw' : 'Bonus sound'}`
               : 'Ready';
 
   const urgent = phase === 'responding' && remainingMs <= 5000;
@@ -419,7 +477,7 @@ export default function FakeGptGame() {
           }}
           className="pressable rounded-full border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--ink)]"
         >
-          {offline ? 'Offline' : 'Online judge'}
+          {offline ? 'Offline' : 'Online'}
         </button>
       }
       tight
@@ -450,12 +508,11 @@ export default function FakeGptGame() {
           {phase === 'intro' ? (
             <div className="space-y-3 text-sm leading-relaxed text-[var(--muted)]">
               <p className="fgpt-assistant">
-                Hello. I am not a model. You are. Today&apos;s weird humans share one daily set
-                ({formatUtcDate(daily?.date ?? utcDate())}). Draw or make the noise before the timer dies.
+                Hello. I am not a model. You are. Today&apos;s fake users share one trivia set
+                ({formatUtcDate(daily?.date ?? utcDate())}). Answer before the timer dies. A rare bonus may ask you to draw or hum.
               </p>
               <p className="fgpt-user">
-                If online judging is on, a downscaled drawing or short clip is sent to a Worker to score this round,
-                then discarded. Offline mode keeps everything on this device.
+                Multiple choice stays on this device. Typed answers are checked locally first. Offline mode never uploads.
               </p>
             </div>
           ) : null}
@@ -481,9 +538,49 @@ export default function FakeGptGame() {
 
         {phase === 'responding' && prompt ? (
           <div className="fgpt-composer">
-            {prompt.kind === 'draw' ? (
-              <DrawPad key={prompt.id} ref={drawRef} disabled={busy} />
-            ) : (
+            {prompt.kind === 'mc' ? (
+              <div className="fgpt-choices">
+                {prompt.options.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void finishRound(true, option)}
+                    className="fgpt-choice pressable"
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {prompt.kind === 'typed' ? (
+              <form
+                className="fgpt-typed"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void finishRound(true);
+                }}
+              >
+                <input
+                  value={typed}
+                  maxLength={80}
+                  onChange={(event) => setTyped(event.target.value)}
+                  placeholder="type it, fast"
+                  disabled={busy}
+                  className="min-w-0 flex-1 rounded-full border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm"
+                  aria-label="Short answer"
+                />
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="pressable rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm text-[var(--bg)] disabled:opacity-50"
+                >
+                  Send
+                </button>
+              </form>
+            ) : null}
+            {prompt.kind === 'draw' ? <DrawPad key={prompt.id} ref={drawRef} disabled={busy} /> : null}
+            {prompt.kind === 'sound' ? (
               <SoundPad
                 key={prompt.id}
                 ref={soundRef}
@@ -491,17 +588,19 @@ export default function FakeGptGame() {
                 preferredMode={micMode}
                 onMode={setMicMode}
               />
-            )}
-            <div className="flex justify-end px-3 pb-3">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void finishRound(true)}
-                className="pressable rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm text-[var(--bg)] disabled:opacity-50"
-              >
-                Send
-              </button>
-            </div>
+            ) : null}
+            {prompt.kind === 'draw' || prompt.kind === 'sound' ? (
+              <div className="flex justify-end px-3 pb-3">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void finishRound(true)}
+                  className="pressable rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm text-[var(--bg)] disabled:opacity-50"
+                >
+                  Send
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -544,17 +643,24 @@ export default function FakeGptGame() {
                     {item.prompt.kind} · {item.thumbs === 'up' ? 'thumbs up' : 'thumbs down'} · {item.points} pts
                   </p>
                   <p className="mt-1 text-sm text-[var(--ink)]">{item.prompt.text}</p>
+                  {item.correctAnswer ? (
+                    <p className="mt-1 text-sm text-[var(--muted)]">
+                      You: {item.playerAnswer || '…'} · Right: {item.correctAnswer}
+                    </p>
+                  ) : null}
                   <p className="mt-1 text-sm text-[var(--muted)]">{item.reaction}</p>
                   {item.seen ? <p className="mt-1 text-sm text-[var(--ink)]">I see: {item.seen}</p> : null}
                   {item.heard ? <p className="mt-1 text-sm text-[var(--ink)]">I heard: {item.heard}</p> : null}
-                  <div className="mt-3">
-                    {item.drawingUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.drawingUrl} alt="" className="fgpt-drawing" />
-                    ) : (
-                      <AudioBubble src={item.audioUrl} hits={item.replayHits} />
-                    )}
-                  </div>
+                  {item.drawingUrl || item.audioUrl || item.replayHits?.length ? (
+                    <div className="mt-3">
+                      {item.drawingUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.drawingUrl} alt="" className="fgpt-drawing" />
+                      ) : (
+                        <AudioBubble src={item.audioUrl} hits={item.replayHits} />
+                      )}
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>

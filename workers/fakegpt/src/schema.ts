@@ -1,13 +1,21 @@
-import { DAILY_ROUNDS, DAILY_ROUNDS_MAX, PLAYER_TEXT_MAX } from './models';
+import { matchChoice, normalizeAnswer } from '../../../components/games/fakegpt/match';
+import { DAILY_ROUNDS, DAILY_ROUNDS_MAX, MAX_BONUS_PER_RUN, PLAYER_TEXT_MAX } from './models';
 import { clipText, isUnsafeText, looksLikeInjection, sanitizeLine } from './safety';
 
-export type PromptKind = 'draw' | 'sound';
+export type PromptKind = 'mc' | 'typed' | 'draw' | 'sound';
+export type BonusKind = 'draw' | 'sound';
 
 export type DailyRound = {
   id: string;
   kind: PromptKind;
   text: string;
   persona: string;
+  vibe: string;
+  category: string;
+  difficulty: 1 | 2 | 3;
+  answer: string;
+  aliases: string[];
+  options: string[];
   nudges: string[];
   good: string;
   bad: string;
@@ -37,7 +45,7 @@ export type PadHit = {
 export type JudgeRequest = {
   date: string;
   roundId: string;
-  kind: PromptKind;
+  kind: BonusKind;
   request: string;
   persona: string;
   submittedInTime: boolean;
@@ -73,6 +81,22 @@ export type ChatResult = {
   fallback: boolean;
 };
 
+export type GradeRequest = {
+  date: string;
+  roundId: string;
+  persona: string;
+  question: string;
+  answer: string;
+  aliases: string[];
+  playerText: string;
+};
+
+export type GradeResult = {
+  correct: boolean;
+  reason: string;
+  fallback: boolean;
+};
+
 export function utcDate(now = Date.now()): string {
   return new Date(now).toISOString().slice(0, 10);
 }
@@ -97,7 +121,62 @@ export function dateSeed(date: string): number {
 }
 
 function asKind(value: unknown): PromptKind | null {
+  return value === 'mc' || value === 'typed' || value === 'draw' || value === 'sound' ? value : null;
+}
+
+function asBonusKind(value: unknown): BonusKind | null {
   return value === 'draw' || value === 'sound' ? value : null;
+}
+
+function asDifficulty(value: unknown): 1 | 2 | 3 {
+  const n = Math.round(Number(value));
+  if (n <= 1) return 1;
+  if (n >= 3) return 3;
+  return 2;
+}
+
+export function parseDailyRound(raw: unknown): DailyRound | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  const kind = asKind(row.kind);
+  const text = sanitizeLine(row.text, 160);
+  const answer = sanitizeLine(row.answer, 80);
+  const persona = sanitizeLine(row.persona, 40) || 'a impatient user';
+  if (!kind || text.length < 8 || answer.length < 1) return null;
+  const id = sanitizeLine(row.id, 32).replace(/[^a-z0-9-]/gi, '');
+  if (!id) return null;
+  const aliases = (Array.isArray(row.aliases) ? row.aliases : [])
+    .map((alias) => sanitizeLine(alias, 80))
+    .filter(Boolean)
+    .slice(0, 6);
+  const options = (Array.isArray(row.options) ? row.options : [])
+    .map((option) => sanitizeLine(option, 80))
+    .filter(Boolean)
+    .slice(0, 4);
+  if (kind === 'mc') {
+    if (options.length !== 4) return null;
+    const hits = options.filter((option) => matchChoice(option, answer)).length;
+    if (hits !== 1) return null;
+  }
+  const nudges = (Array.isArray(row.nudges) ? row.nudges : [])
+    .map((nudge) => sanitizeLine(nudge, 80))
+    .filter(Boolean)
+    .slice(0, 3);
+  return {
+    id,
+    kind,
+    text,
+    persona,
+    vibe: sanitizeLine(row.vibe, 80) || 'impatient, funny, slightly unhinged',
+    category: sanitizeLine(row.category, 24) || 'general',
+    difficulty: asDifficulty(row.difficulty),
+    answer,
+    aliases,
+    options: kind === 'mc' ? options : [],
+    nudges: nudges.length ? nudges : ['hello??', 'are you still generating?'],
+    good: sanitizeLine(row.good, 160) || 'ok the model remembered a fact. rare.',
+    bad: sanitizeLine(row.bad, 160) || `that's a hallucination, buddy. it's ${answer}.`,
+  };
 }
 
 export function validateDailySet(raw: unknown, date: string): DailySet | null {
@@ -106,42 +185,33 @@ export function validateDailySet(raw: unknown, date: string): DailySet | null {
   const roundsIn = Array.isArray(input.rounds) ? input.rounds : [];
   const rounds: DailyRound[] = [];
   const ids = new Set<string>();
+  const answers = new Set<string>();
 
   for (let i = 0; i < roundsIn.length && rounds.length < DAILY_ROUNDS_MAX; i += 1) {
-    const item = roundsIn[i];
-    if (!item || typeof item !== 'object') continue;
-    const row = item as Record<string, unknown>;
-    const kind = asKind(row.kind);
-    const text = sanitizeLine(row.text, 160);
-    const persona = sanitizeLine(row.persona, 40) || 'a impatient user';
-    if (!kind || text.length < 8) continue;
-    const id = sanitizeLine(row.id, 32).replace(/[^a-z0-9-]/gi, '') || `r${rounds.length + 1}`;
-    if (ids.has(id)) continue;
-    ids.add(id);
-    const nudges = (Array.isArray(row.nudges) ? row.nudges : [])
-      .map((nudge) => sanitizeLine(nudge, 80))
-      .filter(Boolean)
-      .slice(0, 3);
-    rounds.push({
-      id,
-      kind,
-      text,
-      persona,
-      nudges: nudges.length ? nudges : ['hello??', 'are you still generating?'],
-      good: sanitizeLine(row.good, 160) || 'ok wait. this slaps.',
-      bad: sanitizeLine(row.bad, 160) || 'i asked for wonder and received a shrug.',
-    });
+    const parsed = parseDailyRound(roundsIn[i]);
+    if (!parsed) continue;
+    if (ids.has(parsed.id)) continue;
+    const answerKey = normalizeAnswer(parsed.answer);
+    if (parsed.kind !== 'draw' && parsed.kind !== 'sound' && answers.has(answerKey)) continue;
+    ids.add(parsed.id);
+    if (answerKey) answers.add(answerKey);
+    rounds.push(parsed);
   }
 
-  if (rounds.length < DAILY_ROUNDS) return null;
-  const draws = rounds.filter((round) => round.kind === 'draw').length;
-  const sounds = rounds.filter((round) => round.kind === 'sound').length;
-  if (draws < 2 || sounds < 2) return null;
+  const picked = rounds.slice(0, DAILY_ROUNDS);
+  if (picked.length < DAILY_ROUNDS) return null;
+  const bonus = picked.filter((round) => round.kind === 'draw' || round.kind === 'sound').length;
+  const mc = picked.filter((round) => round.kind === 'mc').length;
+  const typed = picked.filter((round) => round.kind === 'typed').length;
+  if (bonus > MAX_BONUS_PER_RUN) return null;
+  if (mc < 2 || typed < 2) return null;
+  const categories = new Set(picked.map((round) => round.category));
+  if (categories.size < 3) return null;
 
   return {
     date,
     source: input.source === 'fallback' ? 'fallback' : 'ai',
-    rounds: rounds.slice(0, DAILY_ROUNDS),
+    rounds: picked,
   };
 }
 
@@ -149,7 +219,7 @@ export function parseJudgeRequest(raw: unknown): { ok: true; value: JudgeRequest
   if (!raw || typeof raw !== 'object') return { ok: false, error: 'invalid' };
   const input = raw as Record<string, unknown>;
   if (!isUtcDate(input.date)) return { ok: false, error: 'date' };
-  const kind = asKind(input.kind);
+  const kind = asBonusKind(input.kind);
   if (!kind) return { ok: false, error: 'kind' };
   const request = sanitizeLine(input.request, 160);
   if (request.length < 8) return { ok: false, error: 'request' };
@@ -242,6 +312,45 @@ export function parseChatRequest(raw: unknown): { ok: true; value: ChatRequest }
       playerText,
       history,
     },
+  };
+}
+
+export function parseGradeRequest(raw: unknown): { ok: true; value: GradeRequest } | { ok: false; error: string } {
+  if (!raw || typeof raw !== 'object') return { ok: false, error: 'invalid' };
+  const input = raw as Record<string, unknown>;
+  if (!isUtcDate(input.date)) return { ok: false, error: 'date' };
+  const playerText = clipText(input.playerText, 80);
+  if (playerText.length < 1) return { ok: false, error: 'text' };
+  if (isUnsafeText(playerText) || looksLikeInjection(playerText)) return { ok: false, error: 'unsafe' };
+  const question = sanitizeLine(input.question, 160);
+  const answer = sanitizeLine(input.answer, 80);
+  if (question.length < 8 || !answer) return { ok: false, error: 'question' };
+  const aliases = (Array.isArray(input.aliases) ? input.aliases : [])
+    .map((alias) => sanitizeLine(alias, 80))
+    .filter(Boolean)
+    .slice(0, 6);
+  return {
+    ok: true,
+    value: {
+      date: input.date,
+      roundId: sanitizeLine(input.roundId, 32) || 'round',
+      persona: sanitizeLine(input.persona, 40) || 'a impatient user',
+      question,
+      answer,
+      aliases,
+      playerText,
+    },
+  };
+}
+
+export function validateGradeResult(raw: unknown): GradeResult | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const input = raw as Record<string, unknown>;
+  if (typeof input.correct !== 'boolean' && input.correct !== 'true' && input.correct !== 'false') return null;
+  return {
+    correct: input.correct === true || input.correct === 'true',
+    reason: sanitizeLine(input.reason, 120),
+    fallback: Boolean(input.fallback),
   };
 }
 

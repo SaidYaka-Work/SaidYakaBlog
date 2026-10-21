@@ -4,7 +4,7 @@ import { SOCIAL, defaultOgImage, englishUrl } from '@/lib/site';
 
 const title = 'FakeGPT';
 const description =
-  'You are the chatbot. Weird humans ask you to draw things or make noises before the timer runs out.';
+  'You are the chatbot. Fake users quiz you with daily trivia before the timer runs out.';
 const url = englishUrl('/fakegpt');
 
 export const metadata: Metadata = {

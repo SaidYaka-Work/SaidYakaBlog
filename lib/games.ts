@@ -42,11 +42,11 @@ export const games: GameMeta[] = [
   {
     slug: 'fakegpt',
     title: 'FakeGPT',
-    tagline: 'You are the chatbot. Draw or honk before the user rage-quits.',
+    tagline: 'You are the chatbot. Answer before the user rage-quits.',
     description:
-      'A daily parody chat toy: everyone gets the same weird requests. Draw or make the noise; a cheap Worker model can judge, or stay offline.',
+      'A daily parody chat: fake users quiz the GPT (you). Tap a choice or type fast. Rare bonus rounds still ask you to draw or hum. Offline mode never leaves the browser.',
     howTo:
-      'Start a chat. Today\'s eight requests are shared. Draw or make the sound before the timer dies. Online judging sends a downscaled sketch or short clip to a Worker, then discards it. Offline mode never leaves the browser.',
+      'Start a chat. Today\'s trivia is shared. Answer before the timer dies. Multiple choice is local. Typed answers are checked on device first. A rare bonus round may ask you to draw or make a sound.',
     genre: 'Daily',
     kind: 'react',
     href: englishPath('/fakegpt'),

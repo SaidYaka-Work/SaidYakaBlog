@@ -26,7 +26,7 @@ export default function GamesPage() {
       <h1 className="hero-title mt-3 font-serif text-5xl tracking-tight sm:text-6xl">Play</h1>
       <p className="hero-copy mt-5 max-w-xl text-lg text-[var(--muted)]">
         A running shelf for experiments, arcade distractions, and odd little browser toys — including
-        FakeGPT, where you are the impatient chatbot. A new one lands most days.
+        FakeGPT, where you are the chatbot taking trivia from impatient users. A new set lands most days.
       </p>
       {dailies.length ? (
         <section className="mt-12">

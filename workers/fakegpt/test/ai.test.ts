@@ -39,7 +39,7 @@ test('generateDailySet uses JSON schema and accepts an object response', async (
     {
       async run(name, input) {
         model = name;
-        seen = input;
+        if (Number(input.max_tokens) === TEXT_MAX_TOKENS_DAILY) seen = input;
         return { response: { rounds: valid.rounds } };
       },
     },
@@ -55,8 +55,8 @@ test('generateDailySet uses JSON schema and accepts an object response', async (
 });
 
 test('text token caps leave headroom above live daily usage', () => {
-  assert.equal(TEXT_MAX_TOKENS_DAILY, 900);
-  assert.ok(TEXT_MAX_TOKENS_DAILY > 388);
+  assert.equal(TEXT_MAX_TOKENS_DAILY, 1600);
+  assert.ok(TEXT_MAX_TOKENS_DAILY > 900);
   assert.ok(TEXT_MAX_TOKENS_JUDGE >= 240);
   assert.ok(TEXT_MAX_TOKENS_CHAT >= 160);
   assert.ok(TEXT_MAX_TOKENS_JUDGE > TEXT_MAX_TOKENS_CHAT);

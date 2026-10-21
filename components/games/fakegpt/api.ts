@@ -3,11 +3,14 @@ import { fallbackDailySet } from '../../../workers/fakegpt/src/fallback';
 import {
   type ChatResult,
   type DailySet,
+  type GradeRequest,
+  type GradeResult,
   type JudgeRequest,
   type JudgeResult,
   utcDate,
   validateChatResult,
   validateDailySet,
+  validateGradeResult,
   validateJudgeResult,
 } from '../../../workers/fakegpt/src/schema';
 
@@ -61,6 +64,22 @@ export async function requestJudge(body: JudgeRequest, offline: boolean): Promis
     if (!parsed || parsed.fallback) return parsed?.fallback ? { ...parsed, fallback: true } : null;
     return parsed;
   });
+}
+
+export async function requestGrade(body: GradeRequest, offline: boolean): Promise<GradeResult | null> {
+  if (offline) return null;
+  const base = fakegptWorkerUrl();
+  if (!base) return null;
+  return withTimeout(async (signal) => {
+    const response = await fetch(`${base}/grade`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal,
+    });
+    if (!response.ok) return null;
+    return validateGradeResult(await response.json());
+  }, 4000);
 }
 
 export async function requestChat(

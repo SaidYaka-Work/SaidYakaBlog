@@ -148,7 +148,7 @@ export default async function HomePage() {
               <p className="text-xs uppercase tracking-[0.16em] text-[var(--accent)]">Arcade</p>
               <p className="mt-2 font-serif text-2xl tracking-tight">You are FakeGPT</p>
               <p className="mt-1 text-sm text-[var(--muted)]">
-                Weird humans ask you to draw things and make noises. The timer is not kind.
+                Fake users quiz the GPT (you). Tap or type before the timer dies. Rare bonus: draw or hum.
               </p>
             </div>
             <span className="text-sm text-[var(--ink)]">Open a chat →</span>

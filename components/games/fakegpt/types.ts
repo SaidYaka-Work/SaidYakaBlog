@@ -1,14 +1,7 @@
-export type PromptKind = 'draw' | 'sound';
+import type { DailyRound, PromptKind } from '../../../workers/fakegpt/src/schema';
 
-export type Prompt = {
-  id: string;
-  kind: PromptKind;
-  text: string;
-  persona?: string;
-  nudges?: string[];
-  good?: string;
-  bad?: string;
-};
+export type { PromptKind };
+export type Prompt = DailyRound;
 
 export type Thumbs = 'up' | 'down';
 
@@ -23,6 +16,8 @@ export type RoundAttempt = {
   audioMs: number;
   peakLevel: number;
   padHits: number;
+  correct?: boolean;
+  empty?: boolean;
 };
 
 export type ScoreResult = {
@@ -43,6 +38,8 @@ export type Artifact = {
   stars: number;
   empty: boolean;
   late: boolean;
+  playerAnswer?: string;
+  correctAnswer?: string;
   drawingUrl?: string;
   audioUrl?: string;
   replayHits?: SynthHit[];
@@ -65,4 +62,5 @@ export type ChatMessage =
   | { id: string; role: 'user'; kind: 'rating'; thumbs: Thumbs; text: string }
   | { id: string; role: 'assistant'; kind: 'drawing'; src: string }
   | { id: string; role: 'assistant'; kind: 'audio'; src: string; hits?: SynthHit[] }
+  | { id: string; role: 'assistant'; kind: 'answer'; text: string }
   | { id: string; role: 'assistant'; kind: 'miss'; text: string };

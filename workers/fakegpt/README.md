@@ -1,6 +1,6 @@
 # FakeGPT Worker
 
-Daily challenge prompts, drawing/sound judging, and short in-character chat for `/en/fakegpt/`.
+Daily trivia set, rare draw/sound bonus judging, typed-answer grading, and short in-character chat for `/en/fakegpt/`.
 
 Nothing the player makes is stored. Images and audio are scored in memory and discarded.
 
@@ -50,13 +50,14 @@ npx wrangler dev --port 8788
 
 Point the site at it with `NEXT_PUBLIC_FAKEGPT_WORKER_URL=http://127.0.0.1:8788`.
 
-If Workers AI is unavailable locally, `/daily`, `/judge`, and `/chat` still return a validated fallback so the game never blocks.
+If Workers AI is unavailable locally, `/daily`, `/judge`, `/grade`, and `/chat` still return a validated fallback so the game never blocks.
 
 ## Endpoints
 
 - `GET /health`
 - `GET /daily?date=YYYY-MM-DD` (defaults to today UTC)
-- `POST /judge` drawing/audio/soundboard scoring
+- `POST /grade` yes/no grade for an ambiguous typed answer
+- `POST /judge` drawing/audio/soundboard scoring (bonus rounds)
 - `POST /chat` one short persona reply
 
-Rate limits (KV): 24 judge / 40 chat / 60 daily reads per IP per hour. Global cap: 280 AI calls/UTC day, then fallback.
+Rate limits (KV): 24 judge / 30 grade / 40 chat / 60 daily reads per IP per hour. Global cap: 280 AI calls/UTC day, then fallback.

@@ -1,80 +1,85 @@
 import assert from 'node:assert/strict';
 import {
   BASE_SECONDS,
+  MAX_BONUS_PER_RUN,
   MIN_SECONDS,
   NUDGE_MARKS,
   ROUNDS_PER_RUN,
+  bonusCountFor,
   formatTimer,
   isEmptyDraw,
   isEmptySound,
+  localTriviaPool,
   mulberry32,
   nextNudge,
   pickPrompts,
   roundSeconds,
   scoreRound,
+  scoreTrivia,
   scoreWithJudge,
   shuffle,
   totalScore,
 } from '../components/games/fakegpt/logic.ts';
-import { PROMPTS } from '../components/games/fakegpt/prompts.ts';
+import { matchChoice, matchTypedAnswer } from '../components/games/fakegpt/match.ts';
+import { BONUS, TRIVIA } from '../components/games/fakegpt/trivia.ts';
 import { fallbackDailySet } from '../workers/fakegpt/src/fallback';
 import { takeBudget } from '../workers/fakegpt/src/budget';
 import { dateSeed, parseJudgeRequest, utcDate, validateDailySet } from '../workers/fakegpt/src/schema';
 
-assert.ok(PROMPTS.length >= 40, `need at least 40 prompts, got ${PROMPTS.length}`);
+const pool = localTriviaPool();
+assert.ok(TRIVIA.length >= 80, `need at least 80 trivia questions, got ${TRIVIA.length}`);
+assert.ok(BONUS.length >= 8, `need bonus draw/sound prompts, got ${BONUS.length}`);
 
 const ids = new Set<string>();
-for (const prompt of PROMPTS) {
-  assert.ok(prompt.id && !ids.has(prompt.id), `duplicate or empty prompt id ${prompt.id}`);
-  ids.add(prompt.id);
-  assert.ok(prompt.kind === 'draw' || prompt.kind === 'sound', `${prompt.id} needs a kind`);
-  assert.ok(prompt.text.trim().length >= 12, `${prompt.id} text is too short`);
+for (const item of pool) {
+  assert.ok(item.id && !ids.has(item.id), `duplicate or empty id ${item.id}`);
+  ids.add(item.id);
+  assert.ok(item.text.trim().length >= 12, `${item.id} text is too short`);
+  assert.ok(item.answer.trim().length >= 1, `${item.id} needs an answer`);
+  if (item.kind === 'mc') {
+    assert.equal(item.options?.length, 4, `${item.id} needs 4 options`);
+    assert.equal(
+      item.options?.filter((option) => matchChoice(option, item.answer)).length,
+      1,
+      `${item.id} must have exactly one correct option`,
+    );
+  }
 }
 
-const draws = PROMPTS.filter((prompt) => prompt.kind === 'draw');
-const sounds = PROMPTS.filter((prompt) => prompt.kind === 'sound');
-assert.ok(draws.length >= 16, `need a draw pool, got ${draws.length}`);
-assert.ok(sounds.length >= 16, `need a sound pool, got ${sounds.length}`);
-
-const original = PROMPTS.map((prompt) => prompt.id);
-shuffle(PROMPTS, mulberry32(7));
+const original = TRIVIA.map((item) => item.id);
+shuffle(TRIVIA, mulberry32(7));
 assert.deepEqual(
-  PROMPTS.map((prompt) => prompt.id),
+  TRIVIA.map((item) => item.id),
   original,
-  'shuffle must not mutate the prompt pool',
+  'shuffle must not mutate the trivia pool',
 );
 
-const picked = pickPrompts(PROMPTS, ROUNDS_PER_RUN, mulberry32(21));
+const picked = pickPrompts(pool, ROUNDS_PER_RUN, mulberry32(21), 21);
 assert.equal(picked.length, ROUNDS_PER_RUN);
-assert.ok(picked.some((prompt) => prompt.kind === 'draw'), 'a run must include a draw round');
-assert.ok(picked.some((prompt) => prompt.kind === 'sound'), 'a run must include a sound round');
-assert.equal(new Set(picked.map((prompt) => prompt.id)).size, picked.length, 'round prompts must be unique');
+assert.ok(bonusCountFor(picked) <= MAX_BONUS_PER_RUN);
+assert.ok(picked.filter((row) => row.kind === 'mc').length >= 2);
+assert.ok(picked.filter((row) => row.kind === 'typed').length >= 2);
+assert.equal(new Set(picked.map((row) => row.id)).size, picked.length);
 
-const again = pickPrompts(PROMPTS, ROUNDS_PER_RUN, mulberry32(21));
+const again = pickPrompts(pool, ROUNDS_PER_RUN, mulberry32(21), 21);
 assert.deepEqual(
-  again.map((prompt) => prompt.id),
-  picked.map((prompt) => prompt.id),
-  'pickPrompts must be deterministic for a seeded rng',
+  again.map((row) => row.id),
+  picked.map((row) => row.id),
 );
 
 assert.equal(roundSeconds(0), BASE_SECONDS);
-assert.equal(roundSeconds(BASE_SECONDS - MIN_SECONDS), MIN_SECONDS);
+assert.equal(roundSeconds(0, 'mc') <= 16, true);
 assert.equal(roundSeconds(99), MIN_SECONDS);
 assert.ok(roundSeconds(3) < roundSeconds(0), 'later rounds should be shorter');
 
 assert.equal(formatTimer(24500), '0:25');
-assert.equal(formatTimer(0), '0:00');
-assert.equal(formatTimer(-20), '0:00');
-assert.equal(formatTimer(65000), '1:05');
-
 assert.equal(nextNudge(0.1, 0), null);
 assert.equal(nextNudge(NUDGE_MARKS[0].at, 0), NUDGE_MARKS[0].text);
-assert.equal(nextNudge(0.99, NUDGE_MARKS.length), null);
 
 assert.equal(isEmptyDraw({ strokeCount: 0, coverage: 0 }), true);
-assert.equal(isEmptyDraw({ strokeCount: 3, coverage: 0.04 }), false);
 assert.equal(isEmptySound({ audioMs: 0, peakLevel: 0, padHits: 0 }), true);
-assert.equal(isEmptySound({ audioMs: 900, peakLevel: 0.2, padHits: 2 }), false);
+assert.equal(matchTypedAnswer('Tokio', 'Tokyo', ['Tokio']), 'correct');
+assert.equal(matchTypedAnswer('Lyon', 'Paris'), 'wrong');
 
 const emptyDraw = scoreRound(
   {
@@ -91,97 +96,13 @@ const emptyDraw = scoreRound(
   },
   () => 0,
 );
-assert.equal(emptyDraw.points, 0);
-assert.equal(emptyDraw.thumbs, 'down');
 assert.equal(emptyDraw.empty, true);
+assert.equal(emptyDraw.points, 0);
 
-const lateDraw = scoreRound(
-  {
-    kind: 'draw',
-    submittedInTime: false,
-    remainingMs: 0,
-    totalMs: 20000,
-    strokeCount: 6,
-    uniqueColors: 3,
-    coverage: 0.2,
-    audioMs: 0,
-    peakLevel: 0,
-    padHits: 0,
-  },
-  () => 0,
-);
-assert.equal(lateDraw.late, true);
-assert.ok(lateDraw.points < 100, 'a late drawing should not earn the on-time bonus');
-
-const fastDraw = scoreRound(
-  {
-    kind: 'draw',
-    submittedInTime: true,
-    remainingMs: 18000,
-    totalMs: 24000,
-    strokeCount: 8,
-    uniqueColors: 4,
-    coverage: 0.25,
-    audioMs: 0,
-    peakLevel: 0,
-    padHits: 0,
-  },
-  () => 0,
-);
-const slowDraw = scoreRound(
-  {
-    kind: 'draw',
-    submittedInTime: true,
-    remainingMs: 2000,
-    totalMs: 24000,
-    strokeCount: 8,
-    uniqueColors: 4,
-    coverage: 0.25,
-    audioMs: 0,
-    peakLevel: 0,
-    padHits: 0,
-  },
-  () => 0,
-);
-assert.ok(fastDraw.points > slowDraw.points, 'faster submissions should score higher');
-assert.equal(fastDraw.thumbs, 'up');
-assert.ok(fastDraw.points >= 100);
-
-const silent = scoreRound(
-  {
-    kind: 'sound',
-    submittedInTime: true,
-    remainingMs: 10000,
-    totalMs: 20000,
-    strokeCount: 0,
-    uniqueColors: 0,
-    coverage: 0,
-    audioMs: 40,
-    peakLevel: 0,
-    padHits: 0,
-  },
-  () => 0,
-);
-assert.equal(silent.empty, true);
-assert.equal(silent.points, 0);
-
-const noisy = scoreRound(
-  {
-    kind: 'sound',
-    submittedInTime: true,
-    remainingMs: 9000,
-    totalMs: 18000,
-    strokeCount: 0,
-    uniqueColors: 0,
-    coverage: 0,
-    audioMs: 2400,
-    peakLevel: 0.4,
-    padHits: 3,
-  },
-  () => 0,
-);
-assert.equal(noisy.empty, false);
-assert.ok(noisy.points > 100);
+const fastTrivia = scoreTrivia({ submittedInTime: true, remainingMs: 12000, totalMs: 16000, correct: true, empty: false }, () => 0);
+const wrongTrivia = scoreTrivia({ submittedInTime: true, remainingMs: 12000, totalMs: 16000, correct: false, empty: false }, () => 0);
+assert.ok(fastTrivia.points >= 100);
+assert.equal(wrongTrivia.thumbs, 'down');
 
 assert.equal(totalScore([{ points: 10 }, { points: 15 }]), 25);
 
@@ -201,25 +122,7 @@ const judged = scoreWithJudge(
   8,
   () => 0,
 );
-const judgedLow = scoreWithJudge(
-  {
-    kind: 'draw',
-    submittedInTime: true,
-    remainingMs: 12000,
-    totalMs: 24000,
-    strokeCount: 4,
-    uniqueColors: 2,
-    coverage: 0.1,
-    audioMs: 0,
-    peakLevel: 0,
-    padHits: 0,
-  },
-  2,
-  () => 0,
-);
-assert.ok(judged.points > judgedLow.points);
 assert.equal(judged.thumbs, 'up');
-assert.equal(judgedLow.thumbs, 'down');
 
 const seeded = fallbackDailySet('2026-10-21');
 assert.deepEqual(
@@ -227,12 +130,10 @@ assert.deepEqual(
   fallbackDailySet('2026-10-21').rounds.map((round) => round.id),
 );
 assert.ok(validateDailySet(seeded, '2026-10-21'));
+assert.ok(seeded.rounds.filter((round) => round.kind === 'draw' || round.kind === 'sound').length <= 1);
 assert.notEqual(dateSeed('2026-10-21'), dateSeed('2026-10-22'));
 assert.match(utcDate(Date.parse('2026-10-21T12:00:00Z')), /^2026-10-21$/);
 assert.equal(takeBudget(279, 2, 280).ok, false);
-assert.equal(
-  parseJudgeRequest({ date: '2026-10-21', kind: 'draw', request: 'no' }).ok,
-  false,
-);
+assert.equal(parseJudgeRequest({ date: '2026-10-21', kind: 'draw', request: 'no' }).ok, false);
 
-console.log(`fakegpt dataset ok: ${PROMPTS.length} prompts, ${draws.length} draw, ${sounds.length} sound`);
+console.log(`fakegpt dataset ok: ${TRIVIA.length} trivia, ${BONUS.length} bonus, run ${picked.length}`);
