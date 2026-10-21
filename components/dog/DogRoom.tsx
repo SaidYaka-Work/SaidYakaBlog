@@ -61,6 +61,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const worker = dogWorkerUrl();
   const [snapshot, setSnapshot] = useState<DogSnapshot | null>(null);
   const [connected, setConnected] = useState(false);
+  const [reach, setReach] = useState<'unknown' | 'up' | 'down'>(worker ? 'unknown' : 'down');
   const [play, setPlay] = useState<PlayKind>(null);
   const [playId, setPlayId] = useState<string | null>(null);
   const [reaction, setReaction] = useState<Reaction>('idle');
@@ -183,25 +184,49 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const apply = useCallback((data: DogSnapshot) => {
     setSnapshot(data);
     setConnected(true);
+    setReach('up');
     setProgress((value) => Math.max(value, 78));
   }, []);
 
   useEffect(() => {
     if (!worker) {
+      setReach('down');
       setProgress((value) => Math.max(value, 70));
       return;
     }
     let closed = false;
-    let pause = 800;
+    let wsPause = 800;
+    let statePause = 800;
+    let stateTimer = 0;
+
+    const pullState = async () => {
+      try {
+        const response = await fetch(`${worker}/state`);
+        if (!response.ok) throw new Error('state');
+        const data = (await response.json()) as DogSnapshot;
+        if (closed) return;
+        if (data?.type === 'state') apply(data);
+        else throw new Error('state');
+        statePause = 800;
+      } catch {
+        if (closed) return;
+        setReach('down');
+        stateTimer = window.setTimeout(pullState, statePause);
+        statePause = Math.min(15_000, Math.round(statePause * 1.6));
+      }
+    };
+
     const open = () => {
+      void pullState();
       const ws = new WebSocket(dogWsUrl());
       socket.current = ws;
       ws.onopen = () => {
-        pause = 800;
+        wsPause = 800;
+        setReach('up');
         ws.send(JSON.stringify({ type: 'hello' }));
       };
       ws.onmessage = (event) => {
-        const message = JSON.parse(event.data) as
+        let message:
           | DogSnapshot
           | { type: 'play'; playId: string; game: PlayKind }
           | { type: 'error'; code: string; text?: string }
@@ -209,18 +234,26 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           | { type: 'name-please'; until: number }
           | { type: 'welcome'; clientId: string }
           | { type: 'pose'; pose?: DogSnapshot['pose']; leash?: DogSnapshot['leash']; feeder?: DogSnapshot['feeder']; location?: DogSnapshot['location'] };
+        try {
+          message = JSON.parse(event.data) as typeof message;
+        } catch {
+          setReach('down');
+          return;
+        }
         if (message.type === 'welcome') {
           setClientId(message.clientId);
         }
         if (message.type === 'pose') {
+          const pose = message;
+          setReach('up');
           setSnapshot((current) =>
             current
               ? {
                   ...current,
-                  pose: message.pose ?? current.pose,
-                  leash: message.leash ?? current.leash,
-                  feeder: message.feeder ?? current.feeder,
-                  location: message.location ?? current.location,
+                  pose: pose.pose ?? current.pose,
+                  leash: pose.leash ?? current.leash,
+                  feeder: pose.feeder ?? current.feeder,
+                  location: pose.location ?? current.location,
                 }
               : current,
           );
@@ -260,16 +293,21 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           }
         }
       };
+      ws.onerror = () => {
+        setReach('down');
+      };
       ws.onclose = () => {
         setConnected(false);
+        setReach('down');
         if (closed) return;
-        window.setTimeout(open, pause);
-        pause = Math.min(8_000, pause * 1.6);
+        window.setTimeout(open, wsPause);
+        wsPause = Math.min(8_000, Math.round(wsPause * 1.6));
       };
     };
     open();
     return () => {
       closed = true;
+      window.clearTimeout(stateTimer);
       socket.current?.close();
     };
   }, [apply, pushToast, worker]);
@@ -281,10 +319,18 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   }
 
   function start(game: Exclude<PlayKind, null>) {
+    if (reach === 'down' || !worker) return;
+    if (game === 'catch' && !snapshot?.awaitingCatch) return;
+    if (game === 'catch' && reach !== 'up') return;
     send({ type: 'start', game });
   }
 
   function finish(score: number) {
+    if (play === 'catch' && (reach !== 'up' || !snapshot?.awaitingCatch)) {
+      setPlay(null);
+      setPlayId(null);
+      return;
+    }
     if (playId) send({ type: 'finish', playId, score });
     if (play === 'walk') {
       setReaction('walk');
@@ -300,6 +346,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   }
 
   function pickName(nameId: string) {
+    if (reach !== 'up' || !snapshot?.awaitingName) return;
     send({ type: 'name', nameId });
   }
 
@@ -315,10 +362,12 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
     });
   }
 
-  const napping = !worker || !connected;
-  const dog = snapshot?.dog ?? null;
   const previewing = Boolean(preview) && preview !== 'start' && preview !== 'hall';
+  const napping = !previewing && (!worker || reach === 'down');
+  const serverUp = reach === 'up';
+  const dog = snapshot?.dog ?? null;
   const awaitingName = Boolean(snapshot?.awaitingName);
+  const awaitingCatch = Boolean(serverUp && snapshot?.awaitingCatch && !dog);
   const shownName = dog?.profile.name || (awaitingName ? 'A new dog' : snapshot?.memorial?.profile.name || 'Biscuit');
   const hungry = preview === 'hungry' || preview === 'eat' || Boolean(dog?.care.feedOverdue) || (dog?.care.hunger ?? 0) > 70;
   const wantsWalk = preview === 'hungry' || Boolean(dog?.care.walkOverdue) || (dog?.care.walkNeed ?? 0) > 70;
@@ -573,7 +622,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           sad={preview === 'sad'}
           interactive={previewing}
           fill
-          empty={!napping && !previewing}
+          empty={!napping && !previewing && awaitingCatch}
           food={preview === 'eat'}
           near={inRange}
           world={worldView}
@@ -595,8 +644,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           hungry={hungry && Boolean(dog || previewing)}
           wantsWalk={wantsWalk && Boolean(dog || previewing)}
           muted={muted}
-          empty={!dog && !previewing}
-          busy={Boolean(overlay)}
+          empty={awaitingCatch && !previewing}
+          busy={Boolean(overlay) || napping}
           toasts={toasts}
           visitorWalking={visitorWalking}
           hint={hint}
@@ -618,7 +667,10 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           }}
           onFeed={feedHim}
           onHall={() => setPanel('hall')}
-          onCatch={() => start('catch')}
+          onCatch={() => {
+            if (napping || !awaitingCatch) return;
+            start('catch');
+          }}
           onStick={setStick}
           onHome={goHome}
           onTravel={goTravel}
@@ -658,12 +710,24 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           />
         </Overlay>
       )}
-      {play === 'catch' && (
+      {play === 'catch' && !napping && awaitingCatch && (
         <Overlay title="Catch a dog" onClose={() => finish(0)}>
           <CatchGame onDone={(score) => finish(score)} />
         </Overlay>
       )}
-      {awaitingName && canName && (
+      {napping && playing && (
+        <div className="dog-overlay dog-nap" role="status">
+          <div className="dog-modal">
+            <div className="dog-modal-head">
+              <h2>Biscuit is napping</h2>
+            </div>
+            <div className="dog-modal-body">
+              <p>back soon</p>
+            </div>
+          </div>
+        </div>
+      )}
+      {awaitingName && canName && !napping && (
         <Overlay title="Name him" onClose={() => setPanel(null)}>
           <NamePicker
             until={snapshot?.nameUntil ?? null}
