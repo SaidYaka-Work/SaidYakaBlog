@@ -438,10 +438,10 @@ function stampInstances(mesh: InstancedMesh | null, place: (dummy: Object3D, i: 
   mesh.computeBoundingSphere();
 }
 
-const LEAF_DAY = ['#4a7a3e', '#5c8a48', '#3f6e36', '#6a944c', '#547844', '#4e823c'];
-const LEAF_NIGHT = ['#6e8c4e', '#7a9a58', '#5f7a42', '#889e62', '#6a8648'];
-const BUSH_DAY = ['#3f6a38', '#4a7640', '#356034', '#527848'];
-const BUSH_NIGHT = ['#5a7a46', '#4e6e3e', '#678454', '#567044'];
+const LEAF_DAY = ['#4a7a3e', '#6a944c', '#3f6e36', '#8aaa58', '#547844', '#c4b05a', '#3a6a42', '#7a9e46'];
+const LEAF_NIGHT = ['#7a9a58', '#9ab46a', '#5f7a42', '#c0b46a', '#6a8648', '#88a85c', '#4e6e3c'];
+const BUSH_DAY = ['#3f6a38', '#4a7640', '#356034', '#6a8a48', '#527848'];
+const BUSH_NIGHT = ['#5a7a46', '#4e6e3e', '#678454', '#7a9258', '#567044'];
 
 function stampColors(mesh: InstancedMesh | null, plants: Plant[], palette: string[]) {
   if (!mesh) return;
@@ -477,7 +477,8 @@ function Forest({ plants, night }: { plants: Plant[]; night: boolean }) {
       (dummy, i) => {
         const tree = nextTrees[i];
         dummy.position.set(tree.x, 2.55 * tree.s, tree.z);
-        dummy.scale.setScalar(tree.s);
+        dummy.scale.set(tree.s * (0.85 + hash2(tree.z, tree.x) * 0.35), tree.s, tree.s * (0.85 + hash2(tree.x, tree.s) * 0.35));
+        dummy.rotation.y = hash2(tree.x, tree.z) * Math.PI * 2;
       },
       nextTrees.length,
     );
@@ -616,7 +617,7 @@ export default function WorldScene({
     [here, slim, tiles],
   );
   const plants = useMemo(
-    () => dressPlants(tiles.flatMap((tile) => tile.parks), tiles.flatMap((tile) => tile.roads), here, slim ? 96 : 220),
+    () => dressPlants(tiles.flatMap((tile) => tile.parks), tiles.flatMap((tile) => tile.roads), here, slim ? 160 : 320),
     [here, slim, tiles],
   );
   const crossings = useMemo(

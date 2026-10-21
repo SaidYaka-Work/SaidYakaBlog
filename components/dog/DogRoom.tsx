@@ -34,9 +34,9 @@ type Panel = 'hall' | 'feed' | 'walk' | 'catch' | 'name' | null;
 type Preview = 'start' | 'hungry' | 'feed' | 'walk' | 'hall' | 'sleep' | 'eat' | 'sad' | 'pose-walk' | 'room' | 'leash' | 'world' | 'travel' | 'gate' | 'presence' | null;
 
 const PREVIEW_VISITORS: DogCompanion[] = [
-  { id: 'visit-a', x: 1.2, z: 0.88, yaw: -0.7, emote: 'wave' },
-  { id: 'visit-b', x: -1.18, z: 0.72, yaw: 0.85, emote: null },
-  { id: 'visit-c', x: 0.28, z: -1.22, yaw: 2.5, emote: 'heart' },
+  { id: 'visit-a', x: 1.22, z: 0.92, yaw: -0.7, emote: 'wave' },
+  { id: 'visit-b', x: -1.22, z: 0.78, yaw: 0.85, emote: null },
+  { id: 'visit-c', x: 0.32, z: -1.28, yaw: 2.5, emote: 'heart' },
 ];
 
 const ERRORS: Record<string, string> = {
