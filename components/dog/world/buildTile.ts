@@ -10,7 +10,7 @@ import {
   type BufferGeometry,
 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { centroid, facadeTint, isMajorRoad, ringBounds } from './dress';
+import { centroid, facadeTint, isMajorRoad, pointInRing, ringBounds } from './dress';
 import type { TileBounds, WorldTileData } from './decode';
 
 export type BuiltTile = {
@@ -24,9 +24,18 @@ export type BuiltTile = {
   major: BufferGeometry | null;
 };
 
-export type DressStep = 'buildings' | 'merge' | 'parks' | 'water' | 'sidewalks' | 'roads' | 'major';
+export type DressStep = 'buildings' | 'merge' | 'parks' | 'water' | 'sidewalks' | 'roads';
 
-export const DRESS_STEPS: DressStep[] = ['buildings', 'merge', 'parks', 'water', 'sidewalks', 'roads', 'major'];
+export const DRESS_STEPS: DressStep[] = ['buildings', 'merge', 'parks', 'water', 'sidewalks', 'roads'];
+
+/** Ground < parks < sidewalks < roads < markings. Meters, not shader units. */
+export const LAYER_Y = {
+  park: 0,
+  water: 0.004,
+  sidewalk: 0.008,
+  road: 0.018,
+  mark: 0.028,
+} as const;
 
 export type RibbonCursor = { road: number; seg: number; geos: BufferGeometry[] };
 
@@ -154,6 +163,39 @@ export function pushBuilding(
   }
 }
 
+function pushQuad(
+  ring: { x: number; z: number }[],
+  y: number,
+  a: { x: number; z: number },
+  dx: number,
+  dz: number,
+  len: number,
+  half: number,
+  geos: BufferGeometry[],
+) {
+  try {
+    const geo = new ExtrudeGeometry(shapeFrom(ring), { depth: 0.04, bevelEnabled: false, curveSegments: 1 });
+    geo.rotateX(-Math.PI / 2);
+    geo.translate(0, y, 0);
+    const count = geo.getAttribute('position').count;
+    const uv = new Float32Array(count * 2);
+    const pos = geo.getAttribute('position');
+    for (let v = 0; v < count; v += 1) {
+      const px = pos.getX(v);
+      const pz = pos.getZ(v);
+      const along = ((px - a.x) * dx + (pz - a.z) * dz) / (len * len);
+      const across = ((px - a.x) * -dz + (pz - a.z) * dx) / (len * half * 2) + 0.5;
+      uv[v * 2] = across;
+      uv[v * 2 + 1] = along * len;
+    }
+    geo.setAttribute('uv', new BufferAttribute(uv, 2));
+    geos.push(geo);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function pushRibbonSegs(
   tile: WorldTileData,
   pad: number,
@@ -188,26 +230,54 @@ export function pushRibbonSegs(
         { x: b.x - nx, z: b.z - nz },
         { x: a.x - nx, z: a.z - nz },
       ];
-      try {
-        const geo = new ExtrudeGeometry(shapeFrom(ring), { depth: 0.05, bevelEnabled: false, curveSegments: 1 });
-        geo.rotateX(-Math.PI / 2);
-        geo.translate(0, y, 0);
-        const count = geo.getAttribute('position').count;
-        const uv = new Float32Array(count * 2);
-        const pos = geo.getAttribute('position');
-        for (let v = 0; v < count; v += 1) {
-          const px = pos.getX(v);
-          const pz = pos.getZ(v);
-          const along = ((px - a.x) * dx + (pz - a.z) * dz) / (len * len);
-          const across = ((px - a.x) * -dz + (pz - a.z) * dx) / (len * half * 2) + 0.5;
-          uv[v * 2] = across;
-          uv[v * 2 + 1] = along * len;
-        }
-        geo.setAttribute('uv', new BufferAttribute(uv, 2));
-        cursor.geos.push(geo);
-        made += 1;
-      } catch {
-        // skip
+      if (pushQuad(ring, y, a, dx, dz, len, half, cursor.geos)) made += 1;
+    }
+    if (cursor.seg >= road.line.length) {
+      cursor.road += 1;
+      cursor.seg = 1;
+    }
+  }
+  return cursor.road >= tile.roads.length;
+}
+
+/** Sidewalks as two side strips so they never cross the road interior. */
+export function pushSidewalkSegs(
+  tile: WorldTileData,
+  pad: number,
+  y: number,
+  cursor: RibbonCursor,
+  limit: number,
+) {
+  let made = 0;
+  while (cursor.road < tile.roads.length && made < limit) {
+    const road = tile.roads[cursor.road];
+    if (cursor.seg < 1) cursor.seg = 1;
+    while (cursor.seg < road.line.length && made < limit) {
+      const a = road.line[cursor.seg - 1];
+      const b = road.line[cursor.seg];
+      cursor.seg += 1;
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      const len = Math.hypot(dx, dz);
+      if (len < 0.4) continue;
+      const ux = -dz / len;
+      const uz = dx / len;
+      const parkHits = [0.2, 0.5, 0.8].filter((t) => {
+        const px = a.x + dx * t;
+        const pz = a.z + dz * t;
+        return tile.parks.some((park) => park.length >= 3 && pointInRing(px, pz, park));
+      }).length;
+      if (parkHits >= 2) continue;
+      const inner = road.width * 0.5 + 0.06;
+      const outer = inner + pad;
+      for (const sign of [1, -1] as const) {
+        const ring = [
+          { x: a.x + ux * inner * sign, z: a.z + uz * inner * sign },
+          { x: b.x + ux * inner * sign, z: b.z + uz * inner * sign },
+          { x: b.x + ux * outer * sign, z: b.z + uz * outer * sign },
+          { x: a.x + ux * outer * sign, z: a.z + uz * outer * sign },
+        ];
+        if (pushQuad(ring, y, a, dx, dz, len, pad * 0.5, cursor.geos)) made += 1;
       }
     }
     if (cursor.seg >= road.line.length) {
@@ -279,21 +349,42 @@ export function stepBuildJob(job: BuildJob): StepResult {
   }
   if (job.dress === 'merge') {
     if (job.walls.length) {
-      job.built.buildings.push(...mergeAll(job.walls.splice(0, 16)));
+      const chunk = mergeAll(job.walls.splice(0, 8));
+      if (chunk[0]) {
+        if (job.built.buildings[0]) {
+          const both = takeMerged([job.built.buildings[0], chunk[0]]);
+          job.built.buildings = both ? [both] : chunk;
+        } else {
+          job.built.buildings = chunk;
+        }
+      }
       return { done: false, changed: false, job };
     }
     if (job.roofs.length) {
-      job.built.roofs.push(...mergeAll(job.roofs.splice(0, 16)));
+      const chunk = mergeAll(job.roofs.splice(0, 8));
+      if (chunk[0]) {
+        if (job.built.roofs[0]) {
+          const both = takeMerged([job.built.roofs[0], chunk[0]]);
+          job.built.roofs = both ? [both] : chunk;
+        } else {
+          job.built.roofs = chunk;
+        }
+      }
       return { done: false, changed: false, job };
     }
     job.dress = 'parks';
     return { done: false, changed: true, job };
   }
   if (job.dress === 'parks') {
-    const rings = job.lod ? job.tile.parks.slice(0, 6) : job.tile.parks.slice(0, 16);
+    if (job.lod) {
+      job.dress = 'water';
+      job.ribbon = { road: 0, seg: 1, geos: [] };
+      return { done: false, changed: false, job };
+    }
+    const rings = job.tile.parks.slice(0, 16);
     const cursor = job.ribbon ?? { road: 0, seg: 1, geos: [] };
     const next = Math.min(rings.length, cursor.road + 3);
-    const chunk = flattenRings(rings.slice(cursor.road, next), 0.004);
+    const chunk = flattenRings(rings.slice(cursor.road, next), LAYER_Y.park);
     if (chunk) cursor.geos.push(chunk);
     cursor.road = next;
     job.ribbon = cursor;
@@ -304,10 +395,15 @@ export function stepBuildJob(job: BuildJob): StepResult {
     return { done: false, changed: false, job };
   }
   if (job.dress === 'water') {
-    const rings = job.lod ? job.tile.water.slice(0, 4) : job.tile.water.slice(0, 12);
+    if (job.lod) {
+      job.dress = 'sidewalks';
+      job.ribbon = { road: 0, seg: 1, geos: [] };
+      return { done: false, changed: false, job };
+    }
+    const rings = job.tile.water.slice(0, 12);
     const cursor = job.ribbon ?? { road: 0, seg: 1, geos: [] };
     const next = Math.min(rings.length, cursor.road + 3);
-    const chunk = flattenRings(rings.slice(cursor.road, next), 0.006);
+    const chunk = flattenRings(rings.slice(cursor.road, next), LAYER_Y.water);
     if (chunk) cursor.geos.push(chunk);
     cursor.road = next;
     job.ribbon = cursor;
@@ -317,27 +413,28 @@ export function stepBuildJob(job: BuildJob): StepResult {
     job.ribbon = { road: 0, seg: 1, geos: [] };
     return { done: false, changed: true, job };
   }
-  if (job.dress === 'sidewalks' || job.dress === 'roads' || job.dress === 'major') {
-    const cursor = job.ribbon ?? { road: 0, seg: 1, geos: [] };
-    job.ribbon = cursor;
-    const pad = job.dress === 'sidewalks' ? 1.15 : 0;
-    const y = job.dress === 'sidewalks' ? 0.002 : job.dress === 'major' ? 0.01 : 0.008;
-    const done = pushRibbonSegs(job.tile, pad, y, job.dress === 'major', cursor, 8);
-    if (!done) return { done: false, changed: false, job };
-    const merged = takeMerged(cursor.geos);
-    if (job.dress === 'sidewalks') job.built.sidewalks = merged;
-    else if (job.dress === 'roads') job.built.roads = merged;
-    else job.built.major = merged;
-    if (job.dress === 'sidewalks') {
+  if (job.dress === 'sidewalks') {
+    if (job.lod) {
       job.dress = 'roads';
       job.ribbon = { road: 0, seg: 1, geos: [] };
       return { done: false, changed: true, job };
     }
-    if (job.dress === 'roads' && !job.lod) {
-      job.dress = 'major';
-      job.ribbon = { road: 0, seg: 1, geos: [] };
-      return { done: false, changed: true, job };
-    }
+    const cursor = job.ribbon ?? { road: 0, seg: 1, geos: [] };
+    job.ribbon = cursor;
+    const done = pushSidewalkSegs(job.tile, 1.15, LAYER_Y.sidewalk, cursor, 8);
+    if (!done) return { done: false, changed: false, job };
+    job.built.sidewalks = takeMerged(cursor.geos);
+    job.dress = 'roads';
+    job.ribbon = { road: 0, seg: 1, geos: [] };
+    return { done: false, changed: true, job };
+  }
+  if (job.dress === 'roads') {
+    const cursor = job.ribbon ?? { road: 0, seg: 1, geos: [] };
+    job.ribbon = cursor;
+    const done = pushRibbonSegs(job.tile, 0, LAYER_Y.road, false, cursor, 8);
+    if (!done) return { done: false, changed: false, job };
+    job.built.roads = takeMerged(cursor.geos);
+    job.built.major = null;
     job.dress = 'done';
     return { done: true, changed: true, job: null };
   }

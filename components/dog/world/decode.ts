@@ -1,6 +1,7 @@
 import { PbfReader } from 'pbf';
 import { VectorTile } from '@mapbox/vector-tile';
 import { lngLatToLocal, type Ring } from '../../../workers/dog/src/world';
+import type { PackedTile } from './packTile';
 
 export type TileBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
 export type BuildingFeat = { ring: Ring; height: number; min: number; area: number };
@@ -13,6 +14,7 @@ export type WorldTileData = {
   parks: Ring[];
   labels: { x: number; z: number; name: string }[];
   bounds?: TileBounds;
+  packed?: PackedTile;
 };
 
 export const NEAR_BUILDING_M = 220;

@@ -10,7 +10,7 @@ export const YAW_TURN = 3.4;
 export const TURN_ALIGN = 0.18;
 export const MOVE_MIN_MS = 70;
 export const MOVE_DT_MAX = 0.18;
-export const LEASH_IDLE_MS = 5_000;
+export const LEASH_IDLE_MS = 12_000;
 export const LEASH_MAX_MS = 90_000;
 export const LEASH_COOLDOWN_MS = 20_000;
 export const FEEDER = { x: -1.62, y: 0.07, z: 1.38, radius: 0.74 };
@@ -338,15 +338,18 @@ export function pruneCooldowns(map: Record<string, number>, now: number) {
 
 export function leashExpired(leash: Leash, now: number) {
   if (!leash.holderId) return false;
-  if (now - leash.lastInputAt >= LEASH_IDLE_MS) return true;
-  if (now - leash.since >= LEASH_MAX_MS) return true;
-  return false;
+  return now - leash.lastInputAt >= LEASH_IDLE_MS;
 }
 
-export function releaseLeash(yard: YardState, now: number, liveIds?: Iterable<string>): YardState {
+export function releaseLeash(
+  yard: YardState,
+  now: number,
+  liveIds?: Iterable<string>,
+  reason: 'idle' | 'leave' = 'leave',
+): YardState {
   const leash = yard.leash;
   const cooldownUntil = { ...pruneCooldowns(leash.cooldownUntil, now) };
-  if (leash.holderIp) cooldownUntil[leash.holderIp] = now + LEASH_COOLDOWN_MS;
+  if (reason !== 'idle' && leash.holderIp) cooldownUntil[leash.holderIp] = now + LEASH_COOLDOWN_MS;
   const live = liveIds ? new Set(liveIds) : null;
   const waiting = migrateQueue(leash.queue).filter(
     (wait) => wait.id && wait.id !== leash.holderId && (!live || live.has(wait.id)),
@@ -403,7 +406,7 @@ export function tryAcquireLeash(
 ): { ok: true; yard: YardState } | { ok: false; code: 'busy' | 'cooldown'; retryAfterMs: number; yard: YardState } {
   let current = migrateYard(yard, now);
   if (current.leash.holderId && current.leash.holderId !== clientId && leashExpired(current.leash, now)) {
-    current = releaseLeash(current, now);
+    current = releaseLeash(current, now, undefined, 'idle');
   }
   if (current.leash.holderId === clientId) {
     return {
@@ -497,7 +500,7 @@ export function applyDrive(
     pose: stepped.pose,
     leash: {
       ...current.leash,
-      lastInputAt: moving ? now : current.leash.lastInputAt,
+      lastInputAt: now,
       sessionMeters,
       hourMeters,
       hourStartedAt,
@@ -557,7 +560,7 @@ export function tickYardAi(
 ): YardState {
   let current = migrateYard(yard, now);
   if (current.leash.holderId) {
-    if (leashExpired(current.leash, now)) current = releaseLeash(current, now);
+    if (leashExpired(current.leash, now)) current = releaseLeash(current, now, undefined, 'idle');
     else return current;
   }
   if (current.feeder.eatingUntil > now) {

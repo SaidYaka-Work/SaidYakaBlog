@@ -3,17 +3,16 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import {
-  BufferAttribute,
   Color,
   DoubleSide,
-  ExtrudeGeometry,
   Fog,
   InstancedMesh,
   Mesh,
   MeshStandardMaterial,
   Object3D,
+  PlaneGeometry,
   ShaderMaterial,
-  Shape,
+  Vector3,
   type BufferGeometry,
 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -21,12 +20,16 @@ import { lngLatToLocal, sunDirection } from '../../../workers/dog/src/world';
 import type { WorldTileData } from './decode';
 import { crossingsAtIntersections, dressPlants, hash2, lampsAlongRoads, type Crossing, type Plant } from './dress';
 import {
+  LAYER_Y,
   createBuildJob,
+  emptyTile,
   stepBuildJob,
   tileDistanceToPoint,
   type BuildJob,
   type BuiltTile,
 } from './buildTile';
+import { unpackGeometry, type PackedTile } from './packTile';
+import { MAX_LIVE_TILES, evictTileCache } from './tileWindow';
 
 function disposeBuilt(tile: BuiltTile) {
   tile.buildings.forEach((geo) => geo.dispose());
@@ -50,7 +53,7 @@ function facadeMaterial(night: boolean) {
       uHemiSky: { value: new Color(night ? '#9eb6e6' : '#fff1dc') },
       uHemiGround: { value: new Color(night ? '#3a342c' : '#c4a888') },
       uSunColor: { value: new Color(night ? '#d0def8' : '#ffe4bc') },
-      uSunDir: { value: [0.4, 0.8, 0.2] },
+      uSunDir: { value: new Vector3(0.4, 0.8, 0.2) },
       uAmbient: { value: night ? 0.7 : 0.42 },
     },
     vertexShader: `
@@ -202,6 +205,10 @@ function waterMaterial(night: boolean) {
 
 function crossingMaterial(night: boolean) {
   return new ShaderMaterial({
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4,
     uniforms: {
       uNight: { value: night ? 1 : 0 },
     },
@@ -225,45 +232,16 @@ function crossingMaterial(night: boolean) {
   });
 }
 
-function shapeFrom(ring: { x: number; z: number }[]) {
-  const shape = new Shape();
-  shape.moveTo(ring[0].x, ring[0].z);
-  for (let i = 1; i < ring.length; i += 1) shape.lineTo(ring[i].x, ring[i].z);
-  shape.closePath();
-  return shape;
-}
-
 function crossingMesh(crossings: Crossing[]) {
   const geos: BufferGeometry[] = [];
   for (const mark of crossings) {
-    const acrossX = -mark.dz;
-    const acrossZ = mark.dx;
-    const half = mark.w * 0.5;
+    const across = Math.min(8, Math.max(5.4, mark.w));
     const along = 3.2;
-    const ring = [
-      { x: mark.x + mark.dx * along + acrossX * half, z: mark.z + mark.dz * along + acrossZ * half },
-      { x: mark.x - mark.dx * along + acrossX * half, z: mark.z - mark.dz * along + acrossZ * half },
-      { x: mark.x - mark.dx * along - acrossX * half, z: mark.z - mark.dz * along - acrossZ * half },
-      { x: mark.x + mark.dx * along - acrossX * half, z: mark.z + mark.dz * along - acrossZ * half },
-    ];
-    try {
-      const geo = new ExtrudeGeometry(shapeFrom(ring), { depth: 0.04, bevelEnabled: false, curveSegments: 1 });
-      geo.rotateX(-Math.PI / 2);
-      geo.translate(0, 0.012, 0);
-      const count = geo.getAttribute('position').count;
-      const uv = new Float32Array(count * 2);
-      const pos = geo.getAttribute('position');
-      for (let v = 0; v < count; v += 1) {
-        const px = pos.getX(v) - mark.x;
-        const pz = pos.getZ(v) - mark.z;
-        uv[v * 2] = (px * acrossX + pz * acrossZ) / mark.w + 0.5;
-        uv[v * 2 + 1] = (px * mark.dx + pz * mark.dz) / (along * 2) + 0.5;
-      }
-      geo.setAttribute('uv', new BufferAttribute(uv, 2));
-      geos.push(geo);
-    } catch {
-      // skip
-    }
+    const geo = new PlaneGeometry(across, along, 1, 1);
+    geo.rotateX(-Math.PI / 2);
+    geo.rotateY(Math.atan2(mark.dx, mark.dz));
+    geo.translate(mark.x, LAYER_Y.mark, mark.z);
+    geos.push(geo);
   }
   if (!geos.length) return null;
   const merged = mergeGeometries(geos, false);
@@ -392,18 +370,18 @@ function Forest({ plants, night }: { plants: Plant[]; night: boolean }) {
         <>
           <instancedMesh ref={trunk} args={[undefined, undefined, trees.length]}>
             <cylinderGeometry args={[0.18, 0.24, 1.7, 5]} />
-            <meshStandardMaterial color="#6a4a32" />
+            <meshBasicMaterial color="#8a5a38" />
           </instancedMesh>
           <instancedMesh ref={leaf} args={[undefined, undefined, trees.length]}>
             <coneGeometry args={[1.9, 3.8, 6]} />
-            <meshStandardMaterial color={night ? '#7a9a58' : '#4f7a48'} />
+            <meshBasicMaterial color={night ? '#8aaa62' : '#5f8a4e'} />
           </instancedMesh>
         </>
       )}
       {bushes.length > 0 && (
         <instancedMesh ref={bush} args={[undefined, undefined, bushes.length]}>
           <sphereGeometry args={[0.7, 7, 5]} />
-          <meshStandardMaterial color={night ? '#5a7a46' : '#3f6a38'} />
+          <meshBasicMaterial color={night ? '#6a8a52' : '#4a7a40'} />
         </instancedMesh>
       )}
     </group>
@@ -444,7 +422,7 @@ function Lamps({ lamps, night }: { lamps: { x: number; z: number }[]; night: boo
     <group>
       <instancedMesh ref={poles} args={[undefined, undefined, lamps.length]}>
         <cylinderGeometry args={[0.08, 0.1, 3.4, 5]} />
-        <meshStandardMaterial color={night ? '#3a3a3e' : '#4a4a4c'} metalness={0.3} roughness={0.5} />
+        <meshLambertMaterial color={night ? '#4a4a50' : '#5a5a5c'} emissive="#222224" emissiveIntensity={0.25} />
       </instancedMesh>
       <instancedMesh ref={bulbs} args={[undefined, undefined, lamps.length]}>
         <sphereGeometry args={[0.24, 6, 6]} />
@@ -453,6 +431,68 @@ function Lamps({ lamps, night }: { lamps: { x: number; z: number }[]; night: boo
       <instancedMesh ref={pools} args={[undefined, undefined, lamps.length]}>
         <circleGeometry args={[5.4, 12]} />
         <meshBasicMaterial color="#ffd080" transparent opacity={night ? 0.34 : 0.08} depthWrite={false} />
+      </instancedMesh>
+    </group>
+  );
+}
+
+const PACK_LAYERS = ['buildings', 'roofs', 'parks', 'water', 'sidewalks', 'roads'] as const;
+
+function applyPackedLayer(built: BuiltTile, packed: PackedTile, layer: (typeof PACK_LAYERS)[number]) {
+  const geo = unpackGeometry(packed[layer]);
+  if (!geo) return;
+  if (layer === 'buildings') built.buildings = [geo];
+  else if (layer === 'roofs') built.roofs = [geo];
+  else built[layer] = geo;
+}
+
+function Benches({ benches, night }: { benches: Plant[]; night: boolean }) {
+  const seats = useRef<InstancedMesh>(null);
+  const left = useRef<InstancedMesh>(null);
+  const right = useRef<InstancedMesh>(null);
+  useLayoutEffect(() => {
+    stampInstances(
+      seats.current,
+      (dummy, i) => {
+        dummy.position.set(benches[i].x, 0.28, benches[i].z);
+        dummy.rotation.y = hash2(benches[i].x, benches[i].z) * Math.PI * 2;
+      },
+      benches.length,
+    );
+    stampInstances(
+      left.current,
+      (dummy, i) => {
+        dummy.position.set(benches[i].x, 0.14, benches[i].z);
+        dummy.rotation.y = hash2(benches[i].x, benches[i].z) * Math.PI * 2;
+        dummy.translateX(-0.46);
+      },
+      benches.length,
+    );
+    stampInstances(
+      right.current,
+      (dummy, i) => {
+        dummy.position.set(benches[i].x, 0.14, benches[i].z);
+        dummy.rotation.y = hash2(benches[i].x, benches[i].z) * Math.PI * 2;
+        dummy.translateX(0.46);
+      },
+      benches.length,
+    );
+  }, [benches]);
+  if (!benches.length) return null;
+  const color = night ? '#6a5040' : '#9a7a52';
+  return (
+    <group>
+      <instancedMesh ref={seats} args={[undefined, undefined, benches.length]}>
+        <boxGeometry args={[1.15, 0.08, 0.38]} />
+        <meshLambertMaterial color={color} emissive="#2a1c12" emissiveIntensity={0.35} />
+      </instancedMesh>
+      <instancedMesh ref={left} args={[undefined, undefined, benches.length]}>
+        <boxGeometry args={[0.08, 0.28, 0.34]} />
+        <meshLambertMaterial color={color} emissive="#2a1c12" emissiveIntensity={0.35} />
+      </instancedMesh>
+      <instancedMesh ref={right} args={[undefined, undefined, benches.length]}>
+        <boxGeometry args={[0.08, 0.28, 0.34]} />
+        <meshLambertMaterial color={color} emissive="#2a1c12" emissiveIntensity={0.35} />
       </instancedMesh>
     </group>
   );
@@ -479,27 +519,35 @@ export default function WorldScene({
   const sun = useMemo(() => sunDirection(lat, lng, Date.now()), [lat, lng]);
   const night = nightHint ?? sun.night;
   const here = useMemo(() => lngLatToLocal(lat, lng, originLat, originLng), [lat, lng, originLat, originLng]);
-  const slim = typeof window !== 'undefined' && window.innerWidth < 700;
+  const [slim, setSlim] = useState(false);
+  useEffect(() => {
+    const sync = () => setSlim(window.innerWidth < 700);
+    sync();
+    window.addEventListener('resize', sync);
+    return () => window.removeEventListener('resize', sync);
+  }, []);
   const hereRef = useRef(here);
   hereRef.current = here;
   const cache = useRef(new Map<string, BuiltTile>());
   const queue = useRef<WorldTileData[]>([]);
+  const uploads = useRef<{ tile: WorldTileData; packed: PackedTile; layer: number }[]>([]);
   const pending = useRef<BuildJob | null>(null);
   const [ready, setReady] = useState<BuiltTile[]>([]);
 
   useEffect(() => {
     const wanted = new Set(tiles.map((tile) => tile.key));
-    let removed = false;
-    cache.current.forEach((built, key) => {
-      if (wanted.has(key)) return;
-      disposeBuilt(built);
-      cache.current.delete(key);
-      removed = true;
-    });
+    const evicted = evictTileCache(cache.current, wanted, (_key, built) => disposeBuilt(built), MAX_LIVE_TILES);
     queue.current = queue.current.filter((tile) => wanted.has(tile.key) && !cache.current.has(tile.key));
+    uploads.current = uploads.current.filter((item) => wanted.has(item.tile.key) && !cache.current.has(item.tile.key));
     if (pending.current && !wanted.has(pending.current.tile.key)) pending.current = null;
     for (const tile of tiles) {
       if (cache.current.has(tile.key)) continue;
+      if (tile.packed) {
+        if (!uploads.current.some((item) => item.tile.key === tile.key)) {
+          uploads.current.push({ tile, packed: tile.packed, layer: 0 });
+        }
+        continue;
+      }
       if (queue.current.some((item) => item.key === tile.key)) continue;
       if (pending.current?.tile.key === tile.key) continue;
       queue.current.push(tile);
@@ -507,13 +555,17 @@ export default function WorldScene({
     queue.current.sort(
       (a, b) => tileDistanceToPoint(a, hereRef.current) - tileDistanceToPoint(b, hereRef.current),
     );
-    if (removed) setReady(Array.from(cache.current.values()));
+    uploads.current.sort(
+      (a, b) => tileDistanceToPoint(a.tile, hereRef.current) - tileDistanceToPoint(b.tile, hereRef.current),
+    );
+    if (evicted.length) setReady(Array.from(cache.current.values()));
   }, [tiles]);
 
   useEffect(() => () => {
     cache.current.forEach(disposeBuilt);
     cache.current.clear();
     queue.current = [];
+    uploads.current = [];
     pending.current = null;
   }, []);
 
@@ -573,54 +625,69 @@ export default function WorldScene({
     () => new MeshStandardMaterial({ color: night ? '#2f3d2c' : '#6f8f52' }),
     [night],
   );
-  const benchMat = useMemo(
-    () => new MeshStandardMaterial({ color: night ? '#5a4638' : '#8a6a48', roughness: 0.86 }),
-    [night],
-  );
   useEffect(() => {
-    if (facade.uniforms?.uSunDir) {
-      facade.uniforms.uSunDir.value = [sun.x, Math.max(0.25, sun.y + (night ? 0.4 : 0)), sun.z];
+    const dir = facade.uniforms?.uSunDir?.value;
+    if (dir && typeof dir.set === 'function') {
+      dir.set(sun.x, Math.max(0.25, sun.y + (night ? 0.4 : 0)), sun.z);
     }
   }, [facade, night, sun.x, sun.y, sun.z]);
 
   const warmed = useRef(false);
   useEffect(() => {
-    if (warmed.current) return;
-    warmed.current = true;
+    if (warmed.current || !ready.length) return;
     try {
       const renderer = gl as typeof gl & { compileAsync?: (s: object, c: object) => Promise<void> };
       if (typeof renderer.compileAsync === 'function') void renderer.compileAsync(scene, camera);
       else gl.compile(scene, camera);
+      warmed.current = true;
     } catch (error) {
       console.warn('[dog] shader prewarm failed', error);
     }
-  }, [camera, gl, scene]);
+  }, [camera, gl, ready.length, scene]);
 
   useFrame((_, dt) => {
     const clock = water.userData.uTime;
     if (clock) clock.value = (clock.value + dt) % 1000;
-    const budget = slim ? 5 : 8;
-    const start = performance.now();
+    const host = window as Window & { __DOG_PERF?: { tiles?: number; geometries?: number; textures?: number } };
+    if (host.__DOG_PERF) {
+      host.__DOG_PERF.tiles = cache.current.size;
+      host.__DOG_PERF.geometries = gl.info.memory.geometries;
+      host.__DOG_PERF.textures = gl.info.memory.textures;
+    }
     let changed = false;
-    while (performance.now() - start < budget) {
-      if (!pending.current) {
-        const next = queue.current.shift();
-        if (!next) break;
-        if (cache.current.has(next.key)) continue;
-        pending.current = createBuildJob(next, hereRef.current);
+    const upload = uploads.current[0];
+    if (upload) {
+      if (!cache.current.has(upload.tile.key)) {
+        cache.current.set(upload.tile.key, emptyTile(upload.tile.key));
       }
-      const current = pending.current;
-      const result = stepBuildJob(current);
-      if (result.changed || result.done) {
-        cache.current.set(current.tile.key, { ...(result.job?.built ?? current.built) });
+      const built = cache.current.get(upload.tile.key);
+      const layer = PACK_LAYERS[upload.layer];
+      if (built && layer) {
+        applyPackedLayer(built, upload.packed, layer);
         changed = true;
       }
-      if (result.done) {
-        pending.current = null;
-        continue;
+      upload.layer += 1;
+      if (upload.layer >= PACK_LAYERS.length) {
+        uploads.current.shift();
+        evictTileCache(cache.current, tiles.map((tile) => tile.key), (_key, item) => disposeBuilt(item), MAX_LIVE_TILES);
       }
-      pending.current = result.job;
-      break;
+    } else {
+      const budget = slim ? 4 : 6;
+      const start = performance.now();
+      if (!pending.current) {
+        const next = queue.current.shift();
+        if (next && !cache.current.has(next.key)) pending.current = createBuildJob(next, hereRef.current);
+      }
+      if (pending.current && performance.now() - start < budget) {
+        const current = pending.current;
+        const result = stepBuildJob(current);
+        if (result.changed || result.done) {
+          cache.current.set(current.tile.key, { ...(result.job?.built ?? current.built) });
+          changed = true;
+        }
+        pending.current = result.done ? null : result.job;
+        evictTileCache(cache.current, tiles.map((tile) => tile.key), (_key, item) => disposeBuilt(item), MAX_LIVE_TILES);
+      }
     }
     if (changed) setReady(Array.from(cache.current.values()));
   });
@@ -643,8 +710,7 @@ export default function WorldScene({
     parkMat.dispose();
     walkMat.dispose();
     groundMat.dispose();
-    benchMat.dispose();
-  }, [asphalt, benchMat, facade, groundMat, marked, parkMat, roofMat, walkMat, water, zebra]);
+  }, [asphalt, facade, groundMat, marked, parkMat, roofMat, walkMat, water, zebra]);
 
   useEffect(() => () => {
     crossingGeo?.dispose();
@@ -683,8 +749,7 @@ export default function WorldScene({
           {tile.sidewalks && (
             <mesh geometry={tile.sidewalks} material={walkMat} renderOrder={1} />
           )}
-          {tile.roads && <mesh geometry={tile.roads} material={asphalt} renderOrder={2} />}
-          {tile.major && <mesh geometry={tile.major} material={marked} renderOrder={3} />}
+          {tile.roads && <mesh geometry={tile.roads} material={marked} renderOrder={3} />}
           {tile.water && <mesh geometry={tile.water} material={water} />}
           {tile.buildings.map((geo, index) => (
             <mesh key={`${tile.key}-b-${index}`} geometry={geo} material={facade} userData={{ occlude: true }} />
@@ -694,21 +759,11 @@ export default function WorldScene({
           ))}
         </group>
       ))}
-      {crossingGeo && <mesh geometry={crossingGeo} material={zebra} />}
+      {crossingGeo && (
+        <mesh geometry={crossingGeo} material={zebra} renderOrder={4} />
+      )}
       <Forest plants={plants} night={night} />
-      {benches.map((bench) => (
-        <group key={`bench-${bench.x}:${bench.z}`} position={[bench.x, 0, bench.z]} rotation={[0, hash2(bench.x, bench.z) * Math.PI * 2, 0]}>
-          <mesh position={[0, 0.28, 0]} material={benchMat}>
-            <boxGeometry args={[1.15, 0.08, 0.38]} />
-          </mesh>
-          <mesh position={[-0.46, 0.14, 0]} material={benchMat}>
-            <boxGeometry args={[0.08, 0.28, 0.34]} />
-          </mesh>
-          <mesh position={[0.46, 0.14, 0]} material={benchMat}>
-            <boxGeometry args={[0.08, 0.28, 0.34]} />
-          </mesh>
-        </group>
-      ))}
+      <Benches benches={benches} night={night} />
       <Lamps lamps={lamps} night={night} />
     </group>
   );

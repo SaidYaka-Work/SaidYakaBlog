@@ -188,6 +188,49 @@ test('unleashed dog wanders toward the bed when tired and the feeder when hungry
   assert.equal(stocked.ai.mode === 'feeder' || stocked.pose.gait === 'eat', true);
 });
 
+test('continuous walking past the old max hold keeps the leash; idle is what expires it', () => {
+  const room = createRoom(T0);
+  let current = applyVisitorMove(room, 'alice', '10.0.0.1', 1, 0, false, 0.1, T0).room;
+  assert.equal(current.yard?.leash.holderId, 'alice');
+  let now = T0;
+  for (let i = 0; i < 110; i += 1) {
+    now += 1_000;
+    current = applyVisitorMove(current, 'alice', '10.0.0.1', 0.8, 0.2, false, 0.1, now).room;
+  }
+  assert.ok(now - T0 > LEASH_MAX_MS, 'walked longer than the old max hold');
+  assert.equal(current.yard?.leash.holderId, 'alice', 'movement refreshes the hold');
+  const stealDuringWalk = applyVisitorMove(current, 'bob', '10.0.0.2', 1, 0, false, 0.1, now + 200);
+  assert.equal(stealDuringWalk.acquired, false);
+  assert.equal(stealDuringWalk.room.yard?.leash.holderId, 'alice');
+
+  const afterIdle = applyVisitorMove(current, 'bob', '10.0.0.2', 1, 0, false, 0.1, now + LEASH_IDLE_MS);
+  assert.equal(afterIdle.acquired, true);
+  assert.equal(afterIdle.room.yard?.leash.holderId, 'bob');
+});
+
+test('zero-input heartbeat from the holder still refreshes lastInputAt', () => {
+  const held = tryAcquireLeash(createYard(T0), 'alice', '10.0.0.1', T0);
+  assert.equal(held.ok, true);
+  if (!held.ok) throw new Error('expected acquire');
+  const beat = applyDrive(held.yard, 0, 0, false, 0.08, T0 + 4_000);
+  assert.equal(beat.leash.lastInputAt, T0 + 4_000);
+  assert.equal(beat.leash.holderId, 'alice');
+  const stillHeld = tryAcquireLeash(beat, 'bob', '10.0.0.2', T0 + 4_000 + LEASH_IDLE_MS - 50);
+  assert.equal(stillHeld.ok, false);
+});
+
+test('after an idle drop the same walker can take the leash again without cooldown', () => {
+  const held = tryAcquireLeash(createYard(T0), 'alice', '10.0.0.1', T0);
+  assert.equal(held.ok, true);
+  if (!held.ok) throw new Error('expected acquire');
+  const dropped = releaseLeash(held.yard, T0 + LEASH_IDLE_MS, undefined, 'idle');
+  assert.equal(dropped.leash.holderId, null);
+  const again = tryAcquireLeash(dropped, 'alice', '10.0.0.1', T0 + LEASH_IDLE_MS + 20);
+  assert.equal(again.ok, true, 'idle expiry must not put the walker on cooldown');
+  if (!again.ok) throw new Error('expected retake');
+  assert.equal(again.yard.leash.holderId, 'alice');
+});
+
 function fillAndTick() {
   const yard = applyDrive(createYard(T0), 0, 0, false, 0.01, T0);
   yard.feeder.hasFood = true;

@@ -16,6 +16,8 @@ import {
   type WorldTileData,
 } from '../components/dog/world/decode.ts';
 import { formatPlaceLine } from '../workers/dog/src/world.ts';
+import { MAX_LIVE_TILES, evictTileCache, wantedTileKeys } from '../components/dog/world/tileWindow.ts';
+import { parseDebugSpawn, SPAWN_PRESETS } from '../components/dog/debugSpawn.ts';
 
 function box(x: number, z: number, w: number, d: number) {
   return [
@@ -33,7 +35,7 @@ function fixtureTile(): WorldTileData {
     buildings: [{ ring: box(10, 8, 4, 3), height: 14, min: 0, area: 48 }],
     roads: [{ line: [{ x: -40, z: 0 }, { x: 40, z: 0 }], width: 8, klass: 'primary' }],
     water: [box(-20, 16, 6, 4)],
-    parks: [box(0, 0, 12, 12)],
+    parks: [box(0, 40, 8, 8)],
     labels: [{ x: 853, z: 40, name: 'West 4 Street' }],
   };
 }
@@ -60,7 +62,14 @@ assert.ok(built.parks, 'parks mesh');
 assert.ok(built.water, 'water mesh — the missing stage');
 assert.ok(built.sidewalks, 'sidewalks mesh');
 assert.ok(built.roads, 'roads mesh');
-assert.ok(built.major, 'major markings');
+assert.equal(built.major, null, 'road markings live on the single road mesh');
+assert.equal(built.buildings.length, 1, 'one merged building mesh');
+const walkPos = built.sidewalks.getAttribute('position');
+let onRoad = 0;
+for (let i = 0; i < (walkPos?.count ?? 0); i += 1) {
+  if (Math.abs(walkPos!.getZ(i)) < 3.6) onRoad += 1;
+}
+assert.ok((walkPos?.count ?? 0) > 0 && onRoad / walkPos!.count < 0.2, 'sidewalks stay beside the road');
 
 const stuck = createBuildJob(tile, here);
 stuck.dress = 'nope';
@@ -104,5 +113,27 @@ assert.equal(
   formatPlaceLine('6½ Avenue', 'Times Square, New York'),
   '6½ Avenue · near Times Square',
 );
+
+const center = { z: 14, x: 4825, y: 6156 };
+const windowKeys = wantedTileKeys(center);
+assert.equal(windowKeys.length, MAX_LIVE_TILES);
+assert.ok(windowKeys.includes('14/4825/6156'));
+const cache = new Map<string, string>([
+  ['14/4825/6156', 'center'],
+  ['14/4824/6156', 'west'],
+  ['14/4826/6155', 'ne'],
+  ['14/4800/6100', 'far'],
+  ['14/4999/6300', 'farther'],
+]);
+const evicted = evictTileCache(cache, windowKeys);
+assert.ok(evicted.includes('14/4800/6100'));
+assert.ok(evicted.includes('14/4999/6300'));
+assert.equal(cache.has('14/4800/6100'), false);
+assert.equal(cache.has('14/4825/6156'), true);
+assert.ok(cache.size <= MAX_LIVE_TILES);
+
+assert.equal(parseDebugSpawn('?debug=1&spawn=timessq-buildings')?.lat, SPAWN_PRESETS['timessq-buildings'].lat);
+assert.equal(parseDebugSpawn('spawn=40.758,-73.9855')?.lng, -73.9855);
+assert.equal(parseDebugSpawn('?debug=1'), null);
 
 console.log('dog-tile-build-check ok');

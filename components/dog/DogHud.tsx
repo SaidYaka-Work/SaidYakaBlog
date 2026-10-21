@@ -47,6 +47,7 @@ export default function DogHud({
   neighborCount = 0,
   youHold = false,
   flying = false,
+  leashWaitMs = 0,
   onTakeLeash,
 }: {
   name: string;
@@ -86,6 +87,7 @@ export default function DogHud({
   neighborCount?: number;
   youHold?: boolean;
   flying?: boolean;
+  leashWaitMs?: number;
   onTakeLeash?: () => void;
 }) {
   return (
@@ -147,16 +149,22 @@ export default function DogHud({
         <p className={`dog-leash${youHold || youNext ? ' is-next' : ''}`} role="status">
           {youHold
             ? 'You have the leash'
-            : youNext
-              ? "You're next · ~20s"
-              : queueAhead > 0
-                ? `You're ${ordinal(queueAhead + 1)} · ~${(queueAhead + 1) * 20}s`
-                : visitorWalking
-                  ? `A visitor is walking ${name}`
-                  : `${name} is waiting`}
+            : leashWaitMs > 0
+              ? `Give him a moment · ${Math.max(1, Math.ceil(leashWaitMs / 1000))}s`
+              : youNext
+                ? "You're next · ~20s"
+                : queueAhead > 0
+                  ? `You're ${ordinal(queueAhead + 1)} · ~${(queueAhead + 1) * 20}s`
+                  : visitorWalking
+                    ? `A visitor is walking ${name}`
+                    : `${name} is waiting`}
           {!youHold && onTakeLeash && (
-            <button type="button" className="dog-leash-take" onClick={onTakeLeash}>
-              {youNext || queueAhead > 0 || visitorWalking ? 'Join queue' : 'Take the leash'}
+            <button type="button" className="dog-leash-take" onClick={onTakeLeash} disabled={leashWaitMs > 0}>
+              {leashWaitMs > 0
+                ? `Wait ${Math.max(1, Math.ceil(leashWaitMs / 1000))}s`
+                : youNext || queueAhead > 0 || visitorWalking
+                  ? 'Join queue'
+                  : 'Take the leash'}
             </button>
           )}
         </p>

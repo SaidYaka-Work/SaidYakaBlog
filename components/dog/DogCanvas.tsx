@@ -33,7 +33,7 @@ function SizeSync({ host }: { host: RefObject<HTMLDivElement | null> }) {
       const box = node.getBoundingClientRect();
       const width = Math.max(1, box.width);
       const height = Math.max(1, box.height);
-      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+      const dpr = Math.min(window.innerWidth < 700 ? 1.25 : 1.5, window.devicePixelRatio || 1);
       gl.setPixelRatio(dpr);
       gl.setSize(width, height, false);
       set({ size: { width, height, top: box.top, left: box.left } });
@@ -63,6 +63,7 @@ function PerfProbe() {
         textures: number;
         memMB: number;
         samples: number;
+        tiles?: number;
       };
     };
     const ms = dt * 1000;
@@ -88,6 +89,7 @@ function PerfProbe() {
       triangles: info.render.triangles,
       geometries: info.memory.geometries,
       textures: info.memory.textures,
+      tiles: prev?.tiles ?? 0,
       memMB: mem ? Math.round(mem.usedJSHeapSize / 1e6) : 0,
       samples: (prev?.samples ?? 0) + 1,
     };
@@ -101,10 +103,10 @@ function DebugHud() {
     if (typeof window === 'undefined') return;
     if (!new URLSearchParams(window.location.search).has('debug')) return;
     const tick = () => {
-      const perf = (window as Window & { __DOG_PERF?: { fps: number; p95: number; hitch: number; calls: number; triangles: number } }).__DOG_PERF;
+      const perf = (window as Window & { __DOG_PERF?: { fps: number; p95: number; hitch: number; calls: number; triangles: number; tiles?: number; geometries?: number; textures?: number } }).__DOG_PERF;
       if (!perf) return;
       setLine(
-        `${perf.fps.toFixed(0)} fps · p95 ${perf.p95.toFixed(1)}ms · hitch ${perf.hitch.toFixed(0)}ms · ${perf.calls} calls · ${perf.triangles} tris`,
+        `${perf.fps.toFixed(0)} fps · p95 ${perf.p95.toFixed(1)}ms · hitch ${perf.hitch.toFixed(0)}ms · ${perf.calls} calls · ${perf.triangles} tris · ${perf.tiles ?? 0} tiles · geo ${perf.geometries ?? 0} · tex ${perf.textures ?? 0}`,
       );
     };
     tick();
@@ -472,7 +474,7 @@ export default function DogCanvas({
       className={`biscuit-scene ${night ? 'is-night' : ''} ${compact ? 'is-compact' : ''} ${fill ? 'is-fill' : ''} is-${reaction}`}
     >
       <Canvas
-        dpr={[1, 1.5]}
+        dpr={[1, 1.25]}
         camera={{ position: [0, 6.8, 15], fov: 44, near: 0.1, far: 560 }}
         frameloop={frameloop}
         resize={{ debounce: 0, scroll: false }}
@@ -486,7 +488,7 @@ export default function DogCanvas({
           gl.toneMapping = ACESFilmicToneMapping;
           gl.outputColorSpace = SRGBColorSpace;
           gl.toneMappingExposure = night ? 1.16 : 0.92;
-          gl.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
+          gl.setPixelRatio(Math.min(window.innerWidth < 700 ? 1.25 : 1.5, window.devicePixelRatio || 1));
         }}
       >
         <SizeSync host={host} />
@@ -573,6 +575,11 @@ export default function DogCanvas({
       )}
       {!empty && (asleep || reaction === 'sleep') && <span className="biscuit-zzz">Zzz</span>}
       <DebugHud />
+      {tileStatus === 'loading' && fill && (
+        <p className="dog-tile-warn" role="status">
+          Loading the neighborhood…
+        </p>
+      )}
       {tileStatus === 'failed' && (
         <p className="dog-tile-warn" role="status">
           City map didn’t load — park ground only. Check the network and reload.

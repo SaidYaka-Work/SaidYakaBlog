@@ -392,7 +392,7 @@ function creditWalk(yard: YardState, meters: number, moving: boolean, now: numbe
     ...yard,
     leash: {
       ...yard.leash,
-      lastInputAt: moving ? now : yard.leash.lastInputAt,
+      lastInputAt: now,
       sessionMeters,
       hourMeters,
       hourStartedAt,

@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { TILEJSON_URL, lngLatToLocal, tileXY, type Ring } from '../../../workers/dog/src/world';
 import { decodeTile, type WorldTileData } from './decode';
+import type { PackedTile } from './packTile';
+import { TILE_RING, evictTileCache, wantedTiles } from './tileWindow';
 
 export type WorldColliders = {
   buildings: Ring[];
@@ -13,8 +15,7 @@ export type WorldColliders = {
 
 export type TileStatus = 'loading' | 'ready' | 'failed';
 
-const MAX_INFLIGHT = 3;
-const TILE_RING = 1;
+const MAX_INFLIGHT = 2;
 const DECODE_MS = 8_000;
 const FETCH_TRIES = 3;
 
@@ -139,8 +140,10 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
         wait.reject(new Error(reason));
       });
     };
-    const onMessage = (event: MessageEvent<{ id: number; tile?: WorldTileData; error?: string }>) => {
-      settle(event.data.id, event.data.tile, event.data.error);
+    const onMessage = (event: MessageEvent<{ id: number; tile?: WorldTileData; packed?: PackedTile; error?: string }>) => {
+      const tile = event.data.tile;
+      if (tile && event.data.packed) tile.packed = event.data.packed;
+      settle(event.data.id, tile, event.data.error);
     };
     const onWorkerError = () => {
       console.warn('[dog] tile worker failed; decoding on the main thread');
@@ -244,15 +247,12 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
         if (!dead) setStatus('failed');
         return;
       }
-      const wanted: { z: number; x: number; y: number; key: string }[] = [];
-      for (let dy = -TILE_RING; dy <= TILE_RING; dy += 1) {
-        for (let dx = -TILE_RING; dx <= TILE_RING; dx += 1) {
-          const x = center.x + dx;
-          const y = center.y + dy;
-          wanted.push({ z: center.z, x, y, key: `${center.z}/${x}/${y}` });
-        }
-      }
+      const wanted = wantedTiles(center, TILE_RING).map((tile) => ({
+        ...tile,
+        key: `${tile.z}/${tile.x}/${tile.y}`,
+      }));
       const wantedKeys = new Set(wanted.map((tile) => tile.key));
+      evictTileCache(cache.current, wantedKeys);
       const queue = wanted.filter((tile) => !cache.current.has(tile.key));
       publish(wantedKeys);
       let inflight = 0;
@@ -260,7 +260,8 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
         const kick = () => {
           if (dead) return resolve();
           if (!queue.length && inflight === 0) return resolve();
-          while (inflight < MAX_INFLIGHT && queue.length) {
+          const cap = loaded === 0 && !cache.current.has(`${center.z}/${center.x}/${center.y}`) ? 1 : MAX_INFLIGHT;
+          while (inflight < cap && queue.length) {
             const tile = queue.shift();
             if (!tile) break;
             inflight += 1;
@@ -285,9 +286,7 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
         kick();
       });
       if (dead) return;
-      Array.from(cache.current.keys()).forEach((key) => {
-        if (!wantedKeys.has(key)) cache.current.delete(key);
-      });
+      evictTileCache(cache.current, wantedKeys);
       if (loaded === 0 && (failures > 0 || cache.current.size === 0)) {
         setStatus('failed');
       } else {
