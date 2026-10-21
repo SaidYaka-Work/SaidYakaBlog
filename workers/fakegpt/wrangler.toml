@@ -1,0 +1,22 @@
+name = "saidyaka-fakegpt"
+main = "src/index.ts"
+compatibility_date = "2025-10-11"
+account_id = "06bf4532eebfba00e18e7c9bf7ba85c2"
+workers_dev = true
+
+# Workers AI — text, vision, and Whisper. No extra setup beyond this binding.
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "FAKEGPT"
+id = "c644398a83fb4a14aa0543cbcb7af15b"
+preview_id = "148de06bedb84a62b4f3f80e9d83ff3a"
+
+# Pre-generate today's set shortly after midnight UTC so the first player
+# does not pay the generation latency.
+[triggers]
+crons = ["5 0 * * *"]
+
+[vars]
+ALLOWED_ORIGINS = ""

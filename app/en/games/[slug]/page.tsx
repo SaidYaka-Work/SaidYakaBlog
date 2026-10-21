@@ -15,7 +15,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const game = getGameBySlug(slug);
-  if (!game || game.kind !== 'react' || game.slug === 'click-rush') return {};
+  if (!game || !getPlayableGames().some((item) => item.slug === game.slug)) return {};
 
   const url = englishUrl(`/games/${game.slug}`);
   return {
@@ -48,6 +48,6 @@ export async function generateMetadata({
 export default async function GamePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const game = getGameBySlug(slug);
-  if (!game || game.kind !== 'react' || game.slug === 'click-rush') notFound();
+  if (!game || !getPlayableGames().some((item) => item.slug === game.slug)) notFound();
   return <GamePlayer slug={slug} />;
 }

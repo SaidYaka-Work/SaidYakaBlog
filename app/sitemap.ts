@@ -16,6 +16,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: englishUrl('/about'), lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
     { url: englishUrl('/games'), lastModified: new Date(), changeFrequency: 'weekly', priority: 0.4 },
     { url: englishUrl('/play'), lastModified: new Date(), changeFrequency: 'monthly', priority: 0.2 },
+    { url: englishUrl('/fakegpt'), lastModified: new Date(), changeFrequency: 'monthly', priority: 0.35 },
     { url: englishUrl('/dog'), lastModified: new Date(), changeFrequency: 'daily', priority: 0.45 },
     { url: englishUrl('/dog/history'), lastModified: new Date(), changeFrequency: 'weekly', priority: 0.3 },
     ...getPlayableGames().map((game) => ({

@@ -111,6 +111,19 @@ function GamePreview({ tone, featured = false }: { tone: GameMeta['tone']; featu
           <span className="absolute left-[46%] bottom-9 h-3.5 w-5 rounded-full bg-[#e8a87c]" />
         </>
       )}
+      {tone === 'gpt' && (
+        <>
+          <span className="absolute left-8 top-8 max-w-[62%] rounded-2xl bg-[#f3eee6]/12 px-3 py-2 text-[11px] leading-relaxed text-[#f3eee6]">
+            draw a sandwich with feelings. hurry.
+          </span>
+          <span className="absolute bottom-8 right-8 h-16 w-24 rounded-xl border border-[#e8a87c]/50 bg-[#e8a87c]/20" />
+          <span className="absolute bottom-10 left-10 flex gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#f0d8c8]/80" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[#f0d8c8]/55" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[#f0d8c8]/35" />
+          </span>
+        </>
+      )}
       {tone === 'unknown' && (
         <>
           <span className="absolute left-8 top-8 max-w-[58%] rounded-2xl rounded-bl-md bg-[#f3eee6]/15 px-3 py-2 text-[11px] leading-relaxed text-[#f3eee6]">

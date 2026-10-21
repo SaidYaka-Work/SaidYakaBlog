@@ -2,7 +2,17 @@ import { englishPath } from '@/lib/site';
 
 export type GameKind = 'react' | 'external';
 
-export type GameTone = 'rush' | 'market' | 'orbit' | 'lantern' | 'pulse' | 'glyph' | 'shade' | 'herd' | 'unknown';
+export type GameTone =
+  | 'rush'
+  | 'market'
+  | 'orbit'
+  | 'lantern'
+  | 'pulse'
+  | 'glyph'
+  | 'shade'
+  | 'herd'
+  | 'unknown'
+  | 'gpt';
 
 export type GameMeta = {
   slug: string;
@@ -29,6 +39,20 @@ export type GameMeta = {
  */
 
 export const games: GameMeta[] = [
+  {
+    slug: 'fakegpt',
+    title: 'FakeGPT',
+    tagline: 'You are the chatbot. Draw or honk before the user rage-quits.',
+    description:
+      'A daily parody chat toy: everyone gets the same weird requests. Draw or make the noise; a cheap Worker model can judge, or stay offline.',
+    howTo:
+      'Start a chat. Today\'s eight requests are shared. Draw or make the sound before the timer dies. Online judging sends a downscaled sketch or short clip to a Worker, then discards it. Offline mode never leaves the browser.',
+    genre: 'Daily',
+    kind: 'react',
+    href: englishPath('/fakegpt'),
+    tone: 'gpt',
+    daily: true,
+  },
   {
     slug: 'unknown-number',
     title: 'Unknown Number',
@@ -137,7 +161,7 @@ export function getListedGames(): GameMeta[] {
 }
 
 export function getPlayableGames(): GameMeta[] {
-  return games.filter((game) => game.kind === 'react' && game.slug !== 'click-rush');
+  return games.filter((game) => game.kind === 'react' && game.href === englishPath(`/games/${game.slug}`));
 }
 
 export function getGameBySlug(slug: string): GameMeta | undefined {
