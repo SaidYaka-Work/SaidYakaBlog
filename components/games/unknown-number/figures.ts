@@ -1,4 +1,5 @@
 import { ARTS } from './data/arts';
+import { BIRTHPLACES } from './data/birthplaces';
 import { EXPLORATION } from './data/exploration';
 import { PUBLIC_LIFE } from './data/public-life';
 import { SCIENCE } from './data/science';
@@ -12,5 +13,9 @@ export const FIGURES: Figure[] = [...SCIENCE, ...ARTS, ...PUBLIC_LIFE, ...SPORT,
   const story = extra
     ? ([figure.story[0], figure.story[1], `${figure.story[2]} ${extra}`] as Figure['story'])
     : figure.story;
-  return { ...figure, story, portrait: PORTRAITS[figure.id] ?? null };
+  const birthplace = BIRTHPLACES[figure.id];
+  if (!birthplace) {
+    throw new Error(`Missing birthplace for ${figure.id}`);
+  }
+  return { ...figure, story, portrait: PORTRAITS[figure.id] ?? null, birthplace };
 });

@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import GameShell from '../GameShell';
 import { useGameChrome } from '../useGameChrome';
@@ -7,6 +8,7 @@ import { getGameBySlug } from '@/lib/games';
 import { englishUrl } from '@/lib/site';
 import GuessInput from './GuessInput';
 import RevealCard from './RevealCard';
+import SuspectGrid from './SuspectGrid';
 import { fetchGlobalStats, resultKey, submitGlobalResult, type GlobalStats } from './api';
 import {
   DAY_STORAGE_KEY,
@@ -14,6 +16,7 @@ import {
   MAX_CLUES,
   STATS_STORAGE_KEY,
   createDayState,
+  eliminatedIds,
   figureForDate,
   formatCountdown,
   formatTimestamp,
@@ -24,10 +27,22 @@ import {
   nyCalendarDate,
   recordFinish,
   shareLines,
+  suspectPool,
+  uniqueIds,
   winPercent,
   writeJson,
+  wrongGuessCount,
 } from './logic';
 import type { DayState, Figure, GameStats, GuessRecord } from './types';
+
+const GlobeHint = dynamic(() => import('./GlobeHint'), {
+  ssr: false,
+  loading: () => <div className="un-globe un-globe-pending" aria-hidden="true" />,
+});
+
+function prefersReducedStatsDelay() {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
 
 const meta = getGameBySlug('unknown-number')!;
 
@@ -76,10 +91,14 @@ export default function UnknownNumberGame() {
   const [shareNote, setShareNote] = useState('');
   const [countdown, setCountdown] = useState('--:--:--');
   const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
+  const [query, setQuery] = useState('');
   const logRef = useRef<HTMLDivElement>(null);
 
   const figure = useMemo(() => (day ? getFigure(day.figureId) ?? figureForDate(day.date) : null), [day]);
+  const pool = useMemo(() => (day && figure ? suspectPool(figure, day.date) : []), [day, figure]);
+  const eliminated = day ? eliminatedIds(day) : [];
   const finished = day?.status === 'won' || day?.status === 'lost';
+  const wrongs = day ? wrongGuessCount(day.guesses) : 0;
 
   const persist = useCallback((next: DayState, nextStats?: GameStats) => {
     writeJson(DAY_STORAGE_KEY, next);
@@ -171,19 +190,24 @@ export default function UnknownNumberGame() {
   const onGuess = useCallback(
     (choice: Figure) => {
       if (!day || !figure || day.status !== 'playing' || typing) return;
+      if (!pool.some((suspect) => suspect.id === choice.id)) return;
+      if (eliminatedIds(day).includes(choice.id)) return;
       const correct = choice.id === figure.id;
       const guesses: GuessRecord[] = [...day.guesses, { text: choice.name, correct }];
+      const nextEliminated = correct
+        ? eliminatedIds(day)
+        : uniqueIds([...eliminatedIds(day), choice.id]);
       if (correct) {
-        const next: DayState = { ...day, guesses, status: 'won' };
+        const next: DayState = { ...day, guesses, eliminated: nextEliminated, status: 'won' };
         const nextStats = recordFinish(stats, day.date, 'won', guesses.length);
         setDay(next);
         setStats(nextStats);
         persist(next, nextStats);
-        setStatsOpen(true);
         beep(740, 0.12);
+        window.setTimeout(() => setStatsOpen(true), prefersReducedStatsDelay() ? 0 : 1100);
         return;
       }
-      const holding: DayState = { ...day, guesses };
+      const holding: DayState = { ...day, guesses, eliminated: nextEliminated };
       setDay(holding);
       persist(holding);
       if (guesses.length >= MAX_CLUES) {
@@ -192,8 +216,8 @@ export default function UnknownNumberGame() {
         setDay(next);
         setStats(nextStats);
         persist(next, nextStats);
-        setStatsOpen(true);
         beep(180, 0.1);
+        window.setTimeout(() => setStatsOpen(true), prefersReducedStatsDelay() ? 0 : 1100);
         return;
       }
       beep(240, 0.05);
@@ -203,13 +227,15 @@ export default function UnknownNumberGame() {
         timestamps: [...day.timestamps, formatTimestamp(new Date())],
       });
     },
-    [beep, day, figure, persist, revealNext, stats, typing],
+    [beep, day, figure, persist, pool, revealNext, stats, typing],
   );
 
   const share = useCallback(async () => {
     if (!day) return;
     const url = englishUrl('/games/unknown-number');
-    const text = `${shareLines(day.puzzleNumber, day.status, day.guesses.length).join('\n')}\n${url}`;
+    const text = `${shareLines(day.puzzleNumber, day.status, day.guesses.length, {
+      globeStep: wrongGuessCount(day.guesses),
+    }).join('\n')}\n${url}`;
     try {
       if (typeof navigator.share === 'function' && /Mobi|Android|iPhone/i.test(navigator.userAgent)) {
         await navigator.share({ text });
@@ -278,7 +304,9 @@ export default function UnknownNumberGame() {
         </>
       }
     >
-      <div className="un-phone">
+      <div className="un-stage">
+        <GlobeHint birthplace={figure.birthplace} wrongGuesses={wrongs} revealed={finished} />
+        <div className="un-phone">
         <header className="flex items-center gap-3 border-b border-[var(--line)] bg-[var(--un-phone-bar)] px-4 py-3">
           <span
             className="grid h-10 w-10 place-items-center rounded-full bg-[var(--un-in-bg)] text-lg font-medium text-[var(--un-in-ink)]"
@@ -315,12 +343,24 @@ export default function UnknownNumberGame() {
           <div className="border-t border-[var(--line)] bg-[var(--un-phone-bar)] px-3 py-3 sm:px-4">
             <GuessInput
               disabled={typing}
-              placeholder={typing ? 'Incoming…' : 'Text Message'}
+              placeholder={typing ? 'Incoming…' : 'Filter or name a suspect'}
+              pool={pool}
+              excluded={eliminated}
               onGuess={onGuess}
+              onQueryChange={setQuery}
             />
           </div>
         )}
+        </div>
       </div>
+
+      <SuspectGrid
+        pool={pool}
+        eliminated={eliminated}
+        query={query}
+        disabled={Boolean(finished || typing)}
+        onGuess={onGuess}
+      />
 
       {finished ? (
         <div className="mt-5">

@@ -1,7 +1,9 @@
 import { FIGURES } from './figures';
+import { GLOBE_STEPS, globeStepIndex } from './globe';
 import type { DayState, Figure, GameStats, GameStatus } from './types';
 
 export const MAX_CLUES = 6;
+export const SUSPECT_POOL_SIZE = 16;
 export const LAUNCH_DATE = '2026-10-21';
 export const NY_TZ = 'America/New_York';
 export const DAY_STORAGE_KEY = 'unknown-number-day';
@@ -124,19 +126,105 @@ export function findFigureByGuess(guess: string): Figure | undefined {
   return FIGURES.find((figure) => matchesFigure(guess, figure));
 }
 
-export function filterFigureChoices(query: string, limit = 8): Figure[] {
+export function filterFigureChoices(
+  query: string,
+  limit = 8,
+  candidates: Figure[] = FIGURES,
+  excluded: readonly string[] = [],
+): Figure[] {
   const needle = normalizeName(query);
   if (!needle) return [];
-  const scored = FIGURES.map((figure) => {
-    const names = figureNames(figure).map(normalizeName);
-    const exact = names.some((name) => name === needle);
-    const starts = names.some((name) => name.startsWith(needle));
-    const contains = names.some((name) => name.includes(needle));
-    if (!contains) return null;
-    return { figure, rank: exact ? 0 : starts ? 1 : 2 };
-  }).filter((row): row is { figure: Figure; rank: number } => row !== null);
+  const blocked = new Set(excluded);
+  const scored = candidates
+    .filter((figure) => !blocked.has(figure.id))
+    .map((figure) => {
+      const names = figureNames(figure).map(normalizeName);
+      const exact = names.some((name) => name === needle);
+      const starts = names.some((name) => name.startsWith(needle));
+      const contains = names.some((name) => name.includes(needle));
+      if (!contains) return null;
+      return { figure, rank: exact ? 0 : starts ? 1 : 2 };
+    })
+    .filter((row): row is { figure: Figure; rank: number } => row !== null);
   scored.sort((a, b) => a.rank - b.rank || a.figure.name.localeCompare(b.figure.name));
   return scored.slice(0, limit).map((row) => row.figure);
+}
+
+function fieldFamily(field: string): string {
+  const value = field.toLowerCase();
+  if (/physic|chemist|math|astron|comput|biolog|medic|science|invent/.test(value)) return 'science';
+  if (/paint|sculpt|literatur|music|poet|drama|animat|print|perform|comic|film/.test(value)) return 'arts';
+  if (/politic|lead|activ|rights|diplom|rule|philan|public/.test(value)) return 'public';
+  if (/athlet|football|box|baseball|golf|gymnast|motor|swim|surf|tennis|cricket|basket/.test(value)) return 'sport';
+  if (/explor|navig|aviat|space|climb|travel|pilot/.test(value)) return 'exploration';
+  return 'other';
+}
+
+function geoRegion(lat: number, lng: number): string {
+  if (lat > 34 && lng > -25 && lng < 40) return 'europe';
+  if (lat > 8 && lng >= 25 && lng < 100) return 'west-asia';
+  if (lat > -10 && lng >= 95) return 'east-asia';
+  if (lat <= 36 && lat > -36 && lng > -20 && lng < 55) return 'africa';
+  if (lat > 14 && lng < -50) return 'n-america';
+  if (lat <= 14 && lng < -30) return 'latam';
+  if (lng > 110 && lat < 0) return 'oceania';
+  return 'other';
+}
+
+function birthYear(figure: Figure): number {
+  const match = figure.years.match(/-?\d{3,4}/);
+  return match ? Number(match[0]) : 0;
+}
+
+function takeUnique(target: Figure[], source: Figure[], count: number) {
+  const have = new Set(target.map((figure) => figure.id));
+  for (const figure of source) {
+    if (target.length >= count) break;
+    if (have.has(figure.id)) continue;
+    have.add(figure.id);
+    target.push(figure);
+  }
+}
+
+export function suspectPool(answer: Figure, date: string, size = SUSPECT_POOL_SIZE): Figure[] {
+  const seed = calendarDayIndex(date) * 409 + SHUFFLE_SEED + 17;
+  const random = mulberry32(seed);
+  const shuffle = <T,>(list: T[]) => {
+    const copy = [...list];
+    for (let i = copy.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
+  const others = FIGURES.filter((figure) => figure.id !== answer.id);
+  const family = fieldFamily(answer.field);
+  const region = geoRegion(answer.birthplace.lat, answer.birthplace.lng);
+  const year = birthYear(answer);
+
+  const sameField = shuffle(others.filter((figure) => fieldFamily(figure.field) === family));
+  const sameRegion = shuffle(
+    others.filter((figure) => geoRegion(figure.birthplace.lat, figure.birthplace.lng) === region),
+  );
+  const sameEra = shuffle(others.filter((figure) => Math.abs(birthYear(figure) - year) <= 80));
+  const diverse = shuffle(
+    others.filter((figure) => {
+      const otherFamily = fieldFamily(figure.field);
+      const otherRegion = geoRegion(figure.birthplace.lat, figure.birthplace.lng);
+      return otherFamily !== family && otherRegion !== region;
+    }),
+  );
+  const leftover = shuffle(others);
+
+  const picked: Figure[] = [answer];
+  takeUnique(picked, sameField, Math.min(6, size));
+  takeUnique(picked, sameRegion, Math.min(9, size));
+  takeUnique(picked, sameEra, Math.min(12, size));
+  takeUnique(picked, diverse, size);
+  takeUnique(picked, leftover, size);
+
+  return shuffle(picked).slice(0, size);
 }
 
 export function emptyStats(): GameStats {
@@ -186,10 +274,24 @@ export function licenseLabel(license: string): string {
   return license;
 }
 
-export function shareLines(puzzleNumber: number, status: GameStatus, guesses: number): string[] {
+export function shareLines(
+  puzzleNumber: number,
+  status: GameStatus,
+  guesses: number,
+  options?: { globeStep?: number },
+): string[] {
   const score = status === 'won' ? `${guesses}/${MAX_CLUES}` : `X/${MAX_CLUES}`;
   const bubbles = `${'💬'.repeat(status === 'won' ? guesses : MAX_CLUES)}${status === 'won' ? '✅' : '❌'}`;
-  return [`Unknown Number #${puzzleNumber} ${score}`, bubbles];
+  const lines = [`Unknown Number #${puzzleNumber} ${score}`, bubbles];
+  if (options?.globeStep !== undefined) {
+    const step = GLOBE_STEPS[globeStepIndex(options.globeStep)];
+    lines.push(`🌍 ${step.id}`);
+  }
+  return lines;
+}
+
+export function wrongGuessCount(guesses: { correct: boolean }[]): number {
+  return guesses.filter((guess) => !guess.correct).length;
 }
 
 export function formatTimestamp(date: Date): string {
@@ -217,6 +319,7 @@ export function createDayState(date: string, now = new Date()): DayState {
     revealed: 1,
     status: 'playing',
     timestamps: buildTimestamps(1, now),
+    eliminated: [],
   };
 }
 
@@ -253,12 +356,33 @@ export function loadStats(): GameStats {
   };
 }
 
+export function uniqueIds(ids: readonly string[]): string[] {
+  const seen: Record<string, true> = {};
+  const out: string[] = [];
+  for (const id of ids) {
+    if (seen[id]) continue;
+    seen[id] = true;
+    out.push(id);
+  }
+  return out;
+}
+
+export function eliminatedIds(state: Pick<DayState, 'guesses' | 'eliminated'>): string[] {
+  if (state.eliminated?.length) return uniqueIds(state.eliminated);
+  return uniqueIds(
+    state.guesses
+      .filter((guess) => !guess.correct)
+      .map((guess) => findFigureByGuess(guess.text)?.id)
+      .filter((id): id is string => Boolean(id)),
+  );
+}
+
 export function loadDayState(today: string): DayState | null {
   const saved = readJson<DayState>(DAY_STORAGE_KEY);
   if (!saved || saved.date !== today) return null;
   const figure = figureForDate(today);
   if (saved.figureId !== figure.id) return null;
-  return saved;
+  return { ...saved, eliminated: eliminatedIds(saved) };
 }
 
 export function getFigure(id: string): Figure | undefined {

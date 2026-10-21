@@ -8,6 +8,13 @@ export type Portrait = {
   license: LicenseId;
 };
 
+export type Birthplace = {
+  name: string;
+  country: string;
+  lat: number;
+  lng: number;
+};
+
 export type FigureDraft = {
   id: string;
   name: string;
@@ -26,6 +33,7 @@ export type FigureDraft = {
 
 export type Figure = FigureDraft & {
   portrait: Portrait | null;
+  birthplace: Birthplace;
 };
 
 export type GameStatus = 'playing' | 'won' | 'lost';
@@ -43,6 +51,7 @@ export type DayState = {
   revealed: number;
   status: GameStatus;
   timestamps: string[];
+  eliminated: string[];
 };
 
 export type GameStats = {

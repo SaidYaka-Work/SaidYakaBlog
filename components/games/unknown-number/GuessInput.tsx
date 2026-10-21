@@ -7,17 +7,27 @@ import type { Figure } from './types';
 type GuessInputProps = {
   disabled: boolean;
   placeholder?: string;
+  pool: Figure[];
+  excluded?: readonly string[];
   onGuess: (figure: Figure) => void;
+  onQueryChange?: (query: string) => void;
 };
 
-export default function GuessInput({ disabled, placeholder, onGuess }: GuessInputProps) {
+export default function GuessInput({
+  disabled,
+  placeholder,
+  pool,
+  excluded = [],
+  onGuess,
+  onQueryChange,
+}: GuessInputProps) {
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
 
-  const choices = useMemo(() => filterFigureChoices(query), [query]);
+  const choices = useMemo(() => filterFigureChoices(query, 8, pool, excluded), [excluded, pool, query]);
 
   useEffect(() => {
     setActive(0);
@@ -27,6 +37,7 @@ export default function GuessInput({ disabled, placeholder, onGuess }: GuessInpu
   function submitFigure(figure: Figure) {
     onGuess(figure);
     setQuery('');
+    onQueryChange?.('');
     setOpen(false);
     inputRef.current?.focus();
   }
@@ -57,7 +68,11 @@ export default function GuessInput({ disabled, placeholder, onGuess }: GuessInpu
           disabled={disabled}
           placeholder={placeholder ?? (disabled ? 'The thread is closed' : 'Text Message')}
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            const next = event.target.value;
+            setQuery(next);
+            onQueryChange?.(next);
+          }}
           onKeyDown={(event) => {
             if (event.key === 'ArrowDown') {
               event.preventDefault();
