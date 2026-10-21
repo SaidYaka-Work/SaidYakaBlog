@@ -38,21 +38,21 @@ function TypingDots() {
 }
 
 function AudioBubble({ src, hits }: { src?: string; hits?: SynthHit[] }) {
-  if (src) {
-    return <audio className="fgpt-audio" controls src={src} preload="metadata" />;
-  }
-  if (hits?.length) {
-    return (
-      <button
-        type="button"
-        onClick={() => replayHits(hits)}
-        className="pressable rounded-full bg-[var(--ink)] px-3 py-1.5 text-xs text-[var(--bg)]"
-      >
-        Play sequence
-      </button>
-    );
-  }
-  return <p className="text-sm text-[var(--muted)]">No clip captured.</p>;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {src ? <audio className="fgpt-audio" controls src={src} preload="metadata" /> : null}
+      {hits?.length ? (
+        <button
+          type="button"
+          onClick={() => replayHits(hits)}
+          className="pressable rounded-full bg-[var(--ink)] px-3 py-1.5 text-xs text-[var(--bg)]"
+        >
+          Play sequence
+        </button>
+      ) : null}
+      {!src && !hits?.length ? <p className="text-sm text-[var(--muted)]">No clip captured.</p> : null}
+    </div>
+  );
 }
 
 function MessageView({ message }: { message: ChatMessage }) {
@@ -205,7 +205,7 @@ export default function FakeGptGame() {
         empty: result.empty,
         late: result.late,
         drawingUrl: draw?.dataUrl || undefined,
-        audioUrl: sound?.blobUrl || undefined,
+        audioUrl: sound?.usedMic && sound.blobUrl ? sound.blobUrl : undefined,
         replayHits: sound?.hits,
       };
       const assistant: ChatMessage = result.empty
@@ -292,7 +292,7 @@ export default function FakeGptGame() {
       tight
       hud="line"
     >
-      <div className="fgpt-chat">
+      <div className={`fgpt-chat ${phase === 'responding' ? 'is-playing' : ''} ${phase === 'results' ? 'is-results' : ''}`}>
         <header className="fgpt-bar">
           <span className="fgpt-mark" aria-hidden="true">
             f
@@ -305,11 +305,12 @@ export default function FakeGptGame() {
           </div>
           {phase === 'responding' ? (
             <p className={`fgpt-timer ${urgent ? 'is-urgent' : ''}`} aria-live="polite">
-              {formatTimer(remainingMs)}s
+              {formatTimer(remainingMs)}
             </p>
           ) : null}
         </header>
 
+        {phase === 'results' ? null : (
         <div className="fgpt-log" role="log" aria-live="polite">
           {phase === 'intro' ? (
             <div className="space-y-3 text-sm leading-relaxed text-[var(--muted)]">
@@ -326,6 +327,7 @@ export default function FakeGptGame() {
           {phase === 'typing' ? <TypingDots /> : null}
           <div ref={logRef} />
         </div>
+        )}
 
         {phase === 'intro' ? (
           <div className="fgpt-composer">

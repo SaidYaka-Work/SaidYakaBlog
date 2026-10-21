@@ -148,7 +148,7 @@ const SoundPad = forwardRef<SoundPadHandle, SoundPadProps>(function SoundPad(
     recorder.ondataavailable = (event) => {
       if (event.data.size > 0) chunksRef.current.push(event.data);
     };
-    recorder.start();
+    recorder.start(250);
     recorderRef.current = recorder;
     startedAtRef.current = Date.now();
     activeMsRef.current = 0;
@@ -173,11 +173,10 @@ const SoundPad = forwardRef<SoundPadHandle, SoundPadProps>(function SoundPad(
     contextRef.current = ctx;
     destRef.current = dest;
     analyserRef.current = analyser;
-    startRecorder(dest.stream);
     watchPeak();
     setMode('synth');
     onMode?.('synth');
-  }, [onMode, startRecorder, watchPeak]);
+  }, [onMode, watchPeak]);
 
   const bootMic = useCallback(async () => {
     try {
@@ -238,7 +237,7 @@ const SoundPad = forwardRef<SoundPadHandle, SoundPadProps>(function SoundPad(
     osc.start();
     voicesRef.current.set(pad.id, { osc, gain, at: Date.now() });
     setActivePad(pad.id);
-    if (!recording && !recorderRef.current) {
+    if (!recorderRef.current) {
       startRecorder(destRef.current.stream);
     }
   };
@@ -284,12 +283,13 @@ const SoundPad = forwardRef<SoundPadHandle, SoundPadProps>(function SoundPad(
         const type = recorder.mimeType || 'audio/webm';
         const blob = new Blob(chunksRef.current, { type });
         if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-        const url = blob.size > 0 ? URL.createObjectURL(blob) : null;
+        const url = blob.size > 250 ? URL.createObjectURL(blob) : null;
         blobUrlRef.current = url;
         setRecording(false);
         resolve(snapshotNow(url));
       };
       try {
+        if (recorder.state === 'recording') recorder.requestData();
         recorder.stop();
       } catch {
         resolve(snapshotNow(blobUrlRef.current));

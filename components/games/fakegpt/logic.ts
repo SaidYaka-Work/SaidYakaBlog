@@ -71,7 +71,7 @@ export function formatTimer(ms: number): string {
   const total = Math.ceil(safe / 1000);
   const minutes = Math.floor(total / 60);
   const seconds = total % 60;
-  return minutes > 0 ? `${minutes}:${String(seconds).padStart(2, '0')}` : String(seconds);
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
 /** Alternate draw/sound so a full run always exercises both verbs. */

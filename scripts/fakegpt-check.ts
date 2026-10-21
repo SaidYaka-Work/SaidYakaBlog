@@ -58,9 +58,10 @@ assert.equal(roundSeconds(BASE_SECONDS - MIN_SECONDS), MIN_SECONDS);
 assert.equal(roundSeconds(99), MIN_SECONDS);
 assert.ok(roundSeconds(3) < roundSeconds(0), 'later rounds should be shorter');
 
-assert.equal(formatTimer(24500), '25');
-assert.equal(formatTimer(0), '0');
-assert.equal(formatTimer(-20), '0');
+assert.equal(formatTimer(24500), '0:25');
+assert.equal(formatTimer(0), '0:00');
+assert.equal(formatTimer(-20), '0:00');
+assert.equal(formatTimer(65000), '1:05');
 
 assert.equal(nextNudge(0.1, 0), null);
 assert.equal(nextNudge(NUDGE_MARKS[0].at, 0), NUDGE_MARKS[0].text);
