@@ -311,7 +311,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const shownName = dog?.profile.name || (awaitingName ? 'A new dog' : snapshot?.memorial?.profile.name || 'Biscuit');
   const hungry = preview === 'hungry' || preview === 'eat' || Boolean(dog?.care.feedOverdue) || (dog?.care.hunger ?? 0) > 70;
   const wantsWalk = preview === 'hungry' || Boolean(dog?.care.walkOverdue) || (dog?.care.walkNeed ?? 0) > 70;
-  const poseAsleep = preview === 'sleep' || (!previewing && Boolean(dog?.asleep));
+  const liveSleep = !previewing && Boolean(dog?.asleep);
+  const poseAsleep = preview === 'sleep' || liveSleep;
   const poseReaction =
     preview === 'sleep'
       ? 'sleep'
@@ -319,7 +320,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         ? 'feed'
         : preview === 'pose-walk'
           ? 'walk'
-          : dog?.asleep
+          : liveSleep
             ? 'sleep'
             : reaction;
   const poseSad = preview === 'sad' || (!previewing && (dog?.happiness ?? 100) < 40);
@@ -483,7 +484,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       if (snapshot?.location) send({ type: 'leave' });
       setLocalWorld(true);
       setLocalPlaceId(HOME_PLACE.id);
-      setFlight(0.35);
+      setFlight(0.12);
       pushToast('Out into the city.');
     },
     [inWorld, pushToast, snapshot?.location, worldReady],

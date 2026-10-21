@@ -22,6 +22,17 @@ function shapeFrom(ring: { x: number; z: number }[]) {
   return shape;
 }
 
+function mergeChunks(geos: BufferGeometry[], size = 36) {
+  const chunks: BufferGeometry[] = [];
+  for (let i = 0; i < geos.length; i += size) {
+    const slice = geos.slice(i, i + size);
+    const merged = mergeGeometries(slice, false);
+    slice.forEach((geo) => geo.dispose());
+    if (merged) chunks.push(merged);
+  }
+  return chunks;
+}
+
 function extrudeBuildings(tiles: WorldTileData[], lod: boolean) {
   const geos: BufferGeometry[] = [];
   for (const tile of tiles) {
@@ -41,10 +52,7 @@ function extrudeBuildings(tiles: WorldTileData[], lod: boolean) {
       }
     }
   }
-  if (!geos.length) return null;
-  const merged = mergeGeometries(geos, false);
-  geos.forEach((geo) => geo.dispose());
-  return merged;
+  return mergeChunks(geos);
 }
 
 function flattenRings(rings: { x: number; z: number }[][]) {
@@ -134,11 +142,11 @@ export default function WorldScene({
   }, [tiles]);
 
   useEffect(() => {
-    const sky = night ? '#0e1624' : '#dce6f0';
+    const sky = night ? '#243656' : '#dce6f0';
     scene.background = new Color(sky);
     gl.setClearColor(sky, 1);
     return () => {
-      meshes.buildings?.dispose();
+      meshes.buildings.forEach((geo) => geo.dispose());
       meshes.parks?.dispose();
       meshes.water?.dispose();
       meshes.roads?.dispose();
@@ -149,34 +157,35 @@ export default function WorldScene({
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]} receiveShadow>
         <planeGeometry args={[2400, 2400]} />
-        <meshStandardMaterial color={night ? '#1a1e18' : '#d8c4a4'} />
+        <meshStandardMaterial color={night ? '#2a322c' : '#d8c4a4'} />
       </mesh>
-      <hemisphereLight args={[night ? '#6a7a98' : '#fff4e6', night ? '#14120e' : '#c8b090', night ? 0.55 : 0.95]} />
+      <ambientLight intensity={night ? 0.42 : 0.28} color={night ? '#8aa0c8' : '#fff6ea'} />
+      <hemisphereLight args={[night ? '#8ea4cc' : '#fff4e6', night ? '#1c1814' : '#c8b090', night ? 0.9 : 1]} />
       <directionalLight
-        position={[sun.x, sun.y, sun.z]}
-        intensity={night ? 0.28 : 1.05}
-        color={night ? '#c8d4f0' : '#ffe4c4'}
+        position={[sun.x, Math.max(4.5, sun.y), sun.z]}
+        intensity={night ? 0.62 : 1.12}
+        color={night ? '#d4dff4' : '#ffe4c4'}
       />
       {meshes.parks && (
         <mesh geometry={meshes.parks} receiveShadow>
-          <meshStandardMaterial color={night ? '#2a3a28' : '#9cba7a'} />
+          <meshStandardMaterial color={night ? '#3a4e36' : '#9cba7a'} />
         </mesh>
       )}
       {meshes.water && (
         <mesh geometry={meshes.water}>
-          <meshStandardMaterial color={night ? '#1a3048' : '#7aa4c4'} roughness={0.18} metalness={0.12} />
+          <meshStandardMaterial color={night ? '#2a4464' : '#7aa4c4'} roughness={0.18} metalness={0.12} />
         </mesh>
       )}
       {meshes.roads && (
         <mesh geometry={meshes.roads} receiveShadow>
-          <meshStandardMaterial color={night ? '#2a2a2c' : '#c4b8a8'} />
+          <meshStandardMaterial color={night ? '#4a4644' : '#c4b8a8'} />
         </mesh>
       )}
-      {meshes.buildings && (
-        <mesh geometry={meshes.buildings} castShadow>
-          <meshStandardMaterial color={night ? '#6a5a4e' : '#efe4d4'} roughness={0.62} side={DoubleSide} />
+      {meshes.buildings.map((geo, index) => (
+        <mesh key={index} geometry={geo} castShadow>
+          <meshStandardMaterial color={night ? '#8c7a6a' : '#efe4d4'} roughness={0.62} side={DoubleSide} />
         </mesh>
-      )}
+      ))}
     </group>
   );
 }

@@ -90,16 +90,19 @@ function FramedCamera({
         object.position.z - Math.cos(yaw) * dist * Math.cos(pitch),
       );
       look.current.set(object.position.x, 0.7 + flight * 8, object.position.z);
-      if (ready.current) {
-        camera.position.lerpVectors(from.current, street.current, 1 - Math.exp(-dt * (flight > 0.08 ? 1.2 : 2)));
-        camera.up.set(0, 1, 0);
+      camera.near = flight > 0.5 ? 2 : 0.2;
+      camera.far = 520;
+      camera.up.set(0, 1, 0);
+      if (!ready.current) {
+        camera.position.copy(street.current);
         camera.lookAt(look.current);
-        camera.near = flight > 0.5 ? 2 : 0.2;
-        camera.far = 520;
         camera.updateProjectionMatrix();
-      } else {
         ready.current = true;
         onReady?.();
+      } else {
+        camera.position.lerpVectors(from.current, street.current, 1 - Math.exp(-dt * (flight > 0.08 ? 1.2 : 2)));
+        camera.lookAt(look.current);
+        camera.updateProjectionMatrix();
       }
     } else if (fill) {
       const info = followYardCamera(camera, object, {

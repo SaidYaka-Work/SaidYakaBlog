@@ -90,7 +90,8 @@ export function decodeTile(
     for (let i = 0; i < building.length; i += 1) {
       const feat = building.feature(i);
       const rings = toLocal(feat.loadGeometry(), z, x, y, building.extent, originLat, originLng);
-      const props = feat.properties as { render_height?: number; render_min_height?: number };
+      const props = feat.properties as { render_height?: number; render_min_height?: number; hide_3d?: boolean };
+      if (props.hide_3d) continue;
       for (const ring of rings) {
         if (ring.length < 3) continue;
         const area = ringArea(ring);

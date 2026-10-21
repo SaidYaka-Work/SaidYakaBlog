@@ -140,7 +140,7 @@ export default function DogHud({
       {inWorld && (placeName || streetName) && (
         <p className="dog-place" role="status">
           <span aria-hidden="true">N</span>
-          {streetName || placeName}
+          {streetCaption(streetName, placeName)}
         </p>
       )}
 
@@ -190,6 +190,14 @@ export default function DogHud({
       </div>
     </div>
   );
+}
+
+function streetCaption(streetName?: string, placeName?: string) {
+  if (!streetName) return placeName;
+  if (streetName.length > 32 || /subway|interchange|transfer|entrance|underground/i.test(streetName)) {
+    return placeName || streetName;
+  }
+  return streetName;
 }
 
 function Meter({ icon, label, value }: { icon: string; label: string; value: number }) {
