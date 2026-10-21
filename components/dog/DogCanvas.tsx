@@ -214,6 +214,8 @@ export default function DogCanvas({
   onReady,
   onAnchor,
   companions = [],
+  youId = null,
+  lookAt = { x: 0, z: 0 },
 }: {
   genome?: DogGenome | null;
   stage?: LifeStage;
@@ -235,6 +237,8 @@ export default function DogCanvas({
   onReady?: () => void;
   onAnchor?: (pos: { x: number; y: number } | null) => void;
   companions?: DogCompanion[];
+  youId?: string | null;
+  lookAt?: { x: number; z: number };
 }) {
   const host = useRef<HTMLDivElement>(null);
   const dogRef = useRef<Group>(null);
@@ -343,7 +347,7 @@ export default function DogCanvas({
               roomy={fill}
             />
           )}
-          {!empty && <Companions guests={companions} night={night} />}
+          {!empty && <Companions guests={companions} night={night} youId={youId} lookAt={lookAt} />}
           {!empty && <DogKeyLight target={dogRef} night={night} />}
           {!empty && fill && <FootShadow target={dogRef} />}
           {!empty && (

@@ -14,7 +14,7 @@ import {
   tileXY,
 } from '../workers/dog/src/world.ts';
 import { RUN_SPEED, createYard, nearGate } from '../workers/dog/src/room.ts';
-import { FACADE_PALETTE, crossingsAtIntersections, dressPlants, facadeTint, isMajorRoad, lampsAlongRoads, streetTreesAlongRoads, treesInParks } from '../components/dog/world/dress.ts';
+import { FACADE_PALETTE, crossingsAtIntersections, dressPlants, facadeTint, isMajorRoad, lampsAlongRoads, plantsInParks, streetTreesAlongRoads, treesInParks } from '../components/dog/world/dress.ts';
 
 function assert(cond: unknown, message: string) {
   if (!cond) throw new Error(message);
@@ -106,6 +106,12 @@ const street = [{ line: [{ x: -30, z: 8 }, { x: 30, z: 8 }], width: 8, klass: 'p
 const plants = dressPlants(park, street, { x: 0, z: 0 }, 24);
 assert(plants.some((plant) => plant.kind === 'tree') && plants.some((plant) => plant.kind === 'bush'), 'parks get trees and bushes');
 assert(streetTreesAlongRoads(street, { x: 0, z: 0 }, 8).length >= 2, 'sidewalks get street trees');
+const grove = plantsInParks(
+  [[{ x: -40, z: -40 }, { x: 40, z: -40 }, { x: 40, z: 40 }, { x: -40, z: 40 }]],
+  { x: 0, z: 0 },
+  80,
+);
+assert(grove.filter((plant) => plant.kind === 'tree').length >= 24, `parks need a grove, got ${grove.length}`);
 const marks = crossingsAtIntersections(
   [
     { line: [{ x: -20, z: 0 }, { x: 20, z: 0 }], width: 8, klass: 'primary' },

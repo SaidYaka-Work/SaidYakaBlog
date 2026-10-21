@@ -34,9 +34,9 @@ type Panel = 'hall' | 'feed' | 'walk' | 'catch' | 'name' | null;
 type Preview = 'start' | 'hungry' | 'feed' | 'walk' | 'hall' | 'sleep' | 'eat' | 'sad' | 'pose-walk' | 'room' | 'leash' | 'world' | 'travel' | 'gate' | 'presence' | null;
 
 const PREVIEW_VISITORS: DogCompanion[] = [
-  { id: 'visit-a', x: 1.15, z: 0.95, yaw: -0.7, emote: 'wave' },
-  { id: 'visit-b', x: -1.28, z: 0.62, yaw: 0.85, emote: null },
-  { id: 'visit-c', x: 0.42, z: -1.32, yaw: 2.5, emote: 'heart' },
+  { id: 'visit-a', x: 1.2, z: 0.88, yaw: -0.7, emote: 'wave' },
+  { id: 'visit-b', x: -1.18, z: 0.72, yaw: 0.85, emote: null },
+  { id: 'visit-c', x: 0.28, z: -1.22, yaw: 2.5, emote: 'heart' },
 ];
 
 const ERRORS: Record<string, string> = {
@@ -92,6 +92,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const [streetName, setStreetName] = useState('');
   const [lightOverride, setLightOverride] = useState<'day' | 'night' | null>(null);
   const [thoughtAnchor, setThoughtAnchor] = useState<{ x: number; y: number } | null>(null);
+  const [localEmote, setLocalEmote] = useState<DogEmote | null>(null);
+  const [selfHere, setSelfHere] = useState({ x: 0.95, z: -0.55 });
   const colliders = useRef<WorldColliders>({ buildings: [], roads: [], parks: [], label: '' });
   const leftGate = useRef(false);
   const localPose = useRef<{ x: number; z: number } | null>(null);
@@ -414,10 +416,19 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const nextId = snapshot?.leash?.nextId ?? leashQueue[0] ?? null;
   const youNext = preview === 'presence' || Boolean(nextId && clientId && nextId === clientId && !youHold);
   const queueAhead = youNext || !clientId ? 0 : Math.max(0, leashQueue.indexOf(clientId));
+  const youId = preview === 'presence' ? 'you' : clientId;
+  const selfGuest: DogCompanion = {
+    id: youId || 'you',
+    x: selfHere.x,
+    z: selfHere.z,
+    yaw: 0,
+    emote: localEmote,
+  };
   const guests =
     preview === 'presence'
-      ? PREVIEW_VISITORS
-      : (snapshot?.companions ?? []).filter((guest) => guest.id !== clientId);
+      ? [...PREVIEW_VISITORS, selfGuest]
+      : [...(snapshot?.companions ?? []).filter((guest) => guest.id !== clientId), ...(youId ? [selfGuest] : [])];
+  const lookAt = snapshot?.pose ?? { x: 0, z: 0 };
   const visitorWalking = preview === 'leash' || Boolean(snapshot?.leash?.held && snapshot.leash.holderId && snapshot.leash.holderId !== clientId);
   const hideDrive = preview === 'eat' || preview === 'sleep' || preview === 'pose-walk';
   const inRange = preview === 'eat' || Boolean(snapshot?.feeder?.near) || nearBowl;
@@ -524,6 +535,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       x: mine.current.x + input.ax * 0.18,
       z: mine.current.z + input.az * 0.18,
     };
+    setSelfHere({ ...mine.current });
     send({ type: 'here', x: mine.current.x, z: mine.current.z });
   }, [input, overlay, playing, previewing, shared, youHold]);
 
@@ -647,6 +659,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           onReady={() => setReady(true)}
           onAnchor={setThoughtAnchor}
           companions={guests}
+          youId={youId}
+          lookAt={lookAt}
         />
       ) : (
         <DogPortrait
@@ -669,6 +683,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           onReady={() => setReady(true)}
           onAnchor={setThoughtAnchor}
           companions={guests}
+          youId={youId}
+          lookAt={lookAt}
         />
       )}
 
@@ -716,6 +732,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           onToggleTravel={() => setTravelOpen((open) => !open)}
           thoughtAnchor={thoughtAnchor}
           onEmote={(kind: DogEmote) => {
+            setLocalEmote(kind);
+            window.setTimeout(() => setLocalEmote((current) => (current === kind ? null : current)), 2800);
             if (preview === 'presence') {
               pushToast({ wave: '👋 waved', heart: '❤️ heart', sit: '🐾 sat nearby', treat: '🦴 treat', clap: '👏 clap' }[kind]);
               return;

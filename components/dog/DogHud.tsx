@@ -4,14 +4,7 @@ import Link from 'next/link';
 import { useRef, type CSSProperties, type PointerEvent } from 'react';
 import { englishPath } from '@/lib/site';
 import type { DogEmote } from '@/lib/dog';
-
-const EMOTE_BUTTONS: { kind: DogEmote; label: string }[] = [
-  { kind: 'wave', label: '👋' },
-  { kind: 'heart', label: '💛' },
-  { kind: 'sit', label: '✧' },
-  { kind: 'treat', label: '🦴' },
-  { kind: 'clap', label: '✦' },
-];
+import { EMOTE_SET } from './emotes';
 
 export type Toast = { id: number; emote: string; text: string };
 
@@ -151,7 +144,7 @@ export default function DogHud({
       )}
       {onEmote && !empty && (
         <div className="dog-emotes" role="group" aria-label="Emotes">
-          {EMOTE_BUTTONS.map((item) => (
+          {EMOTE_SET.map((item) => (
             <button key={item.kind} type="button" onClick={() => onEmote(item.kind)} aria-label={item.kind}>
               {item.label}
             </button>

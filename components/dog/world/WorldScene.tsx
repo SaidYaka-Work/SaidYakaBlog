@@ -20,7 +20,7 @@ import {
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { lngLatToLocal, sunDirection } from '../../../workers/dog/src/world';
 import type { WorldTileData } from './decode';
-import { centroid, crossingsAtIntersections, dressPlants, facadeTint, isMajorRoad, lampsAlongRoads, ringBounds, type Crossing, type Plant } from './dress';
+import { centroid, crossingsAtIntersections, dressPlants, facadeTint, hash2, isMajorRoad, lampsAlongRoads, ringBounds, type Crossing, type Plant } from './dress';
 
 function shapeFrom(ring: { x: number; z: number }[]) {
   const shape = new Shape();
@@ -438,6 +438,22 @@ function stampInstances(mesh: InstancedMesh | null, place: (dummy: Object3D, i: 
   mesh.computeBoundingSphere();
 }
 
+const LEAF_DAY = ['#4a7a3e', '#5c8a48', '#3f6e36', '#6a944c', '#547844', '#4e823c'];
+const LEAF_NIGHT = ['#6e8c4e', '#7a9a58', '#5f7a42', '#889e62', '#6a8648'];
+const BUSH_DAY = ['#3f6a38', '#4a7640', '#356034', '#527848'];
+const BUSH_NIGHT = ['#5a7a46', '#4e6e3e', '#678454', '#567044'];
+
+function stampColors(mesh: InstancedMesh | null, plants: Plant[], palette: string[]) {
+  if (!mesh) return;
+  const tint = new Color();
+  for (let i = 0; i < plants.length; i += 1) {
+    const pick = palette[Math.floor(hash2(plants[i].x, plants[i].z) * palette.length) % palette.length];
+    tint.set(pick);
+    mesh.setColorAt(i, tint);
+  }
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+}
+
 function Forest({ plants, night }: { plants: Plant[]; night: boolean }) {
   const trunk = useRef<InstancedMesh>(null);
   const leaf = useRef<InstancedMesh>(null);
@@ -474,7 +490,9 @@ function Forest({ plants, night }: { plants: Plant[]; night: boolean }) {
       },
       nextBushes.length,
     );
-  }, [plants]);
+    stampColors(leaf.current, nextTrees, night ? LEAF_NIGHT : LEAF_DAY);
+    stampColors(bush.current, nextBushes, night ? BUSH_NIGHT : BUSH_DAY);
+  }, [night, plants]);
   if (!plants.length) return null;
   return (
     <group>
@@ -598,7 +616,7 @@ export default function WorldScene({
     [here, slim, tiles],
   );
   const plants = useMemo(
-    () => dressPlants(tiles.flatMap((tile) => tile.parks), tiles.flatMap((tile) => tile.roads), here, slim ? 64 : 120),
+    () => dressPlants(tiles.flatMap((tile) => tile.parks), tiles.flatMap((tile) => tile.roads), here, slim ? 96 : 220),
     [here, slim, tiles],
   );
   const crossings = useMemo(

@@ -196,14 +196,14 @@
   font-weight: 400;
   line-height: 1;
   color: var(--ink);
-  text-shadow: none;
+  background: none;
+  border: 0;
+  padding: 0;
   -webkit-text-stroke: 0;
   paint-order: normal;
-  background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
-  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-  border-radius: 0.45rem;
-  padding: 0.12rem 0.42rem 0.18rem;
-  width: fit-content;
+  text-shadow:
+    0 1px 1px rgba(255, 248, 236, 0.7),
+    0 1px 8px rgba(20, 16, 12, 0.28);
 }
 
 .dog-id span {
@@ -471,6 +471,18 @@
 .dog-emotes button:hover,
 .dog-emotes button:focus-visible {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.dog-emote-pop {
+  display: grid;
+  place-items: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.94);
+  box-shadow: 0 8px 18px -10px rgba(20, 16, 12, 0.45);
+  font-size: 1.15rem;
+  line-height: 1;
 }
 
 .dog-hint {

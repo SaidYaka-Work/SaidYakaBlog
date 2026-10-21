@@ -33,6 +33,8 @@ export default function DogPortrait({
   onReady,
   onAnchor,
   companions = [],
+  youId = null,
+  lookAt = { x: 0, z: 0 },
 }: {
   genome?: DogGenome | null;
   asleep: boolean;
@@ -54,6 +56,8 @@ export default function DogPortrait({
   onReady?: () => void;
   onAnchor?: (pos: { x: number; y: number } | null) => void;
   companions?: DogCompanion[];
+  youId?: string | null;
+  lookAt?: { x: number; z: number };
 }) {
   if (compact) {
     return <DogStill genome={genome} stage={stage} reaction={reaction} asleep={asleep} night={night} sad={sad} />;
@@ -79,6 +83,8 @@ export default function DogPortrait({
       onReady={onReady}
       onAnchor={onAnchor}
       companions={companions}
+      youId={youId}
+      lookAt={lookAt}
     />
   );
 }
