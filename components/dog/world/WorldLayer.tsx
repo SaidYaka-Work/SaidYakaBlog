@@ -21,7 +21,7 @@ export default function WorldLayer({
   onColliders?: (colliders: WorldColliders) => void;
   onStatus?: (status: TileStatus) => void;
 }) {
-  const { tiles, colliders, status } = useWorldTiles(originLat, originLng, lat, lng, true);
+  const { tiles, warmTiles, colliders, status } = useWorldTiles(originLat, originLng, lat, lng, true);
   useEffect(() => {
     onColliders?.(colliders);
   }, [colliders, onColliders]);
@@ -31,6 +31,7 @@ export default function WorldLayer({
   return (
     <WorldScene
       tiles={tiles}
+      warmTiles={warmTiles}
       lat={lat}
       lng={lng}
       originLat={originLat}

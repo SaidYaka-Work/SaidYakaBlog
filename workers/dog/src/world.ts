@@ -113,20 +113,26 @@ export type PublicLocation = {
 
 export type Ring = { x: number; z: number }[];
 
+const FAKE_PLACE = /times square buildings|washington square buildings|avenue-row/i;
+
 export function formatPlaceLine(streetName?: string | null, placeName?: string | null) {
   const street = (streetName || '').trim();
   const place = (placeName || '').replace(/,\s*.*$/, '').trim();
   const streetOk =
-    Boolean(street) && street.length <= 32 && !/subway|interchange|transfer|entrance|underground/i.test(street);
+    Boolean(street) &&
+    street.length <= 32 &&
+    !FAKE_PLACE.test(street) &&
+    !/subway|interchange|transfer|entrance|underground/i.test(street);
+  const placeOk = place && !FAKE_PLACE.test(place);
   if (
     streetOk &&
-    place &&
+    placeOk &&
     street.toLowerCase() !== place.toLowerCase() &&
     !place.toLowerCase().includes(street.toLowerCase())
   ) {
     return `${street} · near ${place}`;
   }
-  return streetOk ? street : place || street;
+  return streetOk ? street : placeOk ? place : '';
 }
 
 export function nearestPlace(lat: number, lng: number): Place {
@@ -389,6 +395,32 @@ export function queryFootprints(grid: FootprintGrid, x: number, z: number, radiu
   return out;
 }
 
+export function ringClearance(x: number, z: number, ring: Ring) {
+  if (ring.length < 3) return Infinity;
+  const inside = pointInRing(x, z, ring);
+  let best = Infinity;
+  for (let a = 0, b = ring.length - 1; a < ring.length; b = a, a += 1) {
+    const hit = closestOnSegment(x, z, ring[b].x, ring[b].z, ring[a].x, ring[a].z);
+    const d = Math.hypot(x - hit.x, z - hit.z);
+    if (d < best) best = d;
+  }
+  return inside ? -best : best;
+}
+
+export function footprintClearance(x: number, z: number, grid: FootprintGrid, pad = 8) {
+  const nearby = queryFootprints(grid, x, z, pad);
+  let best = Infinity;
+  for (const ring of nearby) {
+    const d = ringClearance(x, z, ring);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+function blockedAt(x: number, z: number, radius: number, grid: FootprintGrid) {
+  return footprintClearance(x, z, grid, radius + 6) < radius;
+}
+
 /** 2D spherecast from (ox,oz) toward (dx,dz). Returns t in [0,1] of how far is clear. */
 export function cameraRayHitT(
   ox: number,
@@ -401,22 +433,75 @@ export function cameraRayHitT(
   const vx = dx - ox;
   const vz = dz - oz;
   const len = Math.hypot(vx, vz);
-  if (len < 1e-4) return 1;
-  const steps = Math.max(5, Math.min(24, Math.ceil(len / 1.4)));
+  if (len < 1e-4) return blockedAt(ox, oz, radius, grid) ? 0 : 1;
+  const steps = Math.max(10, Math.min(56, Math.ceil(len / 0.45)));
+  let lastClear = blockedAt(ox, oz, radius, grid) ? -1 : 0;
   for (let i = 1; i <= steps; i += 1) {
     const t = i / steps;
-    const x = ox + vx * t;
-    const z = oz + vz * t;
-    const nearby = queryFootprints(grid, x, z, radius + 3);
-    for (const ring of nearby) {
-      if (ring.length >= 3 && pointInRing(x, z, ring)) return Math.max(0, (i - 1) / steps);
-      for (let a = 0, b = ring.length - 1; a < ring.length; b = a, a += 1) {
-        const hit = closestOnSegment(x, z, ring[b].x, ring[b].z, ring[a].x, ring[a].z);
-        if (Math.hypot(x - hit.x, z - hit.z) < radius) return Math.max(0, (i - 1) / steps);
-      }
+    if (blockedAt(ox + vx * t, oz + vz * t, radius, grid)) {
+      return lastClear < 0 ? 0 : lastClear;
     }
+    lastClear = t;
   }
   return 1;
+}
+
+function pullToward(
+  x: number,
+  z: number,
+  ox: number,
+  oz: number,
+  need: number,
+  grid: FootprintGrid,
+) {
+  let px = x;
+  let pz = z;
+  for (let i = 0; i < 10; i += 1) {
+    if (footprintClearance(px, pz, grid) >= need) return { x: px, z: pz };
+    px = px + (ox - px) * 0.34;
+    pz = pz + (oz - pz) * 0.34;
+  }
+  return { x: px, z: pz };
+}
+
+/** Keep the camera outside every footprint, including courtyards and after a lerp. */
+export function resolveCameraXZ(
+  ox: number,
+  oz: number,
+  dx: number,
+  dz: number,
+  radius: number,
+  grid: FootprintGrid,
+) {
+  const need = Math.max(radius, 0.5);
+  const hitT = cameraRayHitT(ox, oz, dx, dz, need, grid);
+  let x = ox + (dx - ox) * hitT;
+  let z = oz + (dz - oz) * hitT;
+  if (footprintClearance(x, z, grid) < need) {
+    let lo = 0;
+    let hi = Math.max(hitT, 0.02);
+    for (let i = 0; i < 10; i += 1) {
+      const mid = (lo + hi) / 2;
+      const mx = ox + (dx - ox) * mid;
+      const mz = oz + (dz - oz) * mid;
+      if (footprintClearance(mx, mz, grid) < need) hi = mid;
+      else lo = mid;
+    }
+    x = ox + (dx - ox) * lo;
+    z = oz + (dz - oz) * lo;
+  }
+  if (footprintClearance(x, z, grid) < 0) {
+    const pushed = pushCircleOut(x, z, need, queryFootprints(grid, x, z, 18));
+    x = pushed.x;
+    z = pushed.z;
+  }
+  if (footprintClearance(x, z, grid) < need) {
+    const pulled = pullToward(x, z, ox, oz, need, grid);
+    x = pulled.x;
+    z = pulled.z;
+  }
+  const clear = footprintClearance(x, z, grid);
+  return { x, z, t: hitT, inside: clear < 0, clear };
 }
 
 function ringCentroid(ring: Ring) {

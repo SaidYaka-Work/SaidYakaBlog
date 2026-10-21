@@ -949,7 +949,11 @@ export function forgetVisitor(room: RoomState, clientId: string, now: number, li
   const yard = migrateYard(current.yard, now);
   const dropped = dropCompanion(current.companions ?? {}, clientId);
   if (yard.leash.holderId === clientId) {
-    return { ...current, companions: pruneCompanions(dropped, now, liveIds), yard: releaseLeash(yard, now, liveIds) };
+    return {
+      ...current,
+      companions: pruneCompanions(dropped, now, liveIds),
+      yard: releaseLeash(yard, now, liveIds, 'idle'),
+    };
   }
   return {
     ...current,
@@ -1001,13 +1005,15 @@ export function applyWorldAction(
   placeId?: string,
 ): { room: RoomState; acquired: boolean; code?: ErrorCode; retryAfterMs?: number } {
   const current = applyDecay(room, now);
+  if (kind === 'leave' || kind === 'home') {
+    let yard = withLocation(migrateYard(current.yard, now), now);
+    if (yard.leash.holderId === clientId) yard = releaseLeash(yard, now, undefined, 'idle');
+    return { room: { ...current, yard }, acquired: true };
+  }
   const yard = withLocation(migrateYard(current.yard, now), now);
   const acquired = tryAcquireLeash(yard, clientId, ip, now);
   if (!acquired.ok) {
     return { room: { ...current, yard: acquired.yard }, acquired: false, code: acquired.code, retryAfterMs: acquired.retryAfterMs };
-  }
-  if (kind === 'leave' || kind === 'home') {
-    return { room: { ...current, yard: acquired.yard }, acquired: true };
   }
   const traveled = applyTravel(acquired.yard, placeId ?? '', now);
   if (!traveled.ok) return { room: { ...current, yard: acquired.yard }, acquired: true, code: traveled.code };
@@ -1140,7 +1146,7 @@ export function pruneBuckets(map: Record<string, RateBucket>, now: number) {
 }
 
 export type ClientMessage =
-  | { ok: true; kind: 'hello' }
+  | { ok: true; kind: 'hello'; clientId?: string }
   | { ok: true; kind: 'pet' }
   | { ok: true; kind: 'start'; game: CareGame }
   | { ok: true; kind: 'finish'; playId: string; score: number }
@@ -1168,6 +1174,7 @@ const CLIENT_KEYS = [
   'wx',
   'wz',
   'placeId',
+  'clientId',
   'x',
   'z',
 ];
@@ -1185,7 +1192,10 @@ export function parseClientMessage(raw: string): ClientMessage {
   if (keys.some((key) => !CLIENT_KEYS.includes(key))) {
     return { ok: false, code: 'invalid' };
   }
-  if (message.type === 'hello') return { ok: true, kind: 'hello' };
+  if (message.type === 'hello') {
+    const clientId = typeof message.clientId === 'string' && /^[a-f0-9-]{36}$/i.test(message.clientId) ? message.clientId : undefined;
+    return { ok: true, kind: 'hello', clientId };
+  }
   if (message.type === 'action' && message.action === 'pet') return { ok: true, kind: 'pet' };
   if (message.type === 'start' && (message.game === 'feed' || message.game === 'walk' || message.game === 'catch')) {
     return { ok: true, kind: 'start', game: message.game };

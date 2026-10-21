@@ -242,6 +242,20 @@ export class DogRoom {
     }
 
     if (parsed.kind === 'hello') {
+      if (parsed.clientId) {
+        const current = (ws.deserializeAttachment() as SocketMeta | null) ?? {
+          ip: '0.0.0.0',
+          lastAt: 0,
+          lastMoveAt: 0,
+          lastHereAt: 0,
+          lastLeashErrAt: 0,
+          play: null,
+          nameToken: null,
+          clientId: parsed.clientId,
+        };
+        ws.serializeAttachment({ ...current, clientId: parsed.clientId } satisfies SocketMeta);
+        ws.send(JSON.stringify({ type: 'welcome', clientId: parsed.clientId }));
+      }
       ws.send(JSON.stringify(snapshot(await this.mustLoad(now, 'read'), now, this.sockets())));
       return;
     }
@@ -529,7 +543,7 @@ export class DogRoom {
       if (!room) return;
       const yard = migrateYard(room.yard, now);
       if (yard.leash.holderId !== meta.clientId) return;
-      await this.commit({ ...room, yard: releaseLeash(yard, now, this.liveIds(meta.clientId)) }, now, 'action');
+      await this.commit({ ...room, yard: releaseLeash(yard, now, this.liveIds(meta.clientId), 'idle') }, now, 'action');
     } catch (error) {
       logDogError('leash release failed', error);
     }

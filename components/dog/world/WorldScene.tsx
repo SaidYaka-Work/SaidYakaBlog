@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import {
   Color,
@@ -124,9 +124,13 @@ function facadeMaterial(night: boolean) {
         float span = max(dot(b, b), 0.001);
         float t = clamp(dot(a, b) / span, 0.0, 1.0);
         float occ = length(a - b * t);
-        float fade = uFade * (1.0 - smoothstep(2.2, 9.0, occ)) * smoothstep(0.04, 0.18, t) * (1.0 - smoothstep(0.82, 1.0, t));
-        litCol = mix(litCol, uFogColor, fade * 0.78);
-        gl_FragColor = vec4(mix(litCol, uFogColor, fog), 1.0 - fade * 0.55);
+        float along = uFade * (1.0 - smoothstep(2.2, 9.0, occ)) * smoothstep(0.04, 0.18, t);
+        float nearWide = uFade * (1.0 - smoothstep(0.35, 6.2, length(vWorldPos.xz - uCam.xz)));
+        float nearSafety = 1.0 - smoothstep(0.18, 0.72, length(vWorldPos.xz - uCam.xz));
+        float fade = max(max(along, nearWide), nearSafety);
+        if (fade > 0.55) discard;
+        litCol = mix(litCol, uFogColor, fade * 0.92);
+        gl_FragColor = vec4(mix(litCol, uFogColor, fog), 1.0 - fade);
       }
     `,
   });
@@ -502,6 +506,7 @@ function Benches({ benches, night }: { benches: Plant[]; night: boolean }) {
 
 export default function WorldScene({
   tiles,
+  warmTiles = [],
   lat,
   lng,
   originLat,
@@ -510,6 +515,7 @@ export default function WorldScene({
   failed = false,
 }: {
   tiles: WorldTileData[];
+  warmTiles?: WorldTileData[];
   lat: number;
   lng: number;
   originLat: number;
@@ -521,9 +527,11 @@ export default function WorldScene({
   const sun = useMemo(() => sunDirection(originLat, originLng, Date.now()), [originLat, originLng]);
   const night = nightHint ?? sun.night;
   const here = useMemo(() => {
+    const bounds = tiles[0]?.bounds;
+    if (bounds) return { x: (bounds.minX + bounds.maxX) / 2, z: (bounds.minZ + bounds.maxZ) / 2 };
     const point = lngLatToLocal(lat, lng, originLat, originLng);
-    return { x: Math.round(point.x / 24) * 24, z: Math.round(point.z / 24) * 24 };
-  }, [lat, lng, originLat, originLng]);
+    return { x: Math.round(point.x / 48) * 48, z: Math.round(point.z / 48) * 48 };
+  }, [lat, lng, originLat, originLng, tiles]);
   const [slim, setSlim] = useState(false);
   useEffect(() => {
     const sync = () => setSlim(window.innerWidth < 700);
@@ -541,15 +549,16 @@ export default function WorldScene({
 
   useEffect(() => {
     const wanted = new Set(tiles.map((tile) => tile.key));
+    const warming = warmTiles.length ? warmTiles : tiles;
     const centerKey = tiles[0]?.key.split('/').map(Number) ?? [];
     const keep = tiles[0]
       ? new Set(wantedTileKeys({ z: centerKey[0], x: centerKey[1], y: centerKey[2] }, KEEP_RING))
-      : wanted;
+      : new Set(warming.map((tile) => tile.key));
     const evicted = evictTileCache(cache.current, keep, (_key, built) => disposeBuilt(built), MAX_CACHED_TILES);
-    queue.current = queue.current.filter((tile) => wanted.has(tile.key) && !cache.current.has(tile.key));
-    uploads.current = uploads.current.filter((item) => wanted.has(item.tile.key) && !cache.current.has(item.tile.key));
-    if (pending.current && !wanted.has(pending.current.tile.key)) pending.current = null;
-    for (const tile of tiles) {
+    queue.current = queue.current.filter((tile) => keep.has(tile.key) && !cache.current.has(tile.key));
+    uploads.current = uploads.current.filter((item) => keep.has(item.tile.key) && !cache.current.has(item.tile.key));
+    if (pending.current && !keep.has(pending.current.tile.key)) pending.current = null;
+    for (const tile of warming) {
       if (cache.current.has(tile.key)) continue;
       if (tile.packed) {
         if (!uploads.current.some((item) => item.tile.key === tile.key)) {
@@ -569,7 +578,7 @@ export default function WorldScene({
     );
     setReady(Array.from(cache.current.values()).filter((tile) => wanted.has(tile.key)));
     void evicted;
-  }, [tiles]);
+  }, [tiles, warmTiles]);
 
   useEffect(() => () => {
     cache.current.forEach(disposeBuilt);
@@ -642,18 +651,20 @@ export default function WorldScene({
     }
   }, [facade, night, sun.x, sun.y, sun.z]);
 
-  const warmed = useRef(false);
-  useEffect(() => {
-    if (warmed.current || !ready.length) return;
+  const skipUpload = useRef(0);
+  const compile = useCallback(() => {
     try {
       const renderer = gl as typeof gl & { compileAsync?: (s: object, c: object) => Promise<void> };
       if (typeof renderer.compileAsync === 'function') void renderer.compileAsync(scene, camera);
       else gl.compile(scene, camera);
-      warmed.current = true;
     } catch (error) {
       console.warn('[dog] shader prewarm failed', error);
     }
-  }, [camera, gl, ready.length, scene]);
+  }, [camera, gl, scene]);
+  useEffect(() => {
+    if (!ready.length) return;
+    compile();
+  }, [compile, ready.length]);
 
   useFrame((_, dt) => {
     const tileStart = performance.now();
@@ -671,6 +682,11 @@ export default function WorldScene({
       host.__DOG_PERF.textures = gl.info.memory.textures;
     }
     let changed = false;
+    if (skipUpload.current > 0) {
+      skipUpload.current -= 1;
+      frameMark.tiles = performance.now() - tileStart;
+      return;
+    }
     const upload = uploads.current[0];
     if (upload) {
       if (!cache.current.has(upload.tile.key)) {
@@ -680,11 +696,13 @@ export default function WorldScene({
       const layer = PACK_LAYERS[upload.layer];
       if (built && layer) {
         applyPackedLayer(built, upload.packed, layer);
-        changed = true;
+        changed = tiles.some((tile) => tile.key === upload.tile.key);
+        if (layer === 'buildings') skipUpload.current = 1;
       }
       upload.layer += 1;
       if (upload.layer >= PACK_LAYERS.length) {
         uploads.current.shift();
+        compile();
         evictTileCache(
           cache.current,
           tiles[0]

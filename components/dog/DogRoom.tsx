@@ -273,7 +273,13 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         }
         wsPause = 800;
         setReach('up');
-        ws.send(JSON.stringify({ type: 'hello' }));
+        let storedId: string | null = null;
+        try {
+          storedId = sessionStorage.getItem('biscuit-client');
+        } catch {
+          storedId = null;
+        }
+        ws.send(JSON.stringify(storedId ? { type: 'hello', clientId: storedId } : { type: 'hello' }));
       };
       ws.onmessage = (event) => {
         let message:
@@ -292,6 +298,11 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         }
         if (message.type === 'welcome') {
           setClientId(message.clientId);
+          try {
+            sessionStorage.setItem('biscuit-client', message.clientId);
+          } catch {
+            // ignore
+          }
         }
         if (message.type === 'pose') {
           const pose = message;
@@ -374,8 +385,26 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         wsPause = Math.min(8_000, Math.round(wsPause * 1.6));
       };
     };
+    const dropHold = () => {
+      const live = socket.current;
+      if (live?.readyState !== WebSocket.OPEN) return;
+      try {
+        live.send(JSON.stringify({ type: 'leave' }));
+      } catch {
+        // ignore
+      }
+      try {
+        live.close();
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('pagehide', dropHold);
+    window.addEventListener('beforeunload', dropHold);
     open();
     return () => {
+      window.removeEventListener('pagehide', dropHold);
+      window.removeEventListener('beforeunload', dropHold);
       closed = true;
       window.clearTimeout(stateTimer);
       const ws = socket.current;
@@ -384,10 +413,17 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       ws.onclose = null;
       ws.onerror = null;
       ws.onmessage = null;
-      if (ws.readyState === WebSocket.OPEN) ws.close();
-      else if (ws.readyState === WebSocket.CONNECTING) {
+      if (ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(JSON.stringify({ type: 'leave' }));
+        } catch {
+          // ignore
+        }
+        ws.close();
+      } else if (ws.readyState === WebSocket.CONNECTING) {
         ws.onopen = () => {
           try {
+            ws.onerror = null;
             ws.close();
           } catch {
             // ignore
@@ -798,7 +834,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           hint={hint}
           touch={touch}
           near={inRange}
-          placeName={debugSpawn ? debugSpawn.name : `${activePlace.name}, ${activePlace.city}`}
+          placeName={`${activePlace.name}, ${activePlace.city}`}
           streetName={streetName}
           worldReady={worldReady}
           travelOpen={travelOpen}

@@ -116,6 +116,7 @@ async function fetchTileBuffer(url: string) {
 
 export default function useWorldTiles(originLat: number, originLng: number, lat: number, lng: number, enabled: boolean) {
   const [tiles, setTiles] = useState<WorldTileData[]>([]);
+  const [warmTiles, setWarmTiles] = useState<WorldTileData[]>([]);
   const [status, setStatus] = useState<TileStatus>('loading');
   const [colliders, setColliders] = useState<WorldColliders>({
     buildings: [],
@@ -239,14 +240,20 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
       });
     }
 
-    function publish(displayKeys: Set<string>) {
+    function publish(displayKeys: Set<string>, keepKeys?: Set<string>) {
       const next = displayKeys.size
         ? Array.from(cache.current.entries())
             .filter(([key]) => displayKeys.has(key))
             .map(([, tile]) => tile)
         : [];
+      const warming = keepKeys
+        ? Array.from(cache.current.entries())
+            .filter(([key]) => keepKeys.has(key))
+            .map(([, tile]) => tile)
+        : next;
       setTiles(next);
-      const buildings = next.flatMap((tile) => tile.buildings.map((b) => b.ring));
+      setWarmTiles(warming);
+      const buildings = warming.flatMap((tile) => tile.buildings.map((b) => b.ring));
       const roads = next.flatMap((tile) => tile.roads.map((r) => r.line));
       const parks = next.flatMap((tile) => tile.parks);
       const buildingGrid = buildFootprintGrid(buildings);
@@ -287,7 +294,7 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
       const keepKeys = new Set(keep.map((tile) => tile.key));
       evictTileCache(cache.current, keepKeys, undefined, MAX_CACHED_TILES);
       const queue = keep.filter((tile) => !cache.current.has(tile.key));
-      publish(displayKeys);
+      publish(displayKeys, keepKeys);
       let inflight = 0;
       await new Promise<void>((resolve) => {
         const kick = () => {
@@ -304,7 +311,7 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
               .then((data) => {
                 loaded += 1;
                 cache.current.set(tile.key, data);
-                if (!dead) publish(displayKeys);
+                if (!dead) publish(displayKeys, keepKeys);
               })
               .catch((error) => {
                 failures += 1;
@@ -346,5 +353,5 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
     setColliders((current) => (current.label === label ? current : { ...current, label }));
   }, [enabled, lat, lng, originLat, originLng, tiles]);
 
-  return { tiles, colliders, status };
+  return { tiles, warmTiles, colliders, status };
 }

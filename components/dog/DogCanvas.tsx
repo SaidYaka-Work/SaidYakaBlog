@@ -9,7 +9,7 @@ import type { PortraitReaction } from './look';
 import { CAMERA_YAW, frameCamera, followYardCamera } from './frame';
 import DogRig, { type DriveControl } from './DogRig';
 import WorldBowl from './WorldBowl';
-import { asFootprintGrid, cameraRayHitT, HOME_PLACE } from '../../workers/dog/src/world';
+import { asFootprintGrid, footprintClearance, resolveCameraXZ, HOME_PLACE } from '../../workers/dog/src/world';
 import type { TileStatus, WorldColliders } from './world/useWorldTiles';
 import { camFade, frameMark, liveBuildingGrid } from './world/frameMark';
 
@@ -177,7 +177,6 @@ function FramedCamera({
   const look = useRef(new Vector3());
   const ready = useRef(false);
   const dir = useRef(new Vector3());
-  const pulled = useRef(new Vector3());
 
   const street = useRef(new Vector3());
   const lastAnchor = useRef({ x: -1, y: -1 });
@@ -208,8 +207,12 @@ function FramedCamera({
     };
     const onMove = (event: PointerEvent) => {
       if (!down || pointerId !== event.pointerId) return;
-      orbit.current.yaw -= (event.clientX - lastX) * 0.005;
-      orbit.current.pitch = Math.max(-0.28, Math.min(0.5, orbit.current.pitch + (event.clientY - lastY) * 0.0035));
+      const dx = event.clientX - lastX;
+      const dy = event.clientY - lastY;
+      orbit.current.yaw -= dx * 0.005;
+      if (Math.abs(dy) > Math.abs(dx) * 1.15) {
+        orbit.current.pitch = Math.max(-0.1, Math.min(0.22, orbit.current.pitch + dy * 0.0035));
+      }
       lastX = event.clientX;
       lastY = event.clientY;
     };
@@ -242,6 +245,7 @@ function FramedCamera({
     from.current.copy(camera.position);
     if (world) {
       const flight = Math.max(0, Math.min(1, world.flight));
+      const narrow = size.width < 400;
       const yaw = object.rotation.y + orbit.current.yaw;
       const dist = 14.8 + flight * 170;
       const pitch = 0.5 + orbit.current.pitch + flight * 0.7;
@@ -252,31 +256,33 @@ function FramedCamera({
         object.position.z - Math.cos(yaw) * dist * Math.cos(pitch),
       );
       look.current.set(
-        object.position.x + Math.sin(yaw) * (2.4 + flight * 6),
-        1.15 + flight * 8,
-        object.position.z + Math.cos(yaw) * (2.4 + flight * 6),
+        object.position.x + Math.sin(yaw) * (narrow ? 0.2 : 1.1 + flight * 6),
+        (narrow ? 2.85 : 1.35) + flight * 8,
+        object.position.z + Math.cos(yaw) * (narrow ? 0.2 : 1.1 + flight * 6),
       );
-      dir.current.copy(street.current).sub(look.current);
+      dir.current.copy(street.current).sub(object.position);
+      dir.current.y = 0;
       const span = dir.current.length();
       const camStart = performance.now();
+      const grid = asFootprintGrid(liveBuildingGrid.current);
       if (flight < 0.08 && span > 1) {
-        const grid = asFootprintGrid(liveBuildingGrid.current);
-        const hitT = cameraRayHitT(look.current.x, look.current.z, street.current.x, street.current.z, 0.9, grid);
-        const want = Math.max(0.12, hitT) * span;
-        pulledDist.current += (want - pulledDist.current) * Math.min(1, dt * 7);
-        dir.current.multiplyScalar(1 / span);
+        const safe = resolveCameraXZ(object.position.x, object.position.z, street.current.x, street.current.z, 0.85, grid);
+        const want = Math.hypot(safe.x - object.position.x, safe.z - object.position.z);
+        pulledDist.current += (want - pulledDist.current) * Math.min(1, dt * 10);
+        const used = Math.min(span, Math.max(0.35, Math.min(want, pulledDist.current)));
+        if (dir.current.lengthSq() > 1e-6) dir.current.normalize();
         const minDist = 5.6;
-        let used = Math.max(3.8, Math.min(span, pulledDist.current));
-        let lift = height;
-        if (used < minDist) {
-          const extra = minDist - used;
-          lift = height + extra * 1.15;
-          used = Math.max(3.8, used);
-        }
-        pulled.current.copy(look.current).addScaledVector(dir.current, used);
-        pulled.current.y = Math.max(lift, look.current.y + 2.8 + Math.max(0, minDist - used) * 0.7);
-        street.current.copy(pulled.current);
-        camFade.fade = hitT < 0.96 ? 1 : Math.max(0, camFade.fade - dt * 2.4);
+        const extra = Math.max(0, minDist - used);
+        street.current.set(
+          object.position.x + dir.current.x * used,
+          Math.max(height + extra * 1.35, look.current.y + 3.1 + extra * 0.8),
+          object.position.z + dir.current.z * used,
+        );
+        const placed = resolveCameraXZ(object.position.x, object.position.z, street.current.x, street.current.z, 0.55, grid);
+        street.current.x = placed.x;
+        street.current.z = placed.z;
+        const clear = footprintClearance(street.current.x, street.current.z, grid);
+        camFade.fade = placed.inside || placed.t < 0.97 || clear < 0.5 ? 1 : Math.max(0, camFade.fade - dt * 2.4);
       } else {
         camFade.fade = 0;
       }
@@ -287,7 +293,7 @@ function FramedCamera({
       camFade.camY = street.current.y;
       camFade.camZ = street.current.z;
       frameMark.camera = performance.now() - camStart;
-      camera.near = flight > 0.5 ? 2 : 0.2;
+      camera.near = flight > 0.5 ? 2 : 0.35;
       camera.far = 520;
       camera.up.set(0, 1, 0);
       if (!ready.current) {
@@ -297,7 +303,14 @@ function FramedCamera({
         ready.current = true;
         onReady?.();
       } else {
-        camera.position.lerpVectors(from.current, street.current, 1 - Math.exp(-dt * (flight > 0.08 ? 1.05 : 1.25)));
+        camera.position.lerpVectors(from.current, street.current, 1 - Math.exp(-dt * (flight > 0.08 ? 1.05 : 2.4)));
+        const settled = resolveCameraXZ(object.position.x, object.position.z, camera.position.x, camera.position.z, 0.5, grid);
+        camera.position.x = settled.x;
+        camera.position.z = settled.z;
+        if (settled.inside || settled.clear < 0.5) {
+          camFade.fade = 1;
+          camera.position.y = Math.max(camera.position.y, look.current.y + 3.4);
+        }
         camera.lookAt(look.current);
         camera.updateProjectionMatrix();
       }

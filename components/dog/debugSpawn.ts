@@ -7,6 +7,7 @@ export const SPAWN_PRESETS: Record<string, DebugSpawn> = {
   timessq: { lat: 40.758, lng: -73.9855, name: 'Times Square' },
   'wsp-buildings': { lat: 40.73015, lng: -73.99655, name: 'Washington Square buildings' },
   wsp: { lat: 40.730823, lng: -73.997332, name: 'Washington Square Park' },
+  'avenue-row': { lat: 40.76105, lng: -73.98355, name: '6½ Avenue' },
 };
 
 export function parseDebugSpawn(search: string): DebugSpawn | null {

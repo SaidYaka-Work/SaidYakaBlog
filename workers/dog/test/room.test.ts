@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { applyBowlAction, applyVisitorMove, createRoom, parseClientMessage } from '../src/logic.ts';
+import { applyBowlAction, applyVisitorMove, applyWorldAction, createRoom, forgetVisitor, parseClientMessage } from '../src/logic.ts';
 import {
   BED,
   BLOCKERS,
@@ -252,6 +252,22 @@ test('simulated 120s of 80ms moves keeps the leash; idle then releases; retake i
   const again = applyVisitorMove(released.room, 'alice', '10.0.0.1', 0, 0.18, false, 0.08, now + LEASH_IDLE_MS + 20);
   assert.equal(again.acquired, true, 're-take after idle release succeeds immediately');
   assert.equal(again.room.yard?.leash.holderId, 'alice');
+});
+
+test('leave or disconnect while holding releases without cooldown; same client reclaims immediately', () => {
+  let room = createRoom(T0);
+  room = applyVisitorMove(room, 'alice', '10.0.0.1', 1, 0, false, 0.08, T0).room;
+  assert.equal(room.yard?.leash.holderId, 'alice');
+  const left = applyWorldAction(room, 'alice', '10.0.0.1', T0 + 400, 'leave');
+  assert.equal(left.room.yard?.leash.holderId, null, 'leave drops the hold');
+  const again = tryAcquireLeash(left.room.yard!, 'alice', '10.0.0.1', T0 + 420);
+  assert.equal(again.ok, true, 'same client reclaims after leave without the 20s cooldown');
+
+  let held = applyVisitorMove(createRoom(T0), 'alice', '10.0.0.1', 1, 0, false, 0.08, T0).room;
+  const gone = forgetVisitor(held, 'alice', T0 + 500);
+  assert.equal(gone.yard?.leash.holderId, null, 'disconnect drops the hold');
+  const reclaim = tryAcquireLeash(gone.yard!, 'alice', '10.0.0.1', T0 + 520);
+  assert.equal(reclaim.ok, true, 'same client id reclaims after a pagehide disconnect');
 });
 
 test('after an idle drop the same walker can take the leash again without cooldown', () => {

@@ -7,7 +7,10 @@ import {
   applyWorldDrive,
   buildFootprintGrid,
   cameraRayHitT,
+  footprintClearance,
+  formatPlaceLine,
   haversineMeters,
+  resolveCameraXZ,
   lngLatToLocal,
   localToLngLat,
   pointInRing,
@@ -103,6 +106,42 @@ assert(hit < 0.55, `camera spherecast must pull up before the wall (t=${hit})`);
 const clear = cameraRayHitT(0, 0, -8, 0, 0.8, grid);
 assert(clear > 0.95, 'open camera path stays at full distance');
 
+const court = buildFootprintGrid([
+  [
+    { x: -10, z: -10 },
+    { x: 10, z: -10 },
+    { x: 10, z: -6 },
+    { x: -10, z: -6 },
+  ],
+  [
+    { x: -10, z: 6 },
+    { x: 10, z: 6 },
+    { x: 10, z: 10 },
+    { x: -10, z: 10 },
+  ],
+  [
+    { x: -10, z: -6 },
+    { x: -6, z: -6 },
+    { x: -6, z: 6 },
+    { x: -10, z: 6 },
+  ],
+  [
+    { x: 6, z: -6 },
+    { x: 10, z: -6 },
+    { x: 10, z: 6 },
+    { x: 6, z: 6 },
+  ],
+]);
+const through = resolveCameraXZ(0, 0, 0, -16, 0.8, court);
+assert(through.z > -6.5, `courtyard camera must stop before the rear wall (z=${through.z})`);
+assert(through.clear >= 0.5, `camera needs 0.5m clearance, got ${through.clear}`);
+assert(!through.inside, 'resolved camera must not sit inside a footprint');
+const tight = resolveCameraXZ(0, -5.2, 0, -16, 0.8, court);
+assert(tight.z > -6.5, 'min-distance must not punch through a nearby facade');
+assert(footprintClearance(tight.x, tight.z, court) >= 0.45, 'tight pull still stays outside');
+const lerpInside = resolveCameraXZ(0, 0, 0, -8, 0.5, court);
+assert(lerpInside.z > -6.5 && !lerpInside.inside, 'lerp destination inside a wall is pulled back');
+
 const noon = sunDirection(origin.lat, origin.lng, Date.parse('2026-06-21T16:00:00Z'));
 const midnight = sunDirection(origin.lat, origin.lng, Date.parse('2026-06-21T04:00:00Z'));
 assert(!noon.night && midnight.night, 'sunDirection is lat/lng/UTC so Phase 3 can replace the model');
@@ -145,5 +184,7 @@ const marks = crossingsAtIntersections(
   4,
 );
 assert(marks.length >= 1, 'major intersections get crosswalks');
+assert(formatPlaceLine('', 'Times Square buildings') === '', 'spawn labels never leak into the place pill');
+assert(formatPlaceLine('Broadway', 'Times Square, New York') === 'Broadway · near Times Square', 'OSM names stay');
 
 console.log('dog-world-check ok');

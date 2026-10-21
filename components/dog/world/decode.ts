@@ -181,20 +181,18 @@ export function decodeTile(
   if (building) {
     for (let i = 0; i < building.length; i += 1) {
       const feat = building.feature(i);
-      const rings = toLocal(feat.loadGeometry(), z, x, y, building.extent, originLat, originLng);
+      const rings = toLocal(feat.loadGeometry(), z, x, y, building.extent, originLat, originLng).filter(
+        (ring) => ring.length >= 3 && ringArea(ring) >= 10,
+      );
       const props = feat.properties as { render_height?: number; render_min_height?: number; hide_3d?: boolean };
-      if (props.hide_3d) continue;
-      for (const ring of rings) {
-        if (ring.length < 3) continue;
-        const area = ringArea(ring);
-        if (area < 10) continue;
-        buildings.push({
-          ring,
-          height: Math.min(140, Math.max(4.2, Number(props.render_height) || 9)),
-          min: Math.max(0, Number(props.render_min_height) || 0),
-          area,
-        });
-      }
+      if (props.hide_3d || !rings.length) continue;
+      const outer = rings[0];
+      buildings.push({
+        ring: outer,
+        height: Math.min(140, Math.max(4.2, Number(props.render_height) || 9)),
+        min: Math.max(0, Number(props.render_min_height) || 0),
+        area: ringArea(outer),
+      });
     }
     const kept = keepNearBuildings(buildings, focus);
     buildings.length = 0;

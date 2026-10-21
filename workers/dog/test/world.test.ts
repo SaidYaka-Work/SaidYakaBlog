@@ -105,7 +105,8 @@ test('feeding works at the portable bowl in the world and walking still credits 
 
 test('second visitor cannot travel while the first holds the leash', () => {
   let room = createRoom(T0);
-  room = applyWorldAction(room, 'aaa', '1.1.1.1', T0, 'leave').room;
+  room = applyVisitorMove(room, 'aaa', '1.1.1.1', 1, 0, false, 0.08, T0).room;
+  assert.equal(room.yard?.leash.holderId, 'aaa');
   const busy = applyWorldAction(room, 'bbb', '2.2.2.2', T0 + 200, 'travel', 'tuileries');
   assert.equal(busy.acquired, false);
   assert.equal(busy.code, 'busy');
@@ -122,6 +123,12 @@ test('walking W in local space increases latitude (north)', () => {
   assert.equal(
     formatPlaceLine('Patchin Place', 'Washington Square Park, New York'),
     'Patchin Place · near Washington Square Park',
+  );
+  assert.equal(formatPlaceLine('', 'Times Square buildings'), '');
+  assert.equal(formatPlaceLine('Broadway', 'Times Square, New York'), 'Broadway · near Times Square');
+  assert.equal(
+    parseClientMessage('{"type":"hello","clientId":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"}').ok,
+    true,
   );
   const noon = sunDirection(origin.lat, origin.lng, Date.parse('2026-06-21T16:00:00Z'));
   const midnight = sunDirection(origin.lat, origin.lng, Date.parse('2026-06-21T04:00:00Z'));

@@ -121,6 +121,7 @@ assert.equal(
   formatPlaceLine('6½ Avenue', 'Times Square, New York'),
   '6½ Avenue · near Times Square',
 );
+assert.equal(formatPlaceLine('Broadway', 'Times Square buildings'), 'Broadway');
 
 const center = { z: 14, x: 4825, y: 6156 };
 const windowKeys = wantedTileKeys(center);
@@ -141,6 +142,7 @@ assert.equal(cache.has('14/4825/6156'), true);
 assert.ok(cache.size <= MAX_LIVE_TILES);
 
 assert.equal(parseDebugSpawn('?debug=1&spawn=timessq-buildings')?.lat, SPAWN_PRESETS['timessq-buildings'].lat);
+assert.equal(parseDebugSpawn('?debug=1&spawn=avenue-row')?.lng, SPAWN_PRESETS['avenue-row'].lng);
 assert.equal(parseDebugSpawn('spawn=40.758,-73.9855')?.lng, -73.9855);
 assert.equal(parseDebugSpawn('?debug=1'), null);
 
