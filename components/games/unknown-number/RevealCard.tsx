@@ -17,6 +17,9 @@ export default function RevealCard({ figure, globalStats }: { figure: Figure; gl
       <p className="mt-1 text-sm text-[var(--muted)]">
         {figure.years} · {figure.field} · {figure.country}
       </p>
+      <p className="mt-1 text-sm text-[var(--muted)]">
+        Born in {figure.birthplace.name}, {figure.birthplace.country}
+      </p>
 
       <div className="mt-4 overflow-hidden rounded-[1.1rem] bg-[var(--un-in-bg)]">
         {portrait ? (

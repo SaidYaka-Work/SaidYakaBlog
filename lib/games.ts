@@ -35,7 +35,7 @@ export const games: GameMeta[] = [
     tagline: 'A mystery figure texts you. Name them before the sixth bubble.',
     description:
       'A daily chat puzzle: an unknown historical figure texts six clues, vague then specific. Guess who is writing before the thread goes quiet.',
-    howTo: 'Six incoming texts from a mystery figure. Name them before the thread goes quiet. After you finish, a Meet card tells you who they were.',
+    howTo: 'Six incoming texts from a mystery figure, a shrinking globe, and sixteen suspects. Name them before the thread goes quiet. After you finish, a Meet card tells you who they were.',
     genre: 'Daily',
     kind: 'react',
     href: englishPath('/games/unknown-number'),
