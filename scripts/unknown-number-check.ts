@@ -42,7 +42,10 @@ for (const figure of FIGURES) {
     assert.ok((LICENSES as readonly string[]).includes(figure.portrait.license), `${figure.id} license ${figure.portrait.license}`);
     assert.ok(figure.portrait.author, `${figure.id} portrait needs author`);
     assert.ok(figure.portrait.commonsUrl.includes('wikimedia.org') || figure.portrait.commonsUrl.includes('wikipedia.org'), `${figure.id} commons URL`);
-    assert.ok(existsSync(resolve(process.cwd(), figure.portrait.path.replace(/^\//, ''))), `${figure.id} missing ${figure.portrait.path}`);
+    assert.ok(
+      existsSync(resolve(process.cwd(), 'public', figure.portrait.path.replace(/^\//, ''))),
+      `${figure.id} missing ${figure.portrait.path}`,
+    );
   }
 }
 
