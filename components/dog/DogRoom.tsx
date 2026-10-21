@@ -60,7 +60,6 @@ function toastFromText(text: string): Omit<Toast, 'id'> {
 export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel }) {
   const worker = dogWorkerUrl();
   const [snapshot, setSnapshot] = useState<DogSnapshot | null>(null);
-  const [connected, setConnected] = useState(false);
   const [reach, setReach] = useState<'unknown' | 'up' | 'down'>(worker ? 'unknown' : 'down');
   const [play, setPlay] = useState<PlayKind>(null);
   const [playId, setPlayId] = useState<string | null>(null);
@@ -183,7 +182,6 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
 
   const apply = useCallback((data: DogSnapshot) => {
     setSnapshot(data);
-    setConnected(true);
     setReach('up');
     setProgress((value) => Math.max(value, 78));
   }, []);
@@ -297,7 +295,6 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         setReach('down');
       };
       ws.onclose = () => {
-        setConnected(false);
         setReach('down');
         if (closed) return;
         window.setTimeout(open, wsPause);
