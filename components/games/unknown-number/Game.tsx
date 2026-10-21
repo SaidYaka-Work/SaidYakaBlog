@@ -230,7 +230,7 @@ export default function UnknownNumberGame() {
     const url = englishUrl('/games/unknown-number');
     const text = `${shareLines(day.puzzleNumber, day.status, day.guesses.length, {
       globeStep: wrongGuessCount(day.guesses),
-    }).join('\n')}\n${url}`;}
+    }).join('\n')}\n${url}`;
     try {
       if (typeof navigator.share === 'function' && /Mobi|Android|iPhone/i.test(navigator.userAgent)) {
         await navigator.share({ text });
