@@ -447,6 +447,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   }, [inWorld, input, overlay, playing, shared, snapshot?.location]);
 
   useEffect(() => {
+    if (previewRef.current) return;
     if (!snapshot?.location) return;
     if (snapshot.location.mode === 'world') {
       setLocalWorld(true);

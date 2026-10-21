@@ -121,14 +121,14 @@ function sampleInside(ring: PointXZ[], want: number, seed: number) {
   return hits;
 }
 
-export function plantsInParks(parks: PointXZ[][], here: PointXZ, max = 48) {
+export function plantsInParks(parks: PointXZ[][], here: PointXZ, max = 80) {
   const plants: Plant[] = [];
   for (const park of parks) {
     if (park.length < 3) continue;
     const area = ringArea(park);
     if (area < 30) continue;
-    const trees = Math.min(10, 2 + Math.floor(area / 220));
-    const bushes = Math.min(8, 1 + Math.floor(area / 320));
+    const trees = Math.min(36, 6 + Math.floor(area / 90));
+    const bushes = Math.min(24, 4 + Math.floor(area / 140));
     const seed = centroid(park);
     sampleInside(park, trees, seed.x).forEach((p, i) => {
       plants.push({ ...p, s: 1.1 + hash2(i, seed.x) * 0.8, kind: 'tree' });
@@ -142,7 +142,7 @@ export function plantsInParks(parks: PointXZ[][], here: PointXZ, max = 48) {
     .slice(0, max);
 }
 
-export function streetTreesAlongRoads(roads: RoadLine[], here: PointXZ, max = 20, spacing = 16) {
+export function streetTreesAlongRoads(roads: RoadLine[], here: PointXZ, max = 36, spacing = 12) {
   const trees: Plant[] = [];
   for (const road of roads) {
     if (road.width < 4.8) continue;
@@ -175,7 +175,7 @@ export function streetTreesAlongRoads(roads: RoadLine[], here: PointXZ, max = 20
     .slice(0, max);
 }
 
-export function dressPlants(parks: PointXZ[][], roads: RoadLine[], here: PointXZ, max = 56) {
+export function dressPlants(parks: PointXZ[][], roads: RoadLine[], here: PointXZ, max = 120) {
   const park = plantsInParks(parks, here, Math.ceil(max * 0.7));
   const street = streetTreesAlongRoads(roads, here, Math.floor(max * 0.35));
   return [...park, ...street]

@@ -594,11 +594,11 @@ export default function WorldScene({
   }, [tiles]);
 
   const lamps = useMemo(
-    () => lampsAlongRoads(tiles.flatMap((tile) => tile.roads), here, slim ? 14 : 24),
+    () => lampsAlongRoads(tiles.flatMap((tile) => tile.roads), here, slim ? 16 : 28),
     [here, slim, tiles],
   );
   const plants = useMemo(
-    () => dressPlants(tiles.flatMap((tile) => tile.parks), tiles.flatMap((tile) => tile.roads), here, slim ? 32 : 56),
+    () => dressPlants(tiles.flatMap((tile) => tile.parks), tiles.flatMap((tile) => tile.roads), here, slim ? 64 : 120),
     [here, slim, tiles],
   );
   const crossings = useMemo(
