@@ -974,13 +974,20 @@
     display: none;
   }
 
-  .dog-leash {
-    top: calc(168px + env(safe-area-inset-top)) !important;
+  .dog-left {
+    width: min(14rem, 72vw);
+  }
+
+  .dog-left .dog-leash {
+    position: static !important;
+    top: auto !important;
     bottom: auto !important;
-    left: 50%;
-    max-width: min(11.5rem, 58%);
+    left: auto !important;
+    transform: none !important;
+    align-self: flex-start;
+    max-width: 100%;
     white-space: normal;
-    text-align: center;
+    text-align: left;
     z-index: 5;
   }
 
@@ -1054,13 +1061,20 @@
     display: none;
   }
 
-  .dog-leash {
-    top: calc(168px + env(safe-area-inset-top)) !important;
+  .dog-left {
+    width: min(14rem, 72vw);
+  }
+
+  .dog-left .dog-leash {
+    position: static !important;
+    top: auto !important;
     bottom: auto !important;
-    left: 50%;
-    max-width: min(11.5rem, 58%);
+    left: auto !important;
+    transform: none !important;
+    align-self: flex-start;
+    max-width: 100%;
     white-space: normal;
-    text-align: center;
+    text-align: left;
     z-index: 5;
   }
 
@@ -1113,13 +1127,20 @@
   display: none;
 }
 
-.dog-game.is-compact .dog-leash {
-  top: calc(168px + env(safe-area-inset-top)) !important;
+.dog-game.is-compact .dog-left {
+  width: min(14rem, 72vw);
+}
+
+.dog-game.is-compact .dog-left .dog-leash {
+  position: static !important;
+  top: auto !important;
   bottom: auto !important;
-  left: 50%;
-  max-width: min(11.5rem, 58%);
+  left: auto !important;
+  transform: none !important;
+  align-self: flex-start;
+  max-width: 100%;
   white-space: normal;
-  text-align: center;
+  text-align: left;
   z-index: 5;
 }
 

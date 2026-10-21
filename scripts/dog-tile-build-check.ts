@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { PbfReader } from 'pbf';
+import { VectorTile } from '@mapbox/vector-tile';
 import {
   DRESS_STEPS,
   createBuildJob,
@@ -9,13 +12,18 @@ import {
   tileIsLod,
 } from '../components/dog/world/buildTile.ts';
 import {
+  decodeTile,
   keepNearBuildings,
   keepNearRoads,
   type BuildingFeat,
   type RoadFeat,
   type WorldTileData,
 } from '../components/dog/world/decode.ts';
-import { formatPlaceLine } from '../workers/dog/src/world.ts';
+import {
+  TILE_TEMPLATE_FALLBACK,
+  formatPlaceLine,
+  resolveTileTemplate,
+} from '../workers/dog/src/world.ts';
 import {
   KEEP_RING,
   MAX_CACHED_TILES,
@@ -122,6 +130,35 @@ assert.equal(
   '6½ Avenue · near Times Square',
 );
 assert.equal(formatPlaceLine('Broadway', 'Times Square buildings'), 'Broadway');
+
+assert.equal(
+  resolveTileTemplate('https://tiles.openfreemap.org/planet/{z}/{x}/{y}.pbf'),
+  TILE_TEMPLATE_FALLBACK,
+  'unversioned planet wildcard must not be used',
+);
+assert.equal(
+  resolveTileTemplate('https://tiles.openfreemap.org/planet/20261018_080001_pt/{z}/{x}/{y}.pbf'),
+  'https://tiles.openfreemap.org/planet/20261018_080001_pt/{z}/{x}/{y}.pbf',
+);
+assert.equal(resolveTileTemplate(undefined), TILE_TEMPLATE_FALLBACK);
+
+const fixtureBytes = readFileSync('components/dog/world/fixtures/ofm-14-4823-6157.pbf');
+const rawTile = new VectorTile(new PbfReader(fixtureBytes));
+const layerCounts = Object.fromEntries(
+  Object.entries(rawTile.layers).map(([name, layer]) => [name, layer.length]),
+) as Record<string, number>;
+assert.ok((layerCounts.building ?? 0) > 0, `fixture building layer empty: ${JSON.stringify(layerCounts)}`);
+assert.ok((layerCounts.transportation ?? 0) > 0, 'fixture transportation layer empty');
+const decodedFixture = decodeTile(
+  fixtureBytes.buffer.slice(fixtureBytes.byteOffset, fixtureBytes.byteOffset + fixtureBytes.byteLength),
+  14,
+  4823,
+  6157,
+  40.730823,
+  -73.997332,
+);
+assert.ok(decodedFixture.buildings.length > 0, `decode lost buildings (${decodedFixture.buildings.length})`);
+assert.ok(decodedFixture.roads.length > 0, `decode lost roads (${decodedFixture.roads.length})`);
 
 const center = { z: 14, x: 4825, y: 6156 };
 const windowKeys = wantedTileKeys(center);

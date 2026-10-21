@@ -50,6 +50,7 @@ export default function DogHud({
   leashWaitMs = 0,
   leashTaking = false,
   onTakeLeash,
+  compact = false,
 }: {
   name: string;
   stageLabel: string;
@@ -91,7 +92,42 @@ export default function DogHud({
   leashWaitMs?: number;
   leashTaking?: boolean;
   onTakeLeash?: () => void;
+  compact?: boolean;
 }) {
+  const leashPill =
+    !empty && !flying ? (
+      <p className={`dog-leash${youHold || youNext ? ' is-next' : ''}`} role="status">
+        {youHold
+          ? 'You have the leash'
+          : leashTaking
+            ? 'Taking the leash…'
+            : leashWaitMs > 0
+              ? `Give him a moment · ${Math.max(1, Math.ceil(leashWaitMs / 1000))}s`
+              : youNext
+                ? "You're next · ~20s"
+                : queueAhead > 0
+                  ? `You're ${ordinal(queueAhead + 1)} · ~${(queueAhead + 1) * 20}s`
+                  : visitorWalking
+                    ? `A visitor is walking ${name}`
+                    : `${name} is waiting`}
+        {!youHold && onTakeLeash && (
+          <button type="button" className="dog-leash-take" onClick={onTakeLeash} disabled={leashWaitMs > 0 || leashTaking}>
+            {leashTaking
+              ? 'Taking…'
+              : leashWaitMs > 0
+                ? `Wait ${Math.max(1, Math.ceil(leashWaitMs / 1000))}s`
+                : youNext || queueAhead > 0 || visitorWalking
+                  ? 'Join queue'
+                  : 'Take the leash'}
+          </button>
+        )}
+      </p>
+    ) : flying ? (
+      <p className="dog-leash" role="status">
+        Landing…
+      </p>
+    ) : null;
+
   return (
     <div className={`dog-hud ${touch ? 'is-touch' : ''}`}>
       <Link href={englishPath('/')} className="dog-back">
@@ -110,6 +146,7 @@ export default function DogHud({
             <Meter icon="🐾" label="Energy" value={energy} />
           </div>
         )}
+        {compact ? leashPill : null}
       </div>
 
       <div className="dog-chips">
@@ -151,39 +188,7 @@ export default function DogHud({
         </button>
       </div>
 
-      {!empty && !flying && (
-        <p className={`dog-leash${youHold || youNext ? ' is-next' : ''}`} role="status">
-          {youHold
-            ? 'You have the leash'
-            : leashTaking
-              ? 'Taking the leash…'
-              : leashWaitMs > 0
-                ? `Give him a moment · ${Math.max(1, Math.ceil(leashWaitMs / 1000))}s`
-                : youNext
-                  ? "You're next · ~20s"
-                  : queueAhead > 0
-                    ? `You're ${ordinal(queueAhead + 1)} · ~${(queueAhead + 1) * 20}s`
-                    : visitorWalking
-                      ? `A visitor is walking ${name}`
-                      : `${name} is waiting`}
-          {!youHold && onTakeLeash && (
-            <button type="button" className="dog-leash-take" onClick={onTakeLeash} disabled={leashWaitMs > 0 || leashTaking}>
-              {leashTaking
-                ? 'Taking…'
-                : leashWaitMs > 0
-                  ? `Wait ${Math.max(1, Math.ceil(leashWaitMs / 1000))}s`
-                  : youNext || queueAhead > 0 || visitorWalking
-                    ? 'Join queue'
-                    : 'Take the leash'}
-            </button>
-          )}
-        </p>
-      )}
-      {flying && (
-        <p className="dog-leash" role="status">
-          Landing…
-        </p>
-      )}
+      {compact ? null : leashPill}
       {onEmote && !empty && (
         <div className="dog-emotes" role="group" aria-label="Emotes">
           {EMOTE_SET.map((item) => (

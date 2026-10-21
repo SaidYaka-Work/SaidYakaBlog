@@ -872,6 +872,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
 
       {playing && (
         <DogHud
+          compact={compactHud}
           name={shownName}
           stageLabel={dog?.stageLabel || (awaitingName ? 'new' : napping ? 'napping' : 'away')}
           presence={preview === 'presence' ? 4 : snapshot?.presence ?? 0}

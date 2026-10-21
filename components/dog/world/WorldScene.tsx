@@ -125,9 +125,9 @@ function facadeMaterial(night: boolean) {
         float t = clamp(dot(a, b) / span, 0.0, 1.0);
         float occ = length(a - b * t);
         float distCam = length(vWorldPos.xz - uCam.xz);
-        float along = uFade * (1.0 - smoothstep(2.2, 9.0, occ)) * smoothstep(0.04, 0.18, t) * (1.0 - smoothstep(0.82, 1.0, t));
+        float corridor = uFade * (1.0 - smoothstep(2.2, 9.0, occ)) * smoothstep(0.04, 0.18, t) * (1.0 - smoothstep(0.82, 1.0, t));
         float nearCam = uFade * (1.0 - smoothstep(0.35, 2.4, distCam));
-        float fade = max(along, nearCam);
+        float fade = max(corridor, nearCam);
         litCol = mix(litCol, uFogColor, fade * 0.78);
         gl_FragColor = vec4(mix(litCol, uFogColor, fog), 1.0 - fade * 0.55);
       }

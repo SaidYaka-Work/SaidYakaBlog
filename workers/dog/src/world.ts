@@ -35,7 +35,16 @@ export const TRAVEL_COOLDOWN_MS = 25_000;
 export const WORLD_WANDER_M = 80;
 export const METERS_PER_DEG = 111_320;
 export const TILEJSON_URL = 'https://tiles.openfreemap.org/planet';
+/** OpenFreeMap's unversioned `/planet/{z}/{x}/{y}.pbf` now returns an empty 200 wildcard. */
+export const TILE_PLANET_BUILD = '20261018_080001_pt';
+export const TILEJSON_PINNED_URL = `https://tiles.openfreemap.org/planet/${TILE_PLANET_BUILD}`;
+export const TILE_TEMPLATE_FALLBACK = `https://tiles.openfreemap.org/planet/${TILE_PLANET_BUILD}/{z}/{x}/{y}.pbf`;
 export const ATTRIBUTION = '© OpenStreetMap contributors · © OpenMapTiles · OpenFreeMap';
+
+export function resolveTileTemplate(raw?: string | null) {
+  if (typeof raw === 'string' && raw.includes('{z}') && /\/planet\/20\d{6}_/.test(raw)) return raw;
+  return TILE_TEMPLATE_FALLBACK;
+}
 
 export type Place = {
   id: string;

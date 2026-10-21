@@ -2,11 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
+  TILEJSON_PINNED_URL,
   TILEJSON_URL,
+  TILE_TEMPLATE_FALLBACK,
   WORLD_TILE_ZOOM,
   buildFootprintGrid,
   emptyFootprintGrid,
   lngLatToLocal,
+  resolveTileTemplate,
   type FootprintGrid,
   type Ring,
 } from '../../../workers/dog/src/world';
@@ -37,16 +40,22 @@ let workerBroken = false;
 
 function tileTemplate() {
   if (!templatePromise) {
-    templatePromise = fetch(TILEJSON_URL)
-      .then((res) => {
-        if (!res.ok) throw new Error(`tilejson ${res.status}`);
-        return res.json();
-      })
-      .then((json: { tiles?: string[] }) => json.tiles?.[0] || 'https://tiles.openfreemap.org/planet/{z}/{x}/{y}.pbf')
-      .catch((error) => {
-        templatePromise = null;
-        throw error;
-      });
+    templatePromise = (async () => {
+      for (const url of [TILEJSON_PINNED_URL, TILEJSON_URL]) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const json = (await res.json()) as { tiles?: string[] };
+          return resolveTileTemplate(json.tiles?.[0]);
+        } catch {
+          // try the next tilejson, then the pinned template
+        }
+      }
+      return TILE_TEMPLATE_FALLBACK;
+    })().catch((error) => {
+      templatePromise = null;
+      throw error;
+    });
   }
   return templatePromise;
 }
@@ -103,7 +112,9 @@ async function fetchTileBuffer(url: string) {
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`tile ${res.status}`);
-      return await res.arrayBuffer();
+      const buffer = await res.arrayBuffer();
+      if (buffer.byteLength < 24) throw new Error(`empty tile ${buffer.byteLength}`);
+      return buffer;
     } catch (error) {
       last = error instanceof Error ? error : new Error(String(error));
       if (attempt < FETCH_TRIES - 1) {
