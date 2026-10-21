@@ -22,7 +22,7 @@ import WalkGame from './WalkGame';
 import { playDogSfx } from './dogSound';
 import useDogDrive from './useDogDrive';
 import { nearFeeder } from '../../workers/dog/src/room';
-import { ATTRIBUTION, HOME_PLACE, PLACES, placeById, sunDirection } from '../../workers/dog/src/world';
+import { ATTRIBUTION, HOME_PLACE, PLACES, nearestPlace, placeById, sunDirection } from '../../workers/dog/src/world';
 import type { WorldView } from './DogCanvas';
 import type { WorldColliders } from './world/useWorldTiles';
 import './dog.css';
@@ -42,7 +42,7 @@ const PREVIEW_VISITORS: DogCompanion[] = [
 
 const ERRORS: Record<string, string> = {
   cooldown: 'Give him a moment.',
-  rate_limited: 'The porch is busy. Try again shortly.',
+  rate_limited: 'The city is busy. Try again shortly.',
   asleep: 'He is asleep. Let him dream.',
   too_tired: 'He is too tired for that.',
   too_soon: 'Give him a moment.',
@@ -99,6 +99,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const poseRef = useRef<DogPose | null>(null);
   const lastHudAt = useRef(0);
   const lastSelfHud = useRef(0);
+  const lastToast = useRef({ text: '', at: 0 });
+  const lastIntent = useRef<'feed' | 'move' | 'other'>('other');
   const feedRef = useRef<() => void>(() => undefined);
   const socket = useRef<WebSocket | null>(null);
   const toastId = useRef(1);
@@ -187,6 +189,9 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   }, []);
 
   const pushToast = useCallback((text: string) => {
+    const now = Date.now();
+    if (text === lastToast.current.text && now - lastToast.current.at < 2200) return;
+    lastToast.current = { text, at: now };
     const id = toastId.current++;
     setToasts((current) => [...current.slice(-2), { id, ...toastFromText(text) }]);
     window.setTimeout(() => {
@@ -300,7 +305,10 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           setPanel('name');
         }
         if (message.type === 'error') {
-          const text = message.text || ERRORS[message.code] || 'Not just now.';
+          const text =
+            message.code === 'too_soon' && lastIntent.current === 'feed'
+              ? 'Biscuit is full.'
+              : message.text || ERRORS[message.code] || 'Not just now.';
           pushToast(text);
           if (message.code === 'invalid' || message.code === 'not_catcher') setNameStatus(text);
         }
@@ -488,6 +496,11 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
 
   function feedHim() {
     hideHint();
+    lastIntent.current = 'feed';
+    if (shared && (snapshot?.dog?.fullness ?? 0) >= 86) {
+      pushToast('Biscuit is full.');
+      return;
+    }
     if (shared) {
       send({ type: 'bowl' });
       return;
@@ -496,6 +509,12 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   }
   feedRef.current = feedHim;
 
+  function takeLeash() {
+    hideHint();
+    lastIntent.current = 'move';
+    send({ type: 'move', ax: 0, az: 0.18, run: false });
+  }
+
   useEffect(() => {
     if (!playing || overlay || !shared) return;
     const moving = Math.hypot(input.ax, input.az) > 0.12;
@@ -503,6 +522,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
     const now = performance.now();
     if (now - lastMove.current < 80) return;
     lastMove.current = now;
+    lastIntent.current = 'move';
     send({
       type: 'move',
       ax: input.ax,
@@ -581,6 +601,20 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   useEffect(() => {
     if (ready) setProgress(100);
   }, [ready]);
+
+  useEffect(() => {
+    if (!playing) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    return () => {
+      html.style.overflow = prevHtml;
+      body.style.overflow = prevBody;
+    };
+  }, [playing]);
 
   const handlePose = useCallback(
     (pose: { x: number; z: number }) => {
@@ -715,12 +749,19 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           youNext={youNext}
           queueAhead={queueAhead}
           neighborCount={guests.length + (clientId ? 1 : 0)}
+          youHold={youHold}
+          flying={flying}
+          onTakeLeash={takeLeash}
         />
       )}
 
       {!playing && (
         <div className="dog-start">
-          <p className="dog-start-kicker">out in the city</p>
+          <p className="dog-start-kicker">
+            {snapshot?.location
+              ? nearestPlace(snapshot.location.lat, snapshot.location.lng).name
+              : activePlace.name}
+          </p>
           <p className="dog-start-title">{shownName}</p>
           <div className="dog-start-bar" aria-hidden="true">
             <i style={{ width: `${Math.min(100, progress)}%` }} />

@@ -44,6 +44,9 @@ export default function DogHud({
   youNext = false,
   queueAhead = 0,
   neighborCount = 0,
+  youHold = false,
+  flying = false,
+  onTakeLeash,
 }: {
   name: string;
   stageLabel: string;
@@ -80,6 +83,9 @@ export default function DogHud({
   youNext?: boolean;
   queueAhead?: number;
   neighborCount?: number;
+  youHold?: boolean;
+  flying?: boolean;
+  onTakeLeash?: () => void;
 }) {
   return (
     <div className={`dog-hud ${touch ? 'is-touch' : ''}`}>
@@ -118,19 +124,28 @@ export default function DogHud({
         </button>
       </div>
 
-      {youNext && (
+      {youHold && (
         <p className="dog-leash is-next" role="status">
-          You&apos;re next
+          You have the leash
         </p>
       )}
-      {!youNext && queueAhead > 0 && (
+      {!youHold && (youNext || queueAhead > 0 || visitorWalking) && (
         <p className="dog-leash" role="status">
-          Waiting · {queueAhead} ahead
+          {youNext
+            ? `You're next · ~20s`
+            : queueAhead > 0
+              ? `You're ${queueAhead + 1}${queueAhead + 1 === 2 ? 'nd' : queueAhead + 1 === 3 ? 'rd' : 'th'} · ~${(queueAhead + 1) * 20}s`
+              : `🐾 a visitor is walking ${name}`}
+          {onTakeLeash && (
+            <button type="button" className="dog-leash-take" onClick={onTakeLeash}>
+              Take the leash
+            </button>
+          )}
         </p>
       )}
-      {visitorWalking && !youNext && (
+      {flying && (
         <p className="dog-leash" role="status">
-          🐾 a visitor is walking {name}
+          Landing…
         </p>
       )}
       {onEmote && !empty && (
@@ -189,7 +204,7 @@ export default function DogHud({
       )}
 
       {hint && !empty && !near && (
-        <p className="dog-hint">{touch ? 'Joystick to walk · Feed at the bowl' : 'WASD to walk · Travel to a park'}</p>
+        <p className="dog-hint">{touch ? 'Drag to walk · Feed at the bowl' : 'WASD to walk · Travel to a park'}</p>
       )}
 
       {attribution && <p className="dog-attrib">{attribution}</p>}
@@ -200,7 +215,7 @@ export default function DogHud({
         </p>
       )}
 
-      {touch && !empty && onStick && <Joystick onStick={onStick} />}
+      {!empty && onStick && <Joystick onStick={onStick} />}
 
       <div className="dog-actions">
         {empty ? (
@@ -261,12 +276,22 @@ function Joystick({ onStick }: { onStick: (ax: number, az: number) => void }) {
     const max = box.width * 0.36;
     const mag = Math.hypot(dx, dy);
     const scale = mag > max ? max / mag : 1;
-    const x = (dx * scale) / max;
-    const y = (dy * scale) / max;
+    const nx = (dx * scale) / max;
+    const ny = (dy * scale) / max;
+    const raw = Math.hypot(nx, ny);
+    const dead = 0.08;
+    let ax = 0;
+    let az = 0;
+    if (raw > dead) {
+      const t = (raw - dead) / (1 - dead);
+      const eased = t * t * (3 - 2 * t);
+      ax = (nx / raw) * eased;
+      az = (ny / raw) * eased;
+    }
     if (knob.current) {
       knob.current.style.transform = `translate(${dx * scale}px, ${dy * scale}px)`;
     }
-    onStick(x, y);
+    onStick(ax, az);
   }
 
   return (
@@ -274,12 +299,15 @@ function Joystick({ onStick }: { onStick: (ax: number, az: number) => void }) {
       ref={pad}
       className="dog-stick"
       onPointerDown={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
         pointer.current = event.pointerId;
         event.currentTarget.setPointerCapture(event.pointerId);
         point(event);
       }}
       onPointerMove={(event) => {
         if (pointer.current !== event.pointerId) return;
+        event.preventDefault();
         point(event);
       }}
       onPointerUp={(event) => {

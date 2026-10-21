@@ -448,6 +448,30 @@
   border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
 }
 
+.dog-leash-take {
+  margin-left: 0.55rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+  font-size: 0.72rem;
+  color: var(--ink);
+}
+
+.dog-debug {
+  position: absolute;
+  left: 10px;
+  top: calc(8px + env(safe-area-inset-top));
+  z-index: 6;
+  pointer-events: none;
+  padding: 0.22rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(12, 10, 8, 0.62);
+  color: #e8f4c8;
+  font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.01em;
+}
+
 .dog-emotes {
   position: absolute;
   right: 14px;
@@ -557,6 +581,12 @@
   background: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
   backdrop-filter: blur(8px);
   touch-action: none;
+}
+
+@media (pointer: fine) and (min-width: 720px) {
+  .dog-hud:not(.is-touch) .dog-stick {
+    display: none;
+  }
 }
 
 .dog-stick-knob {
@@ -765,6 +795,45 @@
   }
   100% {
     opacity: 0;
+  }
+}
+
+@media (max-width: 360px), (max-height: 420px) {
+  .dog-id strong {
+    font-size: 1.35rem;
+  }
+
+  .dog-left {
+    width: min(8.6rem, 42vw);
+  }
+
+  .dog-place,
+  .dog-attrib,
+  .dog-credit {
+    display: none;
+  }
+
+  .dog-emotes {
+    right: 8px;
+    bottom: calc(124px + env(safe-area-inset-bottom));
+    transform: scale(0.86);
+    transform-origin: bottom right;
+  }
+
+  .dog-stick {
+    width: 96px;
+    height: 96px;
+    left: 10px;
+  }
+
+  .dog-actions {
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .dog-action {
+    min-width: 5.1rem;
+    min-height: 46px;
+    font-size: 0.92rem;
   }
 }
 

@@ -113,6 +113,19 @@ export type PublicLocation = {
 
 export type Ring = { x: number; z: number }[];
 
+export function nearestPlace(lat: number, lng: number): Place {
+  let best = HOME_PLACE;
+  let bestD = Infinity;
+  for (const place of PLACES) {
+    const d = (place.lat - lat) ** 2 + (place.lng - lng) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = place;
+    }
+  }
+  return best;
+}
+
 export function placeById(id: string): Place | undefined {
   return PLACES.find((place) => place.id === id);
 }
@@ -369,6 +382,15 @@ function creditWalk(yard: YardState, meters: number, moving: boolean, now: numbe
   };
 }
 
+export function stayOnPavement(x: number, z: number, roads: Ring[], parks: Ring[] = [], maxDist = 5.4) {
+  if (parks.some((ring) => ring.length >= 3 && pointInRing(x, z, ring))) return { x, z };
+  if (!roads.length) return { x, z };
+  const near = nearestOnLines(x, z, roads);
+  if (!Number.isFinite(near.dist) || near.dist > maxDist || near.dist < 0.85) return { x, z };
+  const t = 0.14;
+  return { x: x + (near.x - x) * t, z: z + (near.z - z) * t };
+}
+
 export function applyWorldDrive(
   yard: YardState,
   ax: number,
@@ -378,11 +400,14 @@ export function applyWorldDrive(
   now: number,
   proposed?: { x: number; z: number } | null,
   buildings: Ring[] = [],
+  roads: Ring[] = [],
+  parks: Ring[] = [],
 ): YardState {
   const location = migrateLocation(yard.location, now);
-  const stepped = integrateOpen(yard.pose, ax, az, run, clamp(dt, 0, MOVE_DT_MAX), (_x, _z, nx, nz) =>
-    pushCircleOut(nx, nz, DOG_RADIUS, buildings),
-  );
+  const stepped = integrateOpen(yard.pose, ax, az, run, clamp(dt, 0, MOVE_DT_MAX), (_x, _z, nx, nz) => {
+    const slid = pushCircleOut(nx, nz, DOG_RADIUS, buildings);
+    return stayOnPavement(slid.x, slid.z, roads, parks);
+  });
   let pose = stepped.pose;
   if (proposed && Number.isFinite(proposed.x) && Number.isFinite(proposed.z)) {
     const jump = Math.hypot(proposed.x - yard.pose.x, proposed.z - yard.pose.z);

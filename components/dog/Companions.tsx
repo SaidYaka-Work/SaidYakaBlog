@@ -110,7 +110,7 @@ function Spirit({
     const group = root.current;
     const float = body.current;
     if (!group || !float) return;
-    const ease = 1 - Math.exp(-dt * 10);
+    const ease = 1 - Math.exp(-dt * 7);
     group.position.x += (companion.x - group.position.x) * ease;
     group.position.z += (companion.z - group.position.z) * ease;
     const dx = lookAt.x - group.position.x;

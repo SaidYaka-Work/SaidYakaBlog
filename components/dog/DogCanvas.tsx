@@ -2,11 +2,11 @@
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Suspense, lazy, useEffect, useRef, useState, type RefObject } from 'react';
-import { ACESFilmicToneMapping, PerspectiveCamera, PointLight, SRGBColorSpace, Vector3, type Group, type Mesh } from 'three';
+import { ACESFilmicToneMapping, PerspectiveCamera, PointLight, Raycaster, SRGBColorSpace, Vector3, type Group, type Mesh } from 'three';
 import type { DogCompanion, DogGenome, LifeStage } from '@/lib/dog';
 import Companions from './Companions';
 import type { PortraitReaction } from './look';
-import { CAMERA_YAW, frameCamera, followYardCamera, projectMeshBounds } from './frame';
+import { CAMERA_YAW, frameCamera, followYardCamera } from './frame';
 import DogRig, { type DriveControl } from './DogRig';
 import WorldBowl from './WorldBowl';
 import { HOME_PLACE } from '../../workers/dog/src/world';
@@ -23,13 +23,39 @@ export type WorldView = {
   nightHint?: boolean;
 };
 
+function SizeSync({ host }: { host: RefObject<HTMLDivElement | null> }) {
+  const gl = useThree((state) => state.gl);
+  const set = useThree((state) => state.set);
+  useEffect(() => {
+    const node = host.current;
+    if (!node) return;
+    const apply = () => {
+      const box = node.getBoundingClientRect();
+      const width = Math.max(1, box.width);
+      const height = Math.max(1, box.height);
+      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+      gl.setPixelRatio(dpr);
+      gl.setSize(width, height, false);
+      set({ size: { width, height, top: box.top, left: box.left } });
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, [gl, host, set]);
+  return null;
+}
+
 function PerfProbe() {
   const { gl } = useThree();
+  const times = useRef<number[]>([]);
   useFrame((_, dt) => {
     const host = window as Window & {
       __DOG_PERF?: {
         fps: number;
         frameMs: number;
+        p95: number;
+        hitch: number;
         calls: number;
         triangles: number;
         geometries: number;
@@ -38,13 +64,22 @@ function PerfProbe() {
         samples: number;
       };
     };
+    const ms = dt * 1000;
+    const ring = times.current;
+    ring.push(ms);
+    if (ring.length > 180) ring.shift();
+    const sorted = [...ring].sort((a, b) => a - b);
+    const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] || ms;
+    const hitch = ring.reduce((max, value) => Math.max(max, value), 0);
     const info = gl.info;
     const mem = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
     const prev = host.__DOG_PERF;
     const fps = dt > 0 ? 1 / dt : 0;
     host.__DOG_PERF = {
-      fps: prev ? prev.fps * 0.9 + fps * 0.1 : fps,
-      frameMs: dt * 1000,
+      fps: prev ? prev.fps * 0.86 + fps * 0.14 : fps,
+      frameMs: ms,
+      p95,
+      hitch,
       calls: info.render.calls,
       triangles: info.render.triangles,
       geometries: info.memory.geometries,
@@ -54,6 +89,26 @@ function PerfProbe() {
     };
   });
   return null;
+}
+
+function DebugHud() {
+  const [line, setLine] = useState('');
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!new URLSearchParams(window.location.search).has('debug')) return;
+    const tick = () => {
+      const perf = (window as Window & { __DOG_PERF?: { fps: number; p95: number; hitch: number; calls: number; triangles: number } }).__DOG_PERF;
+      if (!perf) return;
+      setLine(
+        `${perf.fps.toFixed(0)} fps · p95 ${perf.p95.toFixed(1)}ms · hitch ${perf.hitch.toFixed(0)}ms · ${perf.calls} calls · ${perf.triangles} tris`,
+      );
+    };
+    tick();
+    const id = window.setInterval(tick, 250);
+    return () => window.clearInterval(id);
+  }, []);
+  if (!line) return null;
+  return <div className="dog-debug">{line}</div>;
 }
 
 function FootShadow({ target }: { target: RefObject<Group | null> }) {
@@ -105,12 +160,69 @@ function FramedCamera({
 }) {
   const camera = useThree((state) => state.camera) as PerspectiveCamera;
   const size = useThree((state) => state.size);
+  const scene = useThree((state) => state.scene);
   const from = useRef(new Vector3());
   const look = useRef(new Vector3());
   const ready = useRef(false);
+  const ray = useRef(new Raycaster());
+  const dir = useRef(new Vector3());
 
   const street = useRef(new Vector3());
   const lastAnchor = useRef({ x: -1, y: -1 });
+  const lastAnchorAt = useRef(0);
+  const orbit = useRef({ yaw: 0, pitch: 0 });
+  const occluders = useRef<import('three').Object3D[]>([]);
+  const lastOcc = useRef(0);
+
+  useEffect(() => {
+    const node = host.current;
+    if (!node) return;
+    let down = false;
+    let lastX = 0;
+    let lastY = 0;
+    let pointerId: number | null = null;
+    const onDown = (event: PointerEvent) => {
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      const hit = event.target;
+      if (hit instanceof Element && hit.closest('.dog-stick, .dog-action, .dog-chip, .dog-travel, .dog-back')) return;
+      if (event.pointerType === 'touch') {
+        const box = node.getBoundingClientRect();
+        if (event.clientX - box.left < 168 && box.bottom - event.clientY < 176) return;
+      }
+      down = true;
+      pointerId = event.pointerId;
+      lastX = event.clientX;
+      lastY = event.clientY;
+      node.setPointerCapture(event.pointerId);
+    };
+    const onMove = (event: PointerEvent) => {
+      if (!down || pointerId !== event.pointerId) return;
+      orbit.current.yaw -= (event.clientX - lastX) * 0.005;
+      orbit.current.pitch = Math.max(-0.28, Math.min(0.5, orbit.current.pitch + (event.clientY - lastY) * 0.0035));
+      lastX = event.clientX;
+      lastY = event.clientY;
+    };
+    const onUp = (event: PointerEvent) => {
+      if (pointerId !== null && event.pointerId !== pointerId) return;
+      down = false;
+      pointerId = null;
+      try {
+        node.releasePointerCapture(event.pointerId);
+      } catch {
+        // ignore
+      }
+    };
+    node.addEventListener('pointerdown', onDown);
+    node.addEventListener('pointermove', onMove);
+    node.addEventListener('pointerup', onUp);
+    node.addEventListener('pointercancel', onUp);
+    return () => {
+      node.removeEventListener('pointerdown', onDown);
+      node.removeEventListener('pointermove', onMove);
+      node.removeEventListener('pointerup', onUp);
+      node.removeEventListener('pointercancel', onUp);
+    };
+  }, [host]);
 
   useFrame((_, dt) => {
     const object = target.current;
@@ -119,9 +231,9 @@ function FramedCamera({
     from.current.copy(camera.position);
     if (world) {
       const flight = Math.max(0, Math.min(1, world.flight));
-      const yaw = object.rotation.y;
+      const yaw = object.rotation.y + orbit.current.yaw;
       const dist = 14.8 + flight * 170;
-      const pitch = 0.5 + flight * 0.7;
+      const pitch = 0.5 + orbit.current.pitch + flight * 0.7;
       const height = 6.6 + flight * 210;
       street.current.set(
         object.position.x - Math.sin(yaw) * dist * Math.cos(pitch),
@@ -133,6 +245,28 @@ function FramedCamera({
         1.15 + flight * 8,
         object.position.z + Math.cos(yaw) * (2.4 + flight * 6),
       );
+      dir.current.copy(street.current).sub(look.current);
+      const span = dir.current.length();
+      if (flight < 0.08 && span > 1) {
+        dir.current.multiplyScalar(1 / span);
+        const now = performance.now();
+        if (now - lastOcc.current > 400) {
+          lastOcc.current = now;
+          const next: import('three').Object3D[] = [];
+          scene.traverse((item) => {
+            if (item.userData?.occlude) next.push(item);
+          });
+          occluders.current = next;
+        }
+        ray.current.set(look.current, dir.current);
+        ray.current.far = span;
+        const hit = ray.current.intersectObjects(occluders.current, false)[0];
+        if (hit && hit.distance < span - 1.2) {
+          const pulled = Math.max(3.4, hit.distance - 1.8);
+          street.current.copy(look.current).addScaledVector(dir.current, pulled);
+          street.current.y = Math.max(street.current.y, look.current.y + 2.6);
+        }
+      }
       camera.near = flight > 0.5 ? 2 : 0.2;
       camera.far = 520;
       camera.up.set(0, 1, 0);
@@ -143,7 +277,7 @@ function FramedCamera({
         ready.current = true;
         onReady?.();
       } else {
-        camera.position.lerpVectors(from.current, street.current, 1 - Math.exp(-dt * (flight > 0.08 ? 1.2 : 2)));
+        camera.position.lerpVectors(from.current, street.current, 1 - Math.exp(-dt * (flight > 0.08 ? 1.05 : 1.25)));
         camera.lookAt(look.current);
         camera.updateProjectionMatrix();
       }
@@ -187,15 +321,14 @@ function FramedCamera({
         onReady?.();
       }
     }
-    const bounds = projectMeshBounds(object, camera);
-    if (host.current && bounds) {
-      host.current.dataset.inView = bounds.inView ? '1' : '0';
-      host.current.dataset.fills = bounds.fills ? '1' : '0';
-      const x = (bounds.minX + bounds.maxX) * 0.5 * 0.5 + 0.5;
-      const y = (1 - bounds.maxY) * 0.5;
+    const now = performance.now();
+    if (now - lastAnchorAt.current > 200) {
+      lastAnchorAt.current = now;
+      const x = 0.5;
+      const y = 0.38;
       if (Math.abs(x - lastAnchor.current.x) > 0.012 || Math.abs(y - lastAnchor.current.y) > 0.012) {
         lastAnchor.current = { x, y };
-        onAnchor?.({ x: Math.max(0.08, Math.min(0.92, x)), y: Math.max(0.12, Math.min(0.78, y)) });
+        onAnchor?.({ x, y });
       }
     }
   });
@@ -337,6 +470,7 @@ export default function DogCanvas({
         dpr={[1, 1.5]}
         camera={{ position: [0, 6.8, 15], fov: 44, near: 0.1, far: 560 }}
         frameloop={frameloop}
+        resize={{ debounce: 0, scroll: false }}
         gl={{
           antialias: typeof window === 'undefined' ? false : window.devicePixelRatio < 1.25,
           alpha: false,
@@ -350,6 +484,7 @@ export default function DogCanvas({
           gl.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
         }}
       >
+        <SizeSync host={host} />
         <PerfProbe />
         <Suspense fallback={null}>
           {(() => {
@@ -431,6 +566,7 @@ export default function DogCanvas({
         </span>
       )}
       {!empty && (asleep || reaction === 'sleep') && <span className="biscuit-zzz">Zzz</span>}
+      <DebugHud />
     </div>
   );
 }

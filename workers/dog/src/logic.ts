@@ -1222,6 +1222,8 @@ export const ALLOWED_ORIGIN_DEFAULTS = [
   'http://127.0.0.1:3000',
   'http://localhost:4173',
   'http://127.0.0.1:4173',
+  'http://localhost:3005',
+  'http://127.0.0.1:3005',
   'http://localhost:8787',
   'http://127.0.0.1:8787',
 ];

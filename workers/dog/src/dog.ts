@@ -50,6 +50,7 @@ type SocketMeta = {
   lastAt: number;
   lastMoveAt: number;
   lastHereAt: number;
+  lastLeashErrAt: number;
   play: PlaySession | null;
   nameToken: string | null;
   clientId: string;
@@ -146,6 +147,7 @@ export class DogRoom {
         lastAt: 0,
         lastMoveAt: 0,
         lastHereAt: 0,
+        lastLeashErrAt: 0,
         play: null,
         nameToken: null,
         clientId,
@@ -189,6 +191,7 @@ export class DogRoom {
       lastAt: 0,
       lastMoveAt: 0,
       lastHereAt: 0,
+      lastLeashErrAt: 0,
       play: null,
       nameToken: null,
       clientId: crypto.randomUUID(),
@@ -203,10 +206,12 @@ export class DogRoom {
       const session = await this.ensure(now);
       const moved = session.move(meta.clientId, meta.ip, parsed.ax, parsed.az, parsed.run, dt, now, proposed);
       await this.flush(session, moved, now);
-      ws.serializeAttachment({ ...meta, lastMoveAt: now } satisfies SocketMeta);
-      if (!moved.acquired && moved.code) {
+      let leashTold = meta.lastLeashErrAt;
+      if (!moved.acquired && moved.code && now - meta.lastLeashErrAt > 2500) {
+        leashTold = now;
         ws.send(JSON.stringify({ type: 'error', code: moved.code, retryAfterMs: moved.retryAfterMs }));
       }
+      ws.serializeAttachment({ ...meta, lastMoveAt: now, lastLeashErrAt: leashTold } satisfies SocketMeta);
       this.emitPose(session.room, now);
       if (moved.walk && moved.walk.ok) {
         this.broadcast(snapshot(session.room, now, this.sockets()));

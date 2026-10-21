@@ -31,7 +31,7 @@ const chromeArgs = [
   '--disable-dev-shm-usage',
   `--remote-debugging-port=${port}`,
   '--window-size=1280,800',
-  '--user-data-dir=/tmp/dog-perf-chrome',
+  `--user-data-dir=/tmp/dog-perf-chrome-${label}-${port}`,
   url,
 ].filter(Boolean);
 
@@ -153,6 +153,21 @@ try {
       const fps = frames.filter((n) => n > 0).map((n) => 1000 / n);
       const avgFps = fps.reduce((s, n) => s + n, 0) / Math.max(1, fps.length);
       const mem = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : null;
+      const canvas = document.querySelector('canvas');
+      let renderer = window.__DOG_PERF || null;
+      try {
+        const fiber = canvas && (canvas.__r3f || canvas._r3f);
+        const gl = fiber?.getState?.().gl || fiber?.gl;
+        if (gl?.info) {
+          renderer = {
+            ...(renderer || {}),
+            calls: gl.info.render.calls,
+            triangles: gl.info.render.triangles,
+            geometries: gl.info.memory.geometries,
+            textures: gl.info.memory.textures,
+          };
+        }
+      } catch {}
       return {
         label: ${JSON.stringify(label)},
         url: location.href,
@@ -160,10 +175,11 @@ try {
         avgFrameMs: Number(avg.toFixed(2)),
         p95FrameMs: Number(p95.toFixed(2)),
         avgFps: Number(avgFps.toFixed(1)),
-        minFps: Number(Math.min(...fps, 0).toFixed(1)),
+        minFps: Number(Math.min(...(fps.length ? fps : [0])).toFixed(1)),
         memMB: mem,
-        probe: window.__DOG_PERF || null,
+        probe: renderer,
         throttle: ${throttle},
+        canvas: canvas ? { w: canvas.width, h: canvas.height } : null,
       };
     })()`,
     returnByValue: true,

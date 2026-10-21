@@ -360,12 +360,14 @@ html[data-motion='on'] [data-reveal].will-reveal.is-in {
   top: 0;
   transform: translateY(-110%);
   opacity: 0;
+  pointer-events: none;
   transition: transform 0.35s ease, opacity 0.35s ease;
 }
 
 .dog-game-shell > header.dog-nav.is-shown {
   transform: translateY(0);
   opacity: 1;
+  pointer-events: auto;
 }
 
 .dog-game-shell > footer {

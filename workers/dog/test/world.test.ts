@@ -16,11 +16,13 @@ import {
   lngLatToLocal,
   localToLngLat,
   pointInRing,
+  applyWorldDrive,
   pushCircleOut,
+  stayOnPavement,
   sunDirection,
   tileXY,
 } from '../src/world.ts';
-import { RUN_SPEED, createYard } from '../src/room.ts';
+import { RUN_SPEED, WALK_SPEED, createYard } from '../src/room.ts';
 
 const T0 = Date.parse('2026-10-21T12:00:00Z');
 
@@ -120,6 +122,35 @@ test('walking W in local space increases latitude (north)', () => {
   const midnight = sunDirection(origin.lat, origin.lng, Date.parse('2026-06-21T04:00:00Z'));
   assert.equal(noon.night, false);
   assert.equal(midnight.night, true);
+});
+
+test('world drive eases in and slides off building walls onto nearby pavement', () => {
+  const yard = createYard(T0);
+  const first = applyWorldDrive(yard, 0, -1, false, 0.05, T0 + 50);
+  const speed = Math.hypot(first.pose.vx, first.pose.vz);
+  assert.ok(speed > 0.05 && speed < WALK_SPEED, `eased speed ${speed}`);
+  const still = applyWorldDrive(first, 0, 0, false, 0.05, T0 + 100);
+  assert.ok(Math.hypot(still.pose.vx, still.pose.vz) < speed, 'decelerates instead of stopping cold');
+
+  const park: { x: number; z: number }[] = [
+    { x: -6, z: -6 },
+    { x: 6, z: -6 },
+    { x: 6, z: 6 },
+    { x: -6, z: 6 },
+  ];
+  const road: { x: number; z: number }[] = [
+    { x: 20, z: 0 },
+    { x: 30, z: 0 },
+  ];
+  const inPark = stayOnPavement(0, 0, [road], [park]);
+  assert.ok(Math.abs(inPark.x) < 0.01 && Math.abs(inPark.z) < 0.01);
+
+  const street: { x: number; z: number }[] = [
+    { x: 0, z: 0 },
+    { x: 0, z: 12 },
+  ];
+  const pulled = stayOnPavement(2.2, 6, [street], []);
+  assert.ok(pulled.x < 2.2);
 });
 
 test('circle-vs-polygon push-out keeps the dog outside building footprints', () => {

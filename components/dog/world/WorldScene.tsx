@@ -109,11 +109,11 @@ function finishTile(tile: WorldTileData, walls: BufferGeometry[], roofs: BufferG
     key: tile.key,
     buildings: mergeAll(walls),
     roofs: mergeAll(roofs),
-    parks: flattenRings(tile.parks, 0.018),
-    water: flattenRings(tile.water, 0.008),
-    sidewalks: ribbon([tile], 1.15, 0.016),
-    roads: ribbon([tile], 0, 0.03),
-    major: lod ? null : ribbon([tile], 0, 0.032, true),
+    parks: flattenRings(tile.parks, 0.004),
+    water: flattenRings(tile.water, 0.002),
+    sidewalks: ribbon([tile], 1.15, 0.002),
+    roads: ribbon([tile], 0, 0.008),
+    major: lod ? null : ribbon([tile], 0, 0.01, true),
   };
 }
 
@@ -389,7 +389,7 @@ function crossingMesh(crossings: Crossing[]) {
     try {
       const geo = new ExtrudeGeometry(shapeFrom(ring), { depth: 0.04, bevelEnabled: false, curveSegments: 1 });
       geo.rotateX(-Math.PI / 2);
-      geo.translate(0, 0.04, 0);
+      geo.translate(0, 0.012, 0);
       const count = geo.getAttribute('position').count;
       const uv = new Float32Array(count * 2);
       const pos = geo.getAttribute('position');
@@ -629,6 +629,7 @@ export default function WorldScene({
     roofs: BufferGeometry[];
     index: number;
     list: WorldTileData['buildings'];
+    dress: boolean;
   } | null>(null);
   const [ready, setReady] = useState<BuiltTile[]>([]);
 
@@ -663,9 +664,14 @@ export default function WorldScene({
     () => lampsAlongRoads(tiles.flatMap((tile) => tile.roads), here, slim ? 6 : 10),
     [here, slim, tiles],
   );
+  const plantMax = slim ? 48 : 96;
   const plants = useMemo(
-    () => dressPlants(tiles.flatMap((tile) => tile.parks), tiles.flatMap((tile) => tile.roads), here, slim ? 48 : 96),
-    [here, slim, tiles],
+    () => dressPlants(tiles.flatMap((tile) => tile.parks), tiles.flatMap((tile) => tile.roads), here, plantMax),
+    [here, plantMax, tiles],
+  );
+  const benches = useMemo(
+    () => plants.filter((plant) => plant.kind === 'bush').slice(0, slim ? 3 : 6),
+    [plants, slim],
   );
   const crossings = useMemo(
     () => crossingsAtIntersections(tiles.flatMap((tile) => tile.roads), here, slim ? 3 : 5),
@@ -674,8 +680,24 @@ export default function WorldScene({
   const crossingGeo = useMemo(() => crossingMesh(crossings), [crossings]);
 
   const facade = useMemo(() => facadeMaterial(night), [night]);
-  const asphalt = useMemo(() => roadMaterial(night, false), [night]);
-  const marked = useMemo(() => roadMaterial(night, true), [night]);
+  const asphalt = useMemo(() => {
+    const mat = roadMaterial(night, false);
+    if ('polygonOffset' in mat) {
+      mat.polygonOffset = true;
+      mat.polygonOffsetFactor = -1;
+      mat.polygonOffsetUnits = -1;
+    }
+    return mat;
+  }, [night]);
+  const marked = useMemo(() => {
+    const mat = roadMaterial(night, true);
+    if ('polygonOffset' in mat) {
+      mat.polygonOffset = true;
+      mat.polygonOffsetFactor = -2;
+      mat.polygonOffsetUnits = -2;
+    }
+    return mat;
+  }, [night]);
   const water = useMemo(() => waterMaterial(night), [night]);
   const zebra = useMemo(() => crossingMaterial(night), [night]);
   const roofMat = useMemo(
@@ -691,7 +713,11 @@ export default function WorldScene({
     [night],
   );
   const groundMat = useMemo(
-    () => new MeshStandardMaterial({ color: night ? '#3e4a40' : '#b8a888' }),
+    () => new MeshStandardMaterial({ color: night ? '#2f3d2c' : '#6f8f52' }),
+    [night],
+  );
+  const benchMat = useMemo(
+    () => new MeshStandardMaterial({ color: night ? '#5a4638' : '#8a6a48', roughness: 0.86 }),
     [night],
   );
   useEffect(() => {
@@ -716,7 +742,7 @@ export default function WorldScene({
         const list = lod
           ? next.buildings.filter((building) => building.area > 28).slice(0, 80)
           : next.buildings.slice(0, 160);
-        pending.current = { tile: next, lod, walls: [], roofs: [], index: 0, list };
+        pending.current = { tile: next, lod, walls: [], roofs: [], index: 0, list, dress: false };
       }
       const job = pending.current;
       const end = Math.min(job.list.length, job.index + 10);
@@ -724,6 +750,10 @@ export default function WorldScene({
         pushBuilding(job.list[job.index], job.walls, job.roofs, !job.lod);
       }
       if (job.index < job.list.length) break;
+      if (!job.dress) {
+        job.dress = true;
+        break;
+      }
       cache.current.set(job.tile.key, finishTile(job.tile, job.walls, job.roofs, job.lod));
       pending.current = null;
       changed = true;
@@ -749,7 +779,8 @@ export default function WorldScene({
     parkMat.dispose();
     walkMat.dispose();
     groundMat.dispose();
-  }, [asphalt, facade, groundMat, marked, parkMat, roofMat, walkMat, water, zebra]);
+    benchMat.dispose();
+  }, [asphalt, benchMat, facade, groundMat, marked, parkMat, roofMat, walkMat, water, zebra]);
 
   useEffect(() => () => {
     crossingGeo?.dispose();
@@ -758,7 +789,7 @@ export default function WorldScene({
   return (
     <group>
       <SkyDome night={night} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} material={groundMat}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} material={groundMat}>
         <planeGeometry args={[2400, 2400]} />
       </mesh>
       <ambientLight intensity={night ? 0.62 : 0.26} color={night ? '#b4c6e4' : '#fff4e6'} />
@@ -771,20 +802,35 @@ export default function WorldScene({
       {ready.map((tile) => (
         <group key={tile.key}>
           {tile.parks && <mesh geometry={tile.parks} material={parkMat} />}
-          {tile.sidewalks && <mesh geometry={tile.sidewalks} material={walkMat} />}
-          {tile.roads && <mesh geometry={tile.roads} material={asphalt} />}
-          {tile.major && <mesh geometry={tile.major} material={marked} />}
+          {tile.sidewalks && (
+            <mesh geometry={tile.sidewalks} material={walkMat} renderOrder={1} />
+          )}
+          {tile.roads && <mesh geometry={tile.roads} material={asphalt} renderOrder={2} />}
+          {tile.major && <mesh geometry={tile.major} material={marked} renderOrder={3} />}
           {tile.water && <mesh geometry={tile.water} material={water} />}
           {tile.buildings.map((geo, index) => (
-            <mesh key={`${tile.key}-b-${index}`} geometry={geo} material={facade} />
+            <mesh key={`${tile.key}-b-${index}`} geometry={geo} material={facade} userData={{ occlude: true }} />
           ))}
           {tile.roofs.map((geo, index) => (
-            <mesh key={`${tile.key}-r-${index}`} geometry={geo} material={roofMat} />
+            <mesh key={`${tile.key}-r-${index}`} geometry={geo} material={roofMat} userData={{ occlude: true }} />
           ))}
         </group>
       ))}
       {crossingGeo && <mesh geometry={crossingGeo} material={zebra} />}
       <Forest plants={plants} night={night} />
+      {benches.map((bench) => (
+        <group key={`bench-${bench.x}:${bench.z}`} position={[bench.x, 0, bench.z]} rotation={[0, hash2(bench.x, bench.z) * Math.PI * 2, 0]}>
+          <mesh position={[0, 0.28, 0]} material={benchMat}>
+            <boxGeometry args={[1.15, 0.08, 0.38]} />
+          </mesh>
+          <mesh position={[-0.46, 0.14, 0]} material={benchMat}>
+            <boxGeometry args={[0.08, 0.28, 0.34]} />
+          </mesh>
+          <mesh position={[0.46, 0.14, 0]} material={benchMat}>
+            <boxGeometry args={[0.08, 0.28, 0.34]} />
+          </mesh>
+        </group>
+      ))}
       <Lamps lamps={lamps} night={night} />
     </group>
   );

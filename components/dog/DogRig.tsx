@@ -220,6 +220,8 @@ const DogRig = forwardRef<Group, {
                 now,
                 null,
                 control.buildings ?? [],
+                control.roads ?? [],
+                control.parks ?? [],
               );
         } else {
           localYard.current = wanderAlone
@@ -251,7 +253,13 @@ const DogRig = forwardRef<Group, {
           w.x = sampled.x;
           w.z = sampled.z;
           w.yaw = sampled.yaw;
-          play(clipForGait(sampled.gait, sad, asleep && sampled.gait === 'lie'));
+          const clip = clipForGait(sampled.gait, sad, asleep && sampled.gait === 'lie');
+          play(clip);
+          const prev = remoteBuf.current[remoteBuf.current.length - 2];
+          const last = remoteBuf.current[remoteBuf.current.length - 1];
+          const span = prev && last ? Math.max(0.04, (last.at - prev.at) / 1000) : 0.08;
+          const speed = prev && last ? Math.hypot(last.x - prev.x, last.z - prev.z) / span : 0;
+          actions.current[clip]?.setEffectiveTimeScale(strideTimeScale(clip, speed, figure.timeScale * (sad ? 0.7 : 1)));
         }
         if (now - lastOnPose.current >= 80) {
           lastOnPose.current = now;

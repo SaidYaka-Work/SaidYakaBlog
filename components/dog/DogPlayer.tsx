@@ -9,7 +9,7 @@ const DogRoom = dynamic(() => import('./DogRoom'), {
     <div className="dog-game">
       <div className="biscuit-poster dog-start-poster" />
       <div className="dog-start">
-        <p className="dog-start-kicker">out in the city</p>
+        <p className="dog-start-kicker">Washington Square Park</p>
         <p className="dog-start-title">Biscuit</p>
         <div className="dog-start-bar" aria-hidden="true">
           <i style={{ width: '18%' }} />
