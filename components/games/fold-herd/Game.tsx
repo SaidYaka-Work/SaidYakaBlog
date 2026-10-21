@@ -179,8 +179,8 @@ function gateLine(pen: Pen): Rect {
 function resolveCircleRect(entity: { x: number; y: number; vx: number; vy: number }, radius: number, rect: Rect) {
   const closestX = clamp(entity.x, rect.x, rect.x + rect.w);
   const closestY = clamp(entity.y, rect.y, rect.y + rect.h);
-  let dx = entity.x - closestX;
-  let dy = entity.y - closestY;
+  const dx = entity.x - closestX;
+  const dy = entity.y - closestY;
   const dist = hypot(dx, dy);
   if (dist === 0) {
     const left = entity.x - rect.x;
@@ -441,6 +441,12 @@ function stepSheep(sim: Sim, dt: number, events: Events) {
           ax += ((gate.x - sheep.x) / toGate) * 150 * pressure;
           ay += ((gate.y - sheep.y) / toGate) * 150 * pressure;
         }
+      }
+
+      const toOpening = hypot(gate.x - sheep.x, gate.y - sheep.y);
+      if (toOpening < 78 && Math.abs(sheep.y - gate.y) < field.pen.opening * 0.62) {
+        ax += ((gate.x + 36 - sheep.x) / (toOpening || 1)) * 90;
+        ay += ((gate.y - sheep.y) / (toOpening || 1)) * 90;
       }
 
       if (sim.whistle > 0.05) {
