@@ -145,10 +145,15 @@ export function plantsInParks(parks: PointXZ[][], here: PointXZ, max = 160) {
     const near = sampleNear(park, here, Math.min(80, trees), 42, seed.x);
     const fill = sampleInside(park, trees, seed.x);
     [...near, ...fill].forEach((p, i) => {
-      plants.push({ ...p, s: 0.5 + hash2(i, p.x) * 1.7, kind: 'tree' });
+      const dist = Math.hypot(p.x - here.x, p.z - here.z);
+      if (dist < 3.2) return;
+      const s = dist < 8 ? 0.55 + hash2(i, p.x) * 0.55 : 0.7 + hash2(i, p.x) * 0.95;
+      plants.push({ ...p, s, kind: 'tree' });
     });
     sampleInside(park, bushes, seed.z + 9).forEach((p, i) => {
-      plants.push({ ...p, s: 0.35 + hash2(i + 4, seed.z) * 0.7, kind: 'bush' });
+      const dist = Math.hypot(p.x - here.x, p.z - here.z);
+      if (dist < 2.2) return;
+      plants.push({ ...p, s: 0.38 + hash2(i + 4, seed.z) * 0.55, kind: 'bush' });
     });
   }
   return plants

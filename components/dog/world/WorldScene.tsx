@@ -476,8 +476,8 @@ function Forest({ plants, night }: { plants: Plant[]; night: boolean }) {
       leaf.current,
       (dummy, i) => {
         const tree = nextTrees[i];
-        dummy.position.set(tree.x, 2.55 * tree.s, tree.z);
-        dummy.scale.set(tree.s * (0.85 + hash2(tree.z, tree.x) * 0.35), tree.s, tree.s * (0.85 + hash2(tree.x, tree.s) * 0.35));
+        dummy.position.set(tree.x, 2.2 * tree.s, tree.z);
+        dummy.scale.set(tree.s * (0.9 + hash2(tree.z, tree.x) * 0.22), tree.s, tree.s * (0.9 + hash2(tree.x, tree.s) * 0.22));
         dummy.rotation.y = hash2(tree.x, tree.z) * Math.PI * 2;
       },
       nextTrees.length,
