@@ -797,13 +797,16 @@ export default function WorldScene({
         break;
       }
       if (job.dress === 'parks') {
-        job.built.parks = flattenRings(job.lod ? job.tile.parks.slice(0, 6) : job.tile.parks.slice(0, 18), 0.004);
+        const rings = job.lod ? job.tile.parks.slice(0, 6) : job.tile.parks.slice(0, 16);
+        const cursor = job.ribbon ?? { road: 0, seg: 1, geos: [] };
+        const next = Math.min(rings.length, cursor.road + 3);
+        const chunk = flattenRings(rings.slice(cursor.road, next), 0.004);
+        if (chunk) cursor.geos.push(chunk);
+        cursor.road = next;
+        job.ribbon = cursor;
+        if (cursor.road < rings.length) break;
+        job.built.parks = takeMerged(cursor.geos);
         job.dress = 'water';
-        break;
-      }
-      if (job.dress === 'water') {
-        job.built.water = flattenRings(job.tile.water.slice(0, job.lod ? 4 : 10), 0.002);
-        job.dress = job.lod ? 'roads' : 'sidewalks';
         job.ribbon = { road: 0, seg: 1, geos: [] };
         break;
       }
