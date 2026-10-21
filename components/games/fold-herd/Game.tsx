@@ -65,9 +65,9 @@ type Pointer = { x: number; y: number; id: number } | null;
 const FIELDS: Field[] = [
   {
     name: 'Open Fold',
-    time: 50,
-    flock: 5,
-    pen: { x: 628, y: 132, w: 148, h: 236, gate: 'left', opening: 168 },
+    time: 60,
+    flock: 4,
+    pen: { x: 620, y: 118, w: 156, h: 264, gate: 'left', opening: 196 },
     obstacles: [],
   },
   {
@@ -384,8 +384,8 @@ function stepSheep(sim: Sim, dt: number, events: Events) {
     let ax = 0;
     let ay = 0;
     sheep.wander += (Math.random() - 0.5) * 2.8 * dt;
-    ax += Math.cos(sheep.wander) * 18;
-    ay += Math.sin(sheep.wander) * 18;
+    ax += Math.cos(sheep.wander) * 12;
+    ay += Math.sin(sheep.wander) * 12;
 
     if (sheep.penned) {
       ax += (interior.x + interior.w / 2 - sheep.x) * 1.6;
@@ -415,31 +415,34 @@ function stepSheep(sim: Sim, dt: number, events: Events) {
           near += 1;
         }
       }
-      ax += sepX * 9.5;
-      ay += sepY * 9.5;
+      ax += sepX * 8.8;
+      ay += sepY * 8.8;
       if (near) {
-        ax += (aliX / near - sheep.vx) * 1.35;
-        ay += (aliY / near - sheep.vy) * 1.35;
-        ax += (cohX / near - sheep.x) * 0.55;
-        ay += (cohY / near - sheep.y) * 0.55;
+        ax += (aliX / near - sheep.vx) * 1.7;
+        ay += (aliY / near - sheep.vy) * 1.7;
+        ax += (cohX / near - sheep.x) * 1.15;
+        ay += (cohY / near - sheep.y) * 1.15;
       }
 
       const ddx = sheep.x - sim.dog.x;
       const ddy = sheep.y - sim.dog.y;
       const dogDist = hypot(ddx, ddy) || 0.001;
       if (dogDist < 92) {
-        const panic = dogDist < 30;
-        const pressure = ((92 - dogDist) / 92) ** 1.15;
-        const away = panic ? 560 : 310;
+        const panic = dogDist < 28;
+        const pressure = ((92 - dogDist) / 92) ** 1.1;
+        const away = panic ? 480 : 280;
         ax += (ddx / dogDist) * away * pressure;
         ay += (ddy / dogDist) * away * pressure;
-        ax += (-ddy / dogDist) * (panic ? 90 : 36) * pressure;
-        ay += (ddx / dogDist) * (panic ? 90 : 36) * pressure;
+        ax += (-ddy / dogDist) * (panic ? 48 : 22) * pressure;
+        ay += (ddx / dogDist) * (panic ? 48 : 22) * pressure;
         const behind = ddx * (gate.x - sheep.x) + ddy * (gate.y - sheep.y);
-        if (!panic && behind > 0 && dogDist < 80) {
+        if (!panic && behind > 0 && dogDist < 88) {
           const toGate = hypot(gate.x - sheep.x, gate.y - sheep.y) || 1;
-          ax += ((gate.x - sheep.x) / toGate) * 150 * pressure;
-          ay += ((gate.y - sheep.y) / toGate) * 150 * pressure;
+          ax += ((gate.x - sheep.x) / toGate) * 230 * pressure;
+          ay += ((gate.y - sheep.y) / toGate) * 230 * pressure;
+        }
+        if (!panic && sim.dog.x < sheep.x - 6 && dogDist < 100) {
+          ax += 140 * pressure;
         }
       }
 
@@ -660,6 +663,30 @@ export default function FoldHerdGame() {
       cancelAnimationFrame(frame);
     };
   }, [beep, commitBest]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!new URLSearchParams(window.location.search).has('playtest')) return;
+    const api = {
+      snapshot() {
+        const state = sim.current;
+        return {
+          phase: state.phase,
+          score: state.score,
+          time: state.time,
+          field: state.field,
+          folded: state.sheep.filter((sheep) => sheep.penned).length,
+          flock: state.sheep.length,
+          dog: { x: state.dog.x, y: state.dog.y },
+          sheep: state.sheep.filter((sheep) => !sheep.penned).map((sheep) => ({ x: sheep.x, y: sheep.y })),
+        };
+      },
+    };
+    (window as Window & { __foldHerd?: typeof api }).__foldHerd = api;
+    return () => {
+      delete (window as Window & { __foldHerd?: typeof api }).__foldHerd;
+    };
+  }, []);
 
   useEffect(() => {
     const onDown = (event: KeyboardEvent) => {
