@@ -3,8 +3,10 @@ export const TEXT_MODEL = '@cf/meta/llama-3.1-8b-instruct-fast';
 export const VISION_MODEL = '@cf/llava-hf/llava-1.5-7b-hf';
 export const WHISPER_MODEL = '@cf/openai/whisper';
 
-export const TEXT_MAX_TOKENS_DAILY = 420;
-export const TEXT_MAX_TOKENS_CHAT = 120;
+export const TEXT_MAX_TOKENS_DAILY = 900;
+/** Judge JSON is larger than a chat turn (score, seen/heard, reason, 1–3 messages, nudges). */
+export const TEXT_MAX_TOKENS_JUDGE = 256;
+export const TEXT_MAX_TOKENS_CHAT = 180;
 export const VISION_MAX_TOKENS = 64;
 export const AI_TIMEOUT_MS = 5500;
 

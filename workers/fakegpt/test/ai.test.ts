@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { aiFailureReason, generateDailySet, judgeRound, readText } from '../src/ai.ts';
 import { fallbackDailySet } from '../src/fallback.ts';
-import { TEXT_MODEL } from '../src/models.ts';
+import { TEXT_MAX_TOKENS_CHAT, TEXT_MAX_TOKENS_DAILY, TEXT_MAX_TOKENS_JUDGE, TEXT_MODEL } from '../src/models.ts';
 import { parseJudgeRequest } from '../src/schema.ts';
 
 test('readText accepts a bare string', () => {
@@ -51,6 +51,15 @@ test('generateDailySet uses JSON schema and accepts an object response', async (
   const format = seen?.response_format as { type?: string; json_schema?: { type?: string } };
   assert.equal(format?.type, 'json_schema');
   assert.equal(format?.json_schema?.type, 'object');
+  assert.equal(seen?.max_tokens, TEXT_MAX_TOKENS_DAILY);
+});
+
+test('text token caps leave headroom above live daily usage', () => {
+  assert.equal(TEXT_MAX_TOKENS_DAILY, 900);
+  assert.ok(TEXT_MAX_TOKENS_DAILY > 388);
+  assert.ok(TEXT_MAX_TOKENS_JUDGE >= 240);
+  assert.ok(TEXT_MAX_TOKENS_CHAT >= 160);
+  assert.ok(TEXT_MAX_TOKENS_JUDGE > TEXT_MAX_TOKENS_CHAT);
 });
 
 test('generateDailySet logs a short reason and does not include user text', async () => {
@@ -84,6 +93,45 @@ test('aiFailureReason never echoes a prompt', () => {
   assert.equal(aiFailureReason(new Error('please draw a cat')), 'ai-failed');
 });
 
+test('aiFailureReason maps JSON position errors to json-parse, not an ai-NNNN code', () => {
+  assert.equal(aiFailureReason(new Error('Unexpected token } in JSON at position 1244')), 'json-parse');
+  assert.equal(aiFailureReason(new SyntaxError('Expected \',\' or \'}\' after property value in JSON at position 420')), 'json-parse');
+  assert.equal(aiFailureReason(new SyntaxError('Unexpected end of JSON input')), 'json-parse');
+  assert.equal(aiFailureReason(new Error('no json object')), 'json-parse');
+});
+
+test('aiFailureReason maps a length finish_reason to truncated', () => {
+  assert.equal(aiFailureReason(new Error('truncated')), 'truncated');
+  assert.equal(aiFailureReason(new Error('finish_reason: "length"')), 'truncated');
+  assert.equal(aiFailureReason(new Error("finish_reason: 'length' mid-JSON")), 'truncated');
+});
+
+test('generateDailySet logs truncated when the model hits the token cap', async () => {
+  const lines: string[] = [];
+  const orig = console.error;
+  console.error = (...args: unknown[]) => {
+    lines.push(args.map(String).join(' '));
+  };
+  try {
+    const set = await generateDailySet(
+      {
+        async run() {
+          return {
+            response: '{"rounds":[{"id":"r1"',
+            finish_reason: 'length',
+            usage: { completion_tokens: 420 },
+          };
+        },
+      },
+      '2026-10-21',
+    );
+    assert.equal(set.source, 'fallback');
+  } finally {
+    console.error = orig;
+  }
+  assert.equal(lines[0], 'fakegpt daily failed: truncated');
+});
+
 test('judgeRound reads LLaVA description as evidence', async () => {
   const parsed = parseJudgeRequest({
     date: '2026-10-21',
@@ -97,10 +145,12 @@ test('judgeRound reads LLaVA description as evidence', async () => {
   });
   assert.equal(parsed.ok, true);
   if (!parsed.ok) return;
+  let judgeTokens = 0;
   const result = await judgeRound(
     {
-      async run(model) {
+      async run(model, input) {
         if (model.includes('llava')) return { description: 'a wobbly sandwich' };
+        judgeTokens = Number(input.max_tokens);
         return {
           response: {
             score: 8,

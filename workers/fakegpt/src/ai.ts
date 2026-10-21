@@ -6,6 +6,7 @@ import {
   JUDGE_JSON_SCHEMA,
   TEXT_MAX_TOKENS_CHAT,
   TEXT_MAX_TOKENS_DAILY,
+  TEXT_MAX_TOKENS_JUDGE,
   TEXT_MODEL,
   VISION_MAX_TOKENS,
   VISION_MODEL,
@@ -46,16 +47,23 @@ function withTimeout<T>(work: Promise<T>, ms = AI_TIMEOUT_MS): Promise<T> {
 
 /** Short, user-content-free reason for `wrangler tail`. */
 export function aiFailureReason(error: unknown): string {
-  if (error instanceof Error) {
-    const msg = error.message || error.name || 'error';
-    if (/timeout/i.test(msg)) return 'timeout';
-    if (/^no ai$/i.test(msg)) return 'no-ai';
-    if (/json mode couldn't be met/i.test(msg)) return 'json-mode';
-    if (/doesn't support JSON Schema|5025/i.test(msg)) return 'schema-unsupported';
-    if (/no json|invalid-set|invalid-judge|invalid-chat/i.test(msg)) return 'json-parse';
-    const code = msg.match(/\b\d{3,5}\b/);
-    if (code) return `ai-${code[0]}`;
-    return error.name && error.name !== 'Error' ? error.name.slice(0, 40) : 'ai-failed';
+  const msg = error instanceof Error ? error.message || error.name || 'error' : typeof error === 'string' ? error : '';
+  if (!msg && !(error instanceof Error)) return 'ai-failed';
+  if (/timeout/i.test(msg)) return 'timeout';
+  if (/^no ai$/i.test(msg)) return 'no-ai';
+  if (/json mode couldn't be met/i.test(msg)) return 'json-mode';
+  if (/doesn't support JSON Schema|5025/i.test(msg)) return 'schema-unsupported';
+  if (/truncated|finish_reason["']?\s*[:=]\s*["']?length/i.test(msg)) return 'truncated';
+  if (
+    error instanceof SyntaxError ||
+    /no json|invalid-set|invalid-judge|invalid-chat|in JSON at position|JSON parse|Unexpected (token|end of JSON)/i.test(msg)
+  ) {
+    return 'json-parse';
+  }
+  const code = msg.match(/^(?:error\s*)?(\d{3,5})\b/i) || msg.match(/\b(?:error|code|err)[:\s-]+(\d{3,5})\b/i);
+  if (code) return `ai-${code[1]}`;
+  if (error instanceof Error && error.name && error.name !== 'Error' && error.name !== 'SyntaxError') {
+    return error.name.slice(0, 40);
   }
   return 'ai-failed';
 }
@@ -85,6 +93,22 @@ export function readText(result: unknown): string {
   if (typeof row.result === 'string') return row.result;
   if (row.result && typeof row.result === 'object') return readText(row.result);
   if ('rounds' in row || 'score' in row || 'messages' in row) return JSON.stringify(row);
+  return '';
+}
+
+export function finishReasonOf(result: unknown): string {
+  if (!result || typeof result !== 'object') return '';
+  const row = result as Record<string, unknown>;
+  if (typeof row.finish_reason === 'string') return row.finish_reason;
+  if (typeof row.finishReason === 'string') return row.finishReason;
+  if (row.result && typeof row.result === 'object') {
+    const inner = row.result as Record<string, unknown>;
+    if (typeof inner.finish_reason === 'string') return inner.finish_reason;
+  }
+  if (Array.isArray(row.choices) && row.choices[0] && typeof row.choices[0] === 'object') {
+    const reason = (row.choices[0] as Record<string, unknown>).finish_reason;
+    if (typeof reason === 'string') return reason;
+  }
   return '';
 }
 
@@ -120,6 +144,7 @@ async function runJson(
       },
     }),
   );
+  if (finishReasonOf(result) === 'length') throw new Error('truncated');
   return readJson(result);
 }
 
@@ -204,7 +229,7 @@ Evidence: ${evidence || '(none)'}
 Soundboard: ${pads || '(none)'}
 Features: ${features || '(none)'}
 The player may have imitated a noise with voice or a synth pad. Score how well they fulfilled the request.`,
-      TEXT_MAX_TOKENS_CHAT,
+      TEXT_MAX_TOKENS_JUDGE,
       JUDGE_JSON_SCHEMA,
     );
     const parsed = validateJudgeResult(raw);
