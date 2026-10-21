@@ -215,10 +215,7 @@ function paint(
   ctx.stroke();
 
   if (world) {
-    fillCollection(ctx, path, world.land, theme.land, theme.landStroke, view.index >= 3 ? 0.75 : 0.5);
-    if (view.index >= 1) {
-      strokeCollection(ctx, path, world.countries, theme.landStroke, 0.45, 0.5);
-    }
+    fillCollection(ctx, path, world.countries, theme.land, theme.landStroke, view.index >= 3 ? 0.8 : 0.45);
   }
 
   const shine = ctx.createRadialGradient(cx - radius * 0.38, cy - radius * 0.42, 2, cx, cy, radius);
@@ -266,6 +263,16 @@ function paint(
   }
 }
 
+function geometriesOf(geometry: GeoJSON.Geometry): GeoJSON.Geometry[] {
+  if (geometry.type === 'MultiPolygon') {
+    return geometry.coordinates.map((coordinates) => ({ type: 'Polygon', coordinates }));
+  }
+  if (geometry.type === 'GeometryCollection') {
+    return geometry.geometries.flatMap(geometriesOf);
+  }
+  return [geometry];
+}
+
 function fillCollection(
   ctx: CanvasRenderingContext2D,
   path: ReturnType<typeof geoPath>,
@@ -275,34 +282,19 @@ function fillCollection(
   lineWidth: number,
 ) {
   for (const feat of collection.features) {
-    ctx.beginPath();
-    path(feat.geometry);
-    ctx.fillStyle = fill;
-    ctx.fill();
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
-    ctx.stroke();
+    if (!feat.geometry) continue;
+    for (const geometry of geometriesOf(feat.geometry)) {
+      ctx.beginPath();
+      path(geometry);
+      ctx.fillStyle = fill;
+      ctx.fill('evenodd');
+      if (lineWidth) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+      }
+    }
   }
-}
-
-function strokeCollection(
-  ctx: CanvasRenderingContext2D,
-  path: ReturnType<typeof geoPath>,
-  collection: GeoJSON.FeatureCollection,
-  stroke: string,
-  lineWidth: number,
-  alpha: number,
-) {
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  for (const feat of collection.features) {
-    ctx.beginPath();
-    path(feat.geometry);
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
-    ctx.stroke();
-  }
-  ctx.restore();
 }
 
 function drawPin(ctx: CanvasRenderingContext2D, x: number, y: number, theme: Theme) {
