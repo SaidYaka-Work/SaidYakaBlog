@@ -12,10 +12,14 @@ import {
   pickPrompts,
   roundSeconds,
   scoreRound,
+  scoreWithJudge,
   shuffle,
   totalScore,
 } from '../components/games/fakegpt/logic.ts';
 import { PROMPTS } from '../components/games/fakegpt/prompts.ts';
+import { fallbackDailySet } from '../workers/fakegpt/src/fallback';
+import { takeBudget } from '../workers/fakegpt/src/budget';
+import { dateSeed, parseJudgeRequest, utcDate, validateDailySet } from '../workers/fakegpt/src/schema';
 
 assert.ok(PROMPTS.length >= 40, `need at least 40 prompts, got ${PROMPTS.length}`);
 
@@ -180,5 +184,55 @@ assert.equal(noisy.empty, false);
 assert.ok(noisy.points > 100);
 
 assert.equal(totalScore([{ points: 10 }, { points: 15 }]), 25);
+
+const judged = scoreWithJudge(
+  {
+    kind: 'draw',
+    submittedInTime: true,
+    remainingMs: 12000,
+    totalMs: 24000,
+    strokeCount: 4,
+    uniqueColors: 2,
+    coverage: 0.1,
+    audioMs: 0,
+    peakLevel: 0,
+    padHits: 0,
+  },
+  8,
+  () => 0,
+);
+const judgedLow = scoreWithJudge(
+  {
+    kind: 'draw',
+    submittedInTime: true,
+    remainingMs: 12000,
+    totalMs: 24000,
+    strokeCount: 4,
+    uniqueColors: 2,
+    coverage: 0.1,
+    audioMs: 0,
+    peakLevel: 0,
+    padHits: 0,
+  },
+  2,
+  () => 0,
+);
+assert.ok(judged.points > judgedLow.points);
+assert.equal(judged.thumbs, 'up');
+assert.equal(judgedLow.thumbs, 'down');
+
+const seeded = fallbackDailySet('2026-10-21');
+assert.deepEqual(
+  seeded.rounds.map((round) => round.id),
+  fallbackDailySet('2026-10-21').rounds.map((round) => round.id),
+);
+assert.ok(validateDailySet(seeded, '2026-10-21'));
+assert.notEqual(dateSeed('2026-10-21'), dateSeed('2026-10-22'));
+assert.match(utcDate(Date.parse('2026-10-21T12:00:00Z')), /^2026-10-21$/);
+assert.equal(takeBudget(279, 2, 280).ok, false);
+assert.equal(
+  parseJudgeRequest({ date: '2026-10-21', kind: 'draw', request: 'no' }).ok,
+  false,
+);
 
 console.log(`fakegpt dataset ok: ${PROMPTS.length} prompts, ${draws.length} draw, ${sounds.length} sound`);

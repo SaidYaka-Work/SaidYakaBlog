@@ -6,8 +6,13 @@ import type { SynthHit } from './types';
 export type SoundSnapshot = {
   audioMs: number;
   peakLevel: number;
+  rms: number;
+  silenceRatio: number;
+  pitchLo: number;
+  pitchHi: number;
   padHits: number;
   blobUrl: string | null;
+  blob: Blob | null;
   usedMic: boolean;
   usedSynth: boolean;
   hits: SynthHit[];
@@ -257,25 +262,33 @@ const SoundPad = forwardRef<SoundPadHandle, SoundPadProps>(function SoundPad(
     setActivePad((current) => (current === padId ? null : current));
   };
 
-  const snapshotNow = useCallback(
-    (blobUrl: string | null): SoundSnapshot => ({
+  const snapshotNow = useCallback((blobUrl: string | null, blob: Blob | null = null): SoundSnapshot => {
+    const elapsed = startedAtRef.current ? Math.max(1, Date.now() - startedAtRef.current) : 1;
+    const freqs = hitsRef.current
+      .map((hit) => PADS.find((pad) => pad.id === hit.padId)?.freq ?? 0)
+      .filter((freq) => freq > 0);
+    return {
       audioMs: Math.max(activeMsRef.current, hitsRef.current.reduce((sum, hit) => sum + hit.holdMs, 0)),
       peakLevel: peakRef.current,
+      rms: peakRef.current,
+      silenceRatio: 1 - Math.min(1, activeMsRef.current / elapsed),
+      pitchLo: freqs.length ? Math.min(...freqs) : 0,
+      pitchHi: freqs.length ? Math.max(...freqs) : 0,
       padHits: hitsRef.current.length + voicesRef.current.size,
       blobUrl,
+      blob,
       usedMic: modeRef.current === 'mic',
       usedSynth: modeRef.current === 'synth' || hitsRef.current.length > 0,
       hits: hitsRef.current.slice(),
-    }),
-    [],
-  );
+    };
+  }, []);
 
   const finalize = useCallback(() => {
     stopVoices();
     return new Promise<SoundSnapshot>((resolve) => {
       const recorder = recorderRef.current;
       if (!recorder || recorder.state === 'inactive') {
-        resolve(snapshotNow(blobUrlRef.current));
+        resolve(snapshotNow(blobUrlRef.current, null));
         setRecording(false);
         return;
       }
@@ -286,7 +299,7 @@ const SoundPad = forwardRef<SoundPadHandle, SoundPadProps>(function SoundPad(
         const url = blob.size > 250 ? URL.createObjectURL(blob) : null;
         blobUrlRef.current = url;
         setRecording(false);
-        resolve(snapshotNow(url));
+        resolve(snapshotNow(url, blob.size > 250 ? blob : null));
       };
       try {
         if (recorder.state === 'recording') recorder.requestData();

@@ -6,22 +6,23 @@ import { useGameChrome } from '../useGameChrome';
 import { getGameBySlug } from '@/lib/games';
 import DrawPad, { type DrawPadHandle } from './DrawPad';
 import SoundPad, { replayHits, type MicMode, type SoundPadHandle } from './SoundPad';
+import { fetchDailySet, readOffline, requestChat, requestJudge, writeOffline } from './api';
 import {
-  ROUNDS_PER_RUN,
   STORAGE_KEY,
   formatTimer,
   nextNudge,
-  pickPrompts,
   roundSeconds,
   scoreRound,
+  scoreWithJudge,
   totalScore,
 } from './logic';
-import { PROMPTS } from './prompts';
+import { capAudio, downscaleImage } from './media';
 import type { Artifact, ChatMessage, Prompt, SynthHit } from './types';
+import { formatUtcDate, utcDate, type DailySet } from '../../../workers/fakegpt/src/schema';
 
 const meta = getGameBySlug('fakegpt')!;
 
-type Phase = 'intro' | 'typing' | 'responding' | 'rating' | 'results';
+type Phase = 'intro' | 'typing' | 'responding' | 'rating' | 'talking' | 'results';
 
 function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
@@ -57,7 +58,12 @@ function AudioBubble({ src, hits }: { src?: string; hits?: SynthHit[] }) {
 
 function MessageView({ message }: { message: ChatMessage }) {
   if (message.role === 'user' && message.kind === 'text') {
-    return <p className="fgpt-user">{message.text}</p>;
+    return (
+      <div className="ml-auto max-w-[86%]">
+        {message.persona ? <p className="mb-1 text-right text-[11px] text-[var(--faint)]">{message.persona}</p> : null}
+        <p className="fgpt-user">{message.text}</p>
+      </div>
+    );
   }
   if (message.role === 'user' && message.kind === 'nudge') {
     return <p className="fgpt-user fgpt-nudge">{message.text}</p>;
@@ -99,6 +105,10 @@ export default function FakeGptGame() {
   const [totalMs, setTotalMs] = useState(0);
   const [micMode, setMicMode] = useState<MicMode>('unknown');
   const [busy, setBusy] = useState(false);
+  const [offline, setOffline] = useState(false);
+  const [daily, setDaily] = useState<DailySet | null>(null);
+  const [reply, setReply] = useState('');
+  const [chatting, setChatting] = useState(false);
   const drawRef = useRef<DrawPadHandle>(null);
   const soundRef = useRef<SoundPadHandle>(null);
   const logRef = useRef<HTMLDivElement>(null);
@@ -127,6 +137,11 @@ export default function FakeGptGame() {
   useEffect(() => () => clearTimers(), [clearTimers]);
 
   useEffect(() => {
+    setOffline(readOffline());
+    void fetchDailySet(readOffline()).then(setDaily);
+  }, []);
+
+  useEffect(() => {
     logRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
   }, [messages, phase]);
 
@@ -142,7 +157,10 @@ export default function FakeGptGame() {
       setRound(nextRound);
       setPhase('typing');
       later(() => {
-        setMessages((current) => [...current, { id: uid('user'), role: 'user', kind: 'text', text: next.text }]);
+        setMessages((current) => [
+          ...current,
+          { id: uid('user'), role: 'user', kind: 'text', text: next.text, persona: next.persona },
+        ]);
         const ms = roundSeconds(nextRound) * 1000;
         deadlineRef.current = Date.now() + ms;
         setTotalMs(ms);
@@ -154,19 +172,38 @@ export default function FakeGptGame() {
     [beep, later],
   );
 
-  const startRun = useCallback(() => {
+  const startRun = useCallback(async () => {
     clearTimers();
     for (const item of artifacts) {
       if (item.audioUrl) URL.revokeObjectURL(item.audioUrl);
     }
-    const nextQueue = pickPrompts(PROMPTS, ROUNDS_PER_RUN);
+    const pack = daily ?? (await fetchDailySet(offline));
+    setDaily(pack);
+    const nextQueue: Prompt[] = pack.rounds;
     setQueue(nextQueue);
     setArtifacts([]);
     setMessages([]);
     setRound(0);
     setBusy(false);
+    setReply('');
     beginRound(0, nextQueue);
-  }, [artifacts, beginRound, clearTimers]);
+  }, [artifacts, beginRound, clearTimers, daily, offline]);
+
+  const advance = useCallback(
+    (nextScore: number) => {
+      setBusy(false);
+      setChatting(false);
+      setReply('');
+      const upcoming = round + 1;
+      if (upcoming >= queue.length) {
+        commitBest(nextScore);
+        setPhase('results');
+        return;
+      }
+      beginRound(upcoming, queue);
+    },
+    [beginRound, commitBest, queue, round],
+  );
 
   const finishRound = useCallback(
     async (submittedInTime: boolean) => {
@@ -184,7 +221,7 @@ export default function FakeGptGame() {
               }),
             ])
           : null;
-      const result = scoreRound({
+      const attempt = {
         kind: prompt.kind,
         submittedInTime,
         remainingMs: submittedInTime ? left : 0,
@@ -195,7 +232,57 @@ export default function FakeGptGame() {
         audioMs: sound?.audioMs ?? 0,
         peakLevel: sound?.peakLevel ?? 0,
         padHits: sound?.padHits ?? 0,
-      });
+      };
+      let result = scoreRound(attempt);
+      let seen = '';
+      let heard = '';
+      let judged = false;
+      const empty = result.empty;
+      if (!offline && !empty) {
+        const image = prompt.kind === 'draw' && draw?.dataUrl ? await downscaleImage(draw.dataUrl) : undefined;
+        const audio =
+          prompt.kind === 'sound' && sound?.usedMic && sound.blob ? await capAudio(sound.blob) : undefined;
+        const judgedRemote = await requestJudge(
+          {
+            date: daily?.date ?? utcDate(),
+            roundId: prompt.id,
+            kind: prompt.kind,
+            request: prompt.text,
+            persona: prompt.persona ?? 'a impatient user',
+            submittedInTime,
+            remainingMs: attempt.remainingMs,
+            totalMs,
+            image,
+            audio: audio || undefined,
+            pads: sound?.hits.map((hit) => ({ padId: hit.padId, holdMs: hit.holdMs })),
+            features: sound
+              ? {
+                  durationMs: sound.audioMs,
+                  rms: sound.rms,
+                  peakLevel: sound.peakLevel,
+                  pitchLo: sound.pitchLo,
+                  pitchHi: sound.pitchHi,
+                  silenceRatio: sound.silenceRatio,
+                  padHits: sound.padHits,
+                }
+              : undefined,
+          },
+          offline,
+        );
+        if (judgedRemote && !judgedRemote.fallback) {
+          result = scoreWithJudge(attempt, judgedRemote.score);
+          seen = judgedRemote.seen;
+          heard = judgedRemote.heard;
+          judged = true;
+          if (judgedRemote.messages[0]) result = { ...result, reaction: judgedRemote.messages.join(' ') };
+        }
+      }
+      if (!judged) {
+        result = {
+          ...result,
+          reaction: empty ? result.reaction : result.thumbs === 'up' ? prompt.good ?? result.reaction : prompt.bad ?? result.reaction,
+        };
+      }
       const artifact: Artifact = {
         prompt,
         points: result.points,
@@ -207,6 +294,9 @@ export default function FakeGptGame() {
         drawingUrl: draw?.dataUrl || undefined,
         audioUrl: sound?.usedMic && sound.blobUrl ? sound.blobUrl : undefined,
         replayHits: sound?.hits,
+        seen,
+        heard,
+        judged,
       };
       const assistant: ChatMessage = result.empty
         ? { id: uid('miss'), role: 'assistant', kind: 'miss', text: '…' }
@@ -228,19 +318,11 @@ export default function FakeGptGame() {
           ...current,
           { id: uid('rate'), role: 'user', kind: 'rating', thumbs: result.thumbs, text: result.reaction },
         ]);
-      }, 380);
-      later(() => {
         setBusy(false);
-        const upcoming = round + 1;
-        if (upcoming >= queue.length) {
-          commitBest(score + result.points);
-          setPhase('results');
-          return;
-        }
-        beginRound(upcoming, queue);
-      }, 1700);
+        setPhase('talking');
+      }, 380);
     },
-    [beginRound, beep, commitBest, later, phase, prompt, queue, round, score, totalMs],
+    [beep, daily?.date, later, offline, phase, prompt, totalMs],
   );
 
   useEffect(() => {
@@ -249,7 +331,7 @@ export default function FakeGptGame() {
       const left = Math.max(0, deadlineRef.current - Date.now());
       setRemainingMs(left);
       const elapsed = totalMs > 0 ? 1 - left / totalMs : 1;
-      const nudge = nextNudge(elapsed, nudgesRef.current);
+      const nudge = nextNudge(elapsed, nudgesRef.current, prompt?.nudges);
       if (nudge) {
         nudgesRef.current += 1;
         setMessages((current) => [...current, { id: uid('nudge'), role: 'user', kind: 'nudge', text: nudge }]);
@@ -261,7 +343,44 @@ export default function FakeGptGame() {
       }
     }, 100);
     return () => window.clearInterval(tick);
-  }, [beep, finishRound, muted, phase, totalMs]);
+  }, [beep, finishRound, muted, phase, prompt?.nudges, totalMs]);
+
+  const sendReply = useCallback(async () => {
+    if (!prompt || chatting) return;
+    const text = reply.trim();
+    if (!text) {
+      advance(score);
+      return;
+    }
+    setChatting(true);
+    setMessages((current) => [...current, { id: uid('me'), role: 'assistant', kind: 'miss', text }]);
+    const chat = await requestChat(
+      {
+        date: daily?.date ?? utcDate(),
+        roundId: prompt.id,
+        persona: prompt.persona ?? 'a impatient user',
+        request: prompt.text,
+        playerText: text,
+        history: messages
+          .filter((message) => message.kind === 'text' || message.kind === 'rating' || message.kind === 'nudge')
+          .map((message) => ({ role: message.role, text: 'text' in message ? message.text : '' })),
+      },
+      offline,
+    );
+    if (chat?.messages.length) {
+      setMessages((current) => [
+        ...current,
+        ...chat.messages.map((line) => ({
+          id: uid('chat'),
+          role: 'user' as const,
+          kind: 'text' as const,
+          text: line,
+          persona: prompt.persona,
+        })),
+      ]);
+    }
+    later(() => advance(score), 900);
+  }, [advance, chatting, daily?.date, later, messages, offline, prompt, reply, score]);
 
   const status =
     phase === 'intro'
@@ -270,8 +389,8 @@ export default function FakeGptGame() {
         ? 'Run complete'
         : phase === 'typing'
           ? 'Incoming request…'
-          : phase === 'rating'
-            ? 'They are rating you'
+          : phase === 'rating' || phase === 'talking'
+            ? 'They are talking back'
             : prompt
               ? `Round ${round + 1}/${queue.length} · ${prompt.kind === 'draw' ? 'Draw' : 'Sound'}`
               : 'Ready';
@@ -287,8 +406,22 @@ export default function FakeGptGame() {
       status={status}
       muted={muted}
       onMute={toggleMute}
-      onRestart={phase === 'intro' ? undefined : startRun}
+      onRestart={phase === 'intro' ? undefined : () => void startRun()}
       restartLabel={phase === 'results' ? 'Play again' : 'Restart'}
+      extraActions={
+        <button
+          type="button"
+          onClick={() => {
+            const next = !offline;
+            setOffline(next);
+            writeOffline(next);
+            void fetchDailySet(next).then(setDaily);
+          }}
+          className="pressable rounded-full border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--ink)]"
+        >
+          {offline ? 'Offline' : 'Online judge'}
+        </button>
+      }
       tight
       hud="line"
     >
@@ -300,7 +433,9 @@ export default function FakeGptGame() {
           <div className="min-w-0">
             <p className="text-sm font-medium text-[var(--ink)]">FakeGPT</p>
             <p className="truncate text-xs text-[var(--faint)]">
-              {phase === 'responding' && prompt ? prompt.text : 'You are the model. Be fast. Be strange.'}
+              {phase === 'responding' && prompt
+                ? prompt.text
+                : `Today's requests · ${formatUtcDate(daily?.date ?? utcDate())}${daily?.source === 'ai' ? '' : ' · local set'}`}
             </p>
           </div>
           {phase === 'responding' ? (
@@ -315,10 +450,13 @@ export default function FakeGptGame() {
           {phase === 'intro' ? (
             <div className="space-y-3 text-sm leading-relaxed text-[var(--muted)]">
               <p className="fgpt-assistant">
-                Hello. I am not a model. You are. Weird humans will type requests. You have a short timer to draw
-                them or make the noise they asked for.
+                Hello. I am not a model. You are. Today&apos;s weird humans share one daily set
+                ({formatUtcDate(daily?.date ?? utcDate())}). Draw or make the noise before the timer dies.
               </p>
-              <p className="fgpt-user">draw me a cat riding a skateboard. or don&apos;t. i will be impatient either way.</p>
+              <p className="fgpt-user">
+                If online judging is on, a downscaled drawing or short clip is sent to a Worker to score this round,
+                then discarded. Offline mode keeps everything on this device.
+              </p>
             </div>
           ) : null}
           {messages.map((message) => (
@@ -333,7 +471,7 @@ export default function FakeGptGame() {
           <div className="fgpt-composer">
             <button
               type="button"
-              onClick={startRun}
+              onClick={() => void startRun()}
               className="pressable w-full rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm text-[var(--bg)]"
             >
               New chat
@@ -367,6 +505,32 @@ export default function FakeGptGame() {
           </div>
         ) : null}
 
+        {phase === 'talking' ? (
+          <div className="fgpt-composer px-3 py-3">
+            <label className="block text-[12px] text-[var(--muted)]" htmlFor="fgpt-reply">
+              Optional excuse (one short reply). Skip to keep moving.
+            </label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <input
+                id="fgpt-reply"
+                value={reply}
+                maxLength={160}
+                onChange={(event) => setReply(event.target.value)}
+                placeholder="sorry, the cat ate my stylus"
+                className="min-w-0 flex-1 rounded-full border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm"
+              />
+              <button
+                type="button"
+                disabled={chatting}
+                onClick={() => void sendReply()}
+                className="pressable rounded-full bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg)] disabled:opacity-50"
+              >
+                {reply.trim() ? 'Reply' : 'Continue'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {phase === 'results' ? (
           <div className="fgpt-results">
             <h2 className="font-serif text-2xl tracking-tight text-[var(--ink)]">Your context window</h2>
@@ -381,6 +545,8 @@ export default function FakeGptGame() {
                   </p>
                   <p className="mt-1 text-sm text-[var(--ink)]">{item.prompt.text}</p>
                   <p className="mt-1 text-sm text-[var(--muted)]">{item.reaction}</p>
+                  {item.seen ? <p className="mt-1 text-sm text-[var(--ink)]">I see: {item.seen}</p> : null}
+                  {item.heard ? <p className="mt-1 text-sm text-[var(--ink)]">I heard: {item.heard}</p> : null}
                   <div className="mt-3">
                     {item.drawingUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -394,7 +560,7 @@ export default function FakeGptGame() {
             </ul>
             <button
               type="button"
-              onClick={startRun}
+              onClick={() => void startRun()}
               className="pressable mt-4 w-full rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm text-[var(--bg)]"
             >
               Play again

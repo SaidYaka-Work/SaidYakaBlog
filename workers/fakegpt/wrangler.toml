@@ -1,0 +1,25 @@
+name = "saidyaka-fakegpt"
+main = "src/index.ts"
+compatibility_date = "2025-10-11"
+account_id = "06bf4532eebfba00e18e7c9bf7ba85c2"
+workers_dev = true
+
+# Workers AI — text, vision, and Whisper. No extra setup beyond this binding.
+[ai]
+binding = "AI"
+
+# Replace both ids after:
+#   npx wrangler kv namespace create FAKEGPT
+#   npx wrangler kv namespace create FAKEGPT --preview
+[[kv_namespaces]]
+binding = "FAKEGPT"
+id = "00000000000000000000000000000001"
+preview_id = "00000000000000000000000000000002"
+
+# Pre-generate today's set shortly after midnight UTC so the first player
+# does not pay the generation latency.
+[triggers]
+crons = ["5 0 * * *"]
+
+[vars]
+ALLOWED_ORIGINS = ""

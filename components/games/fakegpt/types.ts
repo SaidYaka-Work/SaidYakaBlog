@@ -4,6 +4,10 @@ export type Prompt = {
   id: string;
   kind: PromptKind;
   text: string;
+  persona?: string;
+  nudges?: string[];
+  good?: string;
+  bad?: string;
 };
 
 export type Thumbs = 'up' | 'down';
@@ -42,6 +46,9 @@ export type Artifact = {
   drawingUrl?: string;
   audioUrl?: string;
   replayHits?: SynthHit[];
+  seen?: string;
+  heard?: string;
+  judged?: boolean;
 };
 
 export type SynthHit = {
@@ -53,7 +60,7 @@ export type SynthHit = {
 export type ChatRole = 'user' | 'assistant';
 
 export type ChatMessage =
-  | { id: string; role: 'user'; kind: 'text'; text: string }
+  | { id: string; role: 'user'; kind: 'text'; text: string; persona?: string }
   | { id: string; role: 'user'; kind: 'nudge'; text: string }
   | { id: string; role: 'user'; kind: 'rating'; thumbs: Thumbs; text: string }
   | { id: string; role: 'assistant'; kind: 'drawing'; src: string }

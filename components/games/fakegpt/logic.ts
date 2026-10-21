@@ -109,10 +109,30 @@ export function pickPrompts(pool: readonly Prompt[], count: number, random = Mat
   return picked;
 }
 
-export function nextNudge(elapsedRatio: number, shown: number): string | null {
-  const mark = NUDGE_MARKS[shown];
-  if (!mark) return null;
-  return elapsedRatio >= mark.at ? mark.text : null;
+export function nextNudge(elapsedRatio: number, shown: number, custom?: string[]): string | null {
+  const text = custom?.[shown] ?? NUDGE_MARKS[shown]?.text;
+  if (!text) return null;
+  const at = NUDGE_MARKS[shown]?.at ?? 0.42 + shown * 0.22;
+  return elapsedRatio >= at ? text : null;
+}
+
+export function scoreWithJudge(attempt: RoundAttempt, judgeScore: number, random = Math.random): ScoreResult {
+  const empty = attempt.kind === 'draw' ? isEmptyDraw(attempt) : isEmptySound(attempt);
+  const late = !attempt.submittedInTime;
+  if (empty) return scoreRound(attempt, random);
+  const remainingRatio = attempt.totalMs > 0 ? clamp(attempt.remainingMs / attempt.totalMs, 0, 1) : 0;
+  const quality = clamp(judgeScore * 10, 1, 100);
+  const speedBonus = late ? 0 : Math.round(remainingRatio * 40);
+  const onTime = late ? 0 : 100;
+  const points = onTime + speedBonus + Math.round(clamp(judgeScore, 0, 10) * 12);
+  const thumbs: Thumbs = !late && judgeScore >= 5 ? 'up' : 'down';
+  const stars = clamp(Math.round(quality / 20), 1, 5);
+  const reaction = late
+    ? pickFrom(LATE_ROASTS, random)
+    : thumbs === 'down'
+      ? pickFrom(DOWN_NOTES, random)
+      : pickFrom(UP_NOTES, random);
+  return { points, quality, thumbs, stars, empty, late, reaction };
 }
 
 export function isEmptyDraw(attempt: Pick<RoundAttempt, 'strokeCount' | 'coverage'>): boolean {

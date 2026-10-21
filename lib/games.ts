@@ -44,13 +44,14 @@ export const games: GameMeta[] = [
     title: 'FakeGPT',
     tagline: 'You are the chatbot. Draw or honk before the user rage-quits.',
     description:
-      'A parody chat toy: fake users send weird requests, and you have seconds to draw them or make the sound.',
+      'A daily parody chat toy: everyone gets the same weird requests. Draw or make the noise; a cheap Worker model can judge, or stay offline.',
     howTo:
-      'Start a chat. Each request is a draw or a sound. Sketch it, record a noise, or use the soundboard if the mic says no. Send before the timer dies. Empty replies get roasted.',
-    genre: 'Party',
+      'Start a chat. Today\'s eight requests are shared. Draw or make the sound before the timer dies. Online judging sends a downscaled sketch or short clip to a Worker, then discards it. Offline mode never leaves the browser.',
+    genre: 'Daily',
     kind: 'react',
     href: englishPath('/fakegpt'),
     tone: 'gpt',
+    daily: true,
   },
   {
     slug: 'unknown-number',
