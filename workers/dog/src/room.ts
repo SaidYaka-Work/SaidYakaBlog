@@ -44,6 +44,7 @@ export type Leash = {
   hourMeters: number;
   hourStartedAt: number;
   cooldownUntil: Record<string, number>;
+  /** Phase 2: fair handoff can add a wait queue here without changing holder rules. */
 };
 
 export type FeederState = {
@@ -66,6 +67,8 @@ export type YardState = {
   leash: Leash;
   feeder: FeederState;
   ai: YardAi;
+  /** Present after the open-world worker deploy. Older rooms migrate in. */
+  location?: import('./world').Location;
 };
 
 export type Circle = { x: number; z: number; radius: number };
@@ -76,6 +79,13 @@ export const BLOCKERS: Circle[] = [
   { x: -1.72, z: -1.42, radius: 0.3 },
   { x: 0.15, z: 2.28, radius: 0.22 },
 ];
+
+/** Gap in the far (-Z) fence. Walking through leaves the yard. */
+export const GATE = { x: 0, z: -ROOM_HALF, half: 0.58 };
+
+export function nearGate(x: number, z: number) {
+  return Math.abs(x - GATE.x) <= GATE.half && z <= -ROOM_HALF + 0.7;
+}
 
 export function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -121,6 +131,7 @@ export function migrateYard(yard: YardState | undefined, now: number): YardState
     },
     feeder: { ...createYard(now).feeder, ...yard.feeder },
     ai: { ...createYard(now).ai, ...yard.ai },
+    location: yard.location,
   };
 }
 

@@ -23,12 +23,22 @@ export default function DogHud({
   hint,
   touch,
   near,
+  inWorld,
+  placeName,
+  streetName,
+  worldReady,
+  travelOpen,
+  places,
+  attribution,
   onMute,
   onPet,
   onFeed,
   onHall,
   onCatch,
   onStick,
+  onHome,
+  onTravel,
+  onToggleTravel,
 }: {
   name: string;
   stageLabel: string;
@@ -46,12 +56,22 @@ export default function DogHud({
   hint?: boolean;
   touch?: boolean;
   near?: boolean;
+  inWorld?: boolean;
+  placeName?: string;
+  streetName?: string;
+  worldReady?: boolean;
+  travelOpen?: boolean;
+  places?: { id: string; name: string; city: string }[];
+  attribution?: string;
   onMute: () => void;
   onPet: () => void;
   onFeed: () => void;
   onHall: () => void;
   onCatch: () => void;
   onStick?: (ax: number, az: number) => void;
+  onHome?: () => void;
+  onTravel?: (placeId: string) => void;
+  onToggleTravel?: () => void;
 }) {
   return (
     <div className={`dog-hud ${touch ? 'is-touch' : ''}`}>
@@ -77,6 +97,16 @@ export default function DogHud({
         <span className="dog-chip" title="Neighbors on the porch">
           👥 {presence}
         </span>
+        {worldReady && inWorld && (
+          <button type="button" className="dog-chip" onClick={onHome}>
+            Home
+          </button>
+        )}
+        {worldReady && (
+          <button type="button" className="dog-chip" onClick={onToggleTravel} aria-expanded={travelOpen}>
+            Travel
+          </button>
+        )}
         <button type="button" className="dog-chip" onClick={onHall}>
           Hall
         </button>
@@ -107,9 +137,32 @@ export default function DogHud({
         ))}
       </div>
 
-      {hint && !empty && !near && (
-        <p className="dog-hint">{touch ? 'Joystick to walk · Feed at the bowl' : 'WASD to walk · E to feed'}</p>
+      {inWorld && (placeName || streetName) && (
+        <p className="dog-place" role="status">
+          <span aria-hidden="true">N</span>
+          {streetCaption(streetName, placeName)}
+        </p>
       )}
+
+      {travelOpen && places && (
+        <div className="dog-travel" role="listbox" aria-label="Travel">
+          {places.map((place) => (
+            <button key={place.id} type="button" onClick={() => onTravel?.(place.id)}>
+              <strong>{place.name}</strong>
+              <em>{place.city}</em>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {hint && !empty && !near && !inWorld && (
+        <p className="dog-hint">{touch ? 'Joystick to walk · Feed at the bowl' : 'WASD to walk · through the gate for the world'}</p>
+      )}
+      {hint && !empty && inWorld && (
+        <p className="dog-hint">{touch ? 'Joystick to walk · Home to return' : 'WASD to walk · Home or Travel'}</p>
+      )}
+
+      {attribution && inWorld && <p className="dog-attrib">{attribution}</p>}
 
       {near && !empty && (
         <p className="dog-prompt" role="status">
@@ -137,6 +190,14 @@ export default function DogHud({
       </div>
     </div>
   );
+}
+
+function streetCaption(streetName?: string, placeName?: string) {
+  if (!streetName) return placeName;
+  if (streetName.length > 32 || /subway|interchange|transfer|entrance|underground/i.test(streetName)) {
+    return placeName || streetName;
+  }
+  return streetName;
 }
 
 function Meter({ icon, label, value }: { icon: string; label: string; value: number }) {

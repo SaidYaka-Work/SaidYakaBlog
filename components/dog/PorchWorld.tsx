@@ -27,20 +27,54 @@ function makeRugTexture(fill: string, ring: string) {
   return texture;
 }
 
-function FenceRing({ night }: { night: boolean }) {
-  const wood = night ? '#3a2a20' : '#8a6a48';
-  const span = ROOM_HALF * 2 + 0.16;
-  const posts = [-3, -1.8, -0.6, 0.6, 1.8, 3];
-  const sides = [
-    { pos: [0, 0, -ROOM_HALF] as const, rot: 0 },
-    { pos: [0, 0, ROOM_HALF] as const, rot: 0 },
-    { pos: [-ROOM_HALF, 0, 0] as const, rot: Math.PI / 2 },
-    { pos: [ROOM_HALF, 0, 0] as const, rot: Math.PI / 2 },
-  ];
+function FenceSide({
+  wood,
+  span,
+  posts,
+  gap = 0,
+}: {
+  wood: string;
+  span: number;
+  posts: number[];
+  gap?: number;
+}) {
+  const rail = gap > 0 ? (span - gap * 2) / 2 : span;
+  const offset = gap > 0 ? (rail + gap * 2) / 2 : 0;
   return (
-    <group>
-      {sides.map((side) => (
-        <group key={`${side.pos[0]}-${side.pos[2]}`} position={[...side.pos]} rotation={[0, side.rot, 0]}>
+    <>
+      {gap > 0 ? (
+        <>
+          <mesh position={[-offset, 0.46, 0]}>
+            <boxGeometry args={[rail, 0.05, 0.06]} />
+            <meshStandardMaterial color={wood} />
+          </mesh>
+          <mesh position={[offset, 0.46, 0]}>
+            <boxGeometry args={[rail, 0.05, 0.06]} />
+            <meshStandardMaterial color={wood} />
+          </mesh>
+          <mesh position={[-offset, 0.24, 0]}>
+            <boxGeometry args={[rail, 0.05, 0.06]} />
+            <meshStandardMaterial color={wood} />
+          </mesh>
+          <mesh position={[offset, 0.24, 0]}>
+            <boxGeometry args={[rail, 0.05, 0.06]} />
+            <meshStandardMaterial color={wood} />
+          </mesh>
+          <mesh position={[-gap, 0.42, 0]}>
+            <boxGeometry args={[0.08, 0.84, 0.08]} />
+            <meshStandardMaterial color={wood} />
+          </mesh>
+          <mesh position={[gap, 0.42, 0]}>
+            <boxGeometry args={[0.08, 0.84, 0.08]} />
+            <meshStandardMaterial color={wood} />
+          </mesh>
+          <mesh position={[0, 0.86, 0]}>
+            <boxGeometry args={[gap * 2 + 0.16, 0.07, 0.07]} />
+            <meshStandardMaterial color={wood} />
+          </mesh>
+        </>
+      ) : (
+        <>
           <mesh position={[0, 0.46, 0]}>
             <boxGeometry args={[span, 0.05, 0.06]} />
             <meshStandardMaterial color={wood} />
@@ -49,12 +83,62 @@ function FenceRing({ night }: { night: boolean }) {
             <boxGeometry args={[span, 0.05, 0.06]} />
             <meshStandardMaterial color={wood} />
           </mesh>
-          {posts.map((x) => (
-            <mesh key={x} position={[x, 0.36, 0]}>
-              <boxGeometry args={[0.07, 0.72, 0.07]} />
-              <meshStandardMaterial color={wood} />
-            </mesh>
-          ))}
+        </>
+      )}
+      {posts.filter((x) => Math.abs(x) >= gap + 0.15).map((x) => (
+        <mesh key={x} position={[x, 0.36, 0]}>
+          <boxGeometry args={[0.07, 0.72, 0.07]} />
+          <meshStandardMaterial color={wood} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+function PorchLamp({ night }: { night: boolean }) {
+  return (
+    <group position={[2.15, 0, 2.05]}>
+      <mesh position={[0, 1.05, 0]} castShadow>
+        <cylinderGeometry args={[0.045, 0.06, 2.1, 8]} />
+        <meshStandardMaterial color={night ? '#4a4038' : '#6a5850'} metalness={0.35} roughness={0.45} />
+      </mesh>
+      <mesh position={[0.18, 2.02, 0]} castShadow>
+        <boxGeometry args={[0.42, 0.05, 0.07]} />
+        <meshStandardMaterial color={night ? '#4a4038' : '#6a5850'} />
+      </mesh>
+      <mesh position={[0.34, 1.88, 0]}>
+        <boxGeometry args={[0.22, 0.28, 0.22]} />
+        <meshStandardMaterial
+          color={night ? '#f6d090' : '#f0e0b8'}
+          emissive={night ? '#ffb85a' : '#000000'}
+          emissiveIntensity={night ? 1.4 : 0}
+          roughness={0.35}
+        />
+      </mesh>
+      <mesh position={[0.34, 1.88, 0]}>
+        <sphereGeometry args={[0.08, 10, 10]} />
+        <meshBasicMaterial color={night ? '#ffe6b0' : '#f8ecd0'} />
+      </mesh>
+      {night && <pointLight position={[0.34, 1.9, 0]} color="#ffc878" intensity={2.4} distance={8.5} decay={2} />}
+    </group>
+  );
+}
+
+function FenceRing({ night, gate = false }: { night: boolean; gate?: boolean }) {
+  const wood = night ? '#6a4e38' : '#8a6a48';
+  const span = ROOM_HALF * 2 + 0.16;
+  const posts = [-3, -1.8, -0.6, 0.6, 1.8, 3];
+  const sides = [
+    { pos: [0, 0, -ROOM_HALF] as const, rot: 0, gap: gate ? 0.62 : 0 },
+    { pos: [0, 0, ROOM_HALF] as const, rot: 0, gap: 0 },
+    { pos: [-ROOM_HALF, 0, 0] as const, rot: Math.PI / 2, gap: 0 },
+    { pos: [ROOM_HALF, 0, 0] as const, rot: Math.PI / 2, gap: 0 },
+  ];
+  return (
+    <group>
+      {sides.map((side) => (
+        <group key={`${side.pos[0]}-${side.pos[2]}`} position={[...side.pos]} rotation={[0, side.rot, 0]}>
+          <FenceSide wood={wood} span={span} posts={posts} gap={side.gap} />
         </group>
       ))}
     </group>
@@ -66,24 +150,24 @@ function DogBed({ night }: { night: boolean }) {
     <group position={[BED.x, 0, BED.z]}>
       <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0.2]} receiveShadow>
         <circleGeometry args={[0.52, 20]} />
-        <meshStandardMaterial color={night ? '#4a2c22' : '#8b4a32'} />
+        <meshStandardMaterial color={night ? '#6a3c2c' : '#8b4a32'} />
       </mesh>
       <mesh position={[0, 0.09, 0]} castShadow>
         <cylinderGeometry args={[0.4, 0.44, 0.1, 18]} />
-        <meshStandardMaterial color={night ? '#6a3a28' : '#c46a3a'} />
+        <meshStandardMaterial color={night ? '#8a4a32' : '#c46a3a'} />
       </mesh>
       <mesh position={[0.02, 0.14, -0.02]} castShadow>
         <sphereGeometry args={[0.28, 14, 10]} />
-        <meshStandardMaterial color={night ? '#7a4a34' : '#e0a07a'} />
+        <meshStandardMaterial color={night ? '#9a5c40' : '#e0a07a'} />
       </mesh>
     </group>
   );
 }
 
 function FeederStation({ night, food, near }: { night: boolean; food: boolean; near: boolean }) {
-  const wood = night ? '#3a2a20' : '#a87848';
-  const enamel = night ? '#c8b49a' : '#f3e6d0';
-  const trim = night ? '#8a4a28' : '#c46a3a';
+  const wood = night ? '#5a4030' : '#a87848';
+  const enamel = night ? '#d4c4aa' : '#f3e6d0';
+  const trim = night ? '#b05a32' : '#c46a3a';
   return (
     <group position={[FEEDER.x, 0, FEEDER.z]}>
       <mesh position={[0, 0.025, 0.1]} receiveShadow>
@@ -173,6 +257,7 @@ export default function PorchWorld({
   compact = false,
   food = false,
   near = false,
+  gate = false,
 }: {
   night: boolean;
   showBowl: boolean;
@@ -180,6 +265,7 @@ export default function PorchWorld({
   walking?: boolean;
   food?: boolean;
   near?: boolean;
+  gate?: boolean;
 }) {
   const { scene, gl } = useThree();
   const rug = useMemo(
@@ -188,9 +274,10 @@ export default function PorchWorld({
   );
 
   useEffect(() => {
-    const sky = night ? '#101828' : '#e8eef6';
+    const sky = night ? '#3a5078' : '#e8eef6';
     scene.background = new Color(sky);
     gl.setClearColor(sky, 1);
+    gl.toneMappingExposure = night ? 1.18 : 0.92;
   }, [gl, night, scene]);
 
   const size = ROOM_HALF * 2 + 0.5;
@@ -198,27 +285,50 @@ export default function PorchWorld({
   return (
     <group>
       <mesh>
-        <sphereGeometry args={[28, 24, 16]} />
-        <meshBasicMaterial color={night ? '#101828' : '#e8eef6'} side={BackSide} />
+        <sphereGeometry args={[36, 24, 16]} />
+        <shaderMaterial
+          side={BackSide}
+          depthWrite={false}
+          uniforms={{
+            uTop: { value: new Color(night ? '#2e4a74' : '#c5d8ec') },
+            uHorizon: { value: new Color(night ? '#7a6888' : '#f3d8bc') },
+          }}
+          vertexShader={`
+            varying vec3 vPos;
+            void main() {
+              vPos = position;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `}
+          fragmentShader={`
+            uniform vec3 uTop;
+            uniform vec3 uHorizon;
+            varying vec3 vPos;
+            void main() {
+              float h = clamp(normalize(vPos).y * 0.5 + 0.5, 0.0, 1.0);
+              gl_FragColor = vec4(mix(uHorizon, uTop, pow(h, 0.85)), 1.0);
+            }
+          `}
+        />
       </mesh>
-      <hemisphereLight args={[night ? '#6a7a98' : '#fff6ea', night ? '#1a1814' : '#d4b496', night ? 0.7 : 1.05]} />
+      <ambientLight intensity={night ? 0.58 : 0.28} color={night ? '#b4c6e4' : '#fff4e6'} />
+      <hemisphereLight args={[night ? '#a8c4ee' : '#fff6ea', night ? '#3a342c' : '#d4b496', night ? 1.25 : 0.95]} />
       <directionalLight
         position={[5, 7, 3.5]}
-        intensity={night ? 0.45 : 1}
-        color={night ? '#c8d4f0' : '#ffe6c4'}
+        intensity={night ? 0.82 : 0.88}
+        color={night ? '#d4e2f8' : '#ffe6c4'}
         castShadow
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
         shadow-camera-far={18}
         shadow-bias={-0.0004}
       />
-      <directionalLight position={[-3.5, 2.2, 1.5]} intensity={night ? 0.08 : 0.16} color="#f0d0b0" />
-      {!compact && <pointLight position={[1.4, 1.6, 1.2]} intensity={night ? 1.2 : 0.3} color="#fbe8c8" distance={7} />}
-      {!compact && <pointLight position={[-1.4, 1.1, 1.3]} intensity={night ? 0.7 : 0.22} color="#ffd8b0" distance={5} />}
+      <directionalLight position={[-3.5, 2.2, 1.5]} intensity={night ? 0.22 : 0.14} color="#f0d0b0" />
+      {!compact && <PorchLamp night={night} />}
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
         <planeGeometry args={[size, size]} />
-        <meshStandardMaterial color={night ? '#1c2018' : '#e2b892'} />
+        <meshStandardMaterial color={night ? '#4a5040' : '#e2b892'} />
       </mesh>
       {rug && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.02, 0.012, 0.08]} receiveShadow>
@@ -227,7 +337,7 @@ export default function PorchWorld({
         </mesh>
       )}
 
-      {!compact && <FenceRing night={night} />}
+      {!compact && <FenceRing night={night} gate={gate} />}
       {!compact && <DogBed night={night} />}
       {!compact && <Plant x={BLOCKERS[0].x} z={BLOCKERS[0].z} />}
       {!compact && <Plant x={BLOCKERS[1].x} z={BLOCKERS[1].z} />}

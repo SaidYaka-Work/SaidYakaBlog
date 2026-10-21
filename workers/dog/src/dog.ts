@@ -23,6 +23,7 @@ import {
   takeRate,
   tickSharedYard,
   validateFinish,
+  applyWorldAction,
   type CareGame,
   type RateBucket,
   type RoomState,
@@ -189,7 +190,19 @@ export class DogRoom {
       const wait = meta.lastMoveAt + MOVE_MIN_MS - now;
       if (wait > 0) return;
       const dt = meta.lastMoveAt ? Math.min(0.18, (now - meta.lastMoveAt) / 1000) : 0.08;
-      const moved = applyVisitorMove(await this.load(now), meta.clientId, meta.ip, parsed.ax, parsed.az, parsed.run, dt, now);
+      const proposed =
+        parsed.wx !== undefined && parsed.wz !== undefined ? { x: parsed.wx, z: parsed.wz } : null;
+      const moved = applyVisitorMove(
+        await this.load(now),
+        meta.clientId,
+        meta.ip,
+        parsed.ax,
+        parsed.az,
+        parsed.run,
+        dt,
+        now,
+        proposed,
+      );
       ws.serializeAttachment({ ...meta, lastMoveAt: now } satisfies SocketMeta);
       await this.commit(moved.room);
       if (!moved.acquired && moved.code) {
@@ -200,6 +213,27 @@ export class DogRoom {
         this.broadcast(snapshot(moved.room, now, this.ctx.getWebSockets().length));
         this.broadcast({ type: 'event', text: moved.walk.event.text, at: moved.walk.event.at });
       }
+      return;
+    }
+
+    if (parsed.kind === 'leave' || parsed.kind === 'home' || parsed.kind === 'travel') {
+      const gatedTravel = await this.gate(ws, meta, now);
+      if (!gatedTravel) return;
+      const result = applyWorldAction(
+        await this.load(now),
+        meta.clientId,
+        meta.ip,
+        now,
+        parsed.kind,
+        parsed.kind === 'travel' ? parsed.placeId : undefined,
+      );
+      await this.commit(result.room);
+      if (!result.acquired && result.code) {
+        ws.send(JSON.stringify({ type: 'error', code: result.code, retryAfterMs: result.retryAfterMs }));
+      } else if (result.code) {
+        ws.send(JSON.stringify({ type: 'error', code: result.code }));
+      }
+      this.broadcast(snapshot(result.room, now, this.ctx.getWebSockets().length));
       return;
     }
 
@@ -429,6 +463,7 @@ export class DogRoom {
       pose: snap.pose,
       leash: snap.leash,
       feeder: snap.feeder,
+      location: snap.location,
     });
   }
 
