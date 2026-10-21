@@ -1,0 +1,146 @@
+---
+slug: "code-review-is-mentorship-in-disguise"
+title: "Code Review Is Mentorship in Disguise"
+date: 2026-10-21
+author: Said Yaka
+tags:
+  - Engineering Leadership
+  - Code Review
+  - Mentorship
+  - Software Engineering
+  - Team Culture
+description: "Code review is the highest-leverage teaching loop on an engineering team. Here is how I review in a way that grows the author, not just the diff."
+canonical_url: "https://saidyaka.com/en/posts/code-review-is-mentorship-in-disguise"
+keywords:
+  - code review as mentorship
+  - engineering code review best practices
+  - blocking vs non-blocking review comments
+  - software engineering leadership
+  - team review culture
+og_title: "Code Review Is Mentorship in Disguise"
+og_description: "Review in a way that grows the author. Separate blocking from nits, explain the why, ask questions, and treat turnaround speed as respect."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+Most code review is treated like airport security. Scan the bag. Flag the liquids. Stamp the ticket. The author waits. The reviewer moves on.
+
+That version keeps bad code out. It does not grow anyone.
+
+I think of review as the highest-leverage teaching loop a team already has. It is frequent, attached to real work, and public, so the lesson travels further than a 1:1. Used only as a gate, it leaves the mentorship on the table. The goal is to leave the author stronger than when they opened the pull request.
+
+## Separate blocking from everything else
+
+If every comment looks like a demand, the author cannot tell what must change from what you would have done differently. Ten threads, one bug, a merge that waits on taste.
+
+I try to label severity explicitly:
+
+- **blocking:** this will break, leak, or lie in production, or it violates a rule the team already agreed on
+- **non-blocking:** a clearer name, a smaller function, a preference, a later cleanup
+- **question:** I do not understand yet. I am not asking you to change it until I do
+
+A blocking comment should name the failure:
+
+> **blocking:** if `items` is empty this still returns `200` with a fake id. Can we fail closed here, or is empty a valid success?
+
+A non-blocking one should give permission to ship:
+
+> **nit:** I would extract this mapper so the handler stays thin. Fine to leave if you want to keep the diff small.
+
+If I cannot say why it is blocking, it is not blocking. I rewrite the comment or I delete it. The author can then fix the real issues and merge without negotiating taste.
+
+## Explain the why, or do not bother
+
+"Use a map here" is an order. "A map makes the lookup O(1), and this path is on every request" is a lesson.
+
+Authors do not need another senior opinion. They need the constraint you can see that they cannot: latency, a past incident, an invariant the types are not holding, a product promise this code is about to break.
+
+I try to write a short chain: what I think will happen, why that is a problem, what I would consider instead.
+
+> This retry has no jitter. If the upstream blips, every worker will wake up together and we will create the outage we are trying to survive. A backoff with a cap would keep the recovery from becoming the incident.
+
+The author can disagree with the conclusion. They cannot miss the reasoning. If they walk away with the model, they will not need this comment next time. If I do not have a why, I am usually projecting style onto their diff. That is decoration, not mentorship.
+
+## Ask questions before you dictate
+
+A command teaches compliance: change this line, get the approval. A question teaches judgment: notice the tradeoff, pick a position, defend it.
+
+I default to questions when the code is surprising rather than wrong.
+
+> What happens if this job runs twice? Is the write idempotent, or do we need a lock?
+
+> Why this cache key? I am worried two tenants could collide if `orgId` is missing.
+
+Sometimes the author has a reason I cannot see from the diff. The question finds it. Sometimes they do not, and they still arrive at the fix themselves, which is how the lesson sticks. I save the directive for team rules and real failures. "Please do not log raw tokens" is not a discussion. "Have you considered a different folder structure?" almost always is.
+
+## Calibrate to the person, not the file
+
+The same comment can be a gift or a pile-on depending on who is reading it.
+
+For someone early in a codebase, I review more of the path and less of the polish. I walk through the failure mode and link to the existing helper instead of assuming they know it exists. I will accept a slightly awkward version if the behavior is right and the next step is clear.
+
+For someone who owns the system, I review the invariants and the edges. They do not need a tour of `map`. They need me to notice that the new flag changes a contract other teams already depend on.
+
+The mistake is reviewing the author's title instead of their context. A senior new to a domain still needs the map. A mid-level who has lived in this service for a year does not need you to rewrite their naming. I also try not to stack ten lessons on one pull request. One or two that will still be true next month beat a seminar attached to a bugfix.
+
+## Praise the decision, not the person
+
+"Looks good" is polite and empty. It does not tell the author what to repeat.
+
+Specific praise marks a decision as load-bearing:
+
+> The early return here is the right call. It keeps the error path out of the happy path.
+
+> Good that you put the timeout on the client, not the handler. That is the layer that actually knows how long the user can wait.
+
+People remember what got named. If the only named things are mistakes, they write more timid code. If you name the good judgment, you get more of it. A team cannot copy standards that only appear as objections.
+
+## Turnaround speed is respect
+
+A pull request sitting untouched is a blocked person. A review that arrives two days later with perfect comments still burned the week.
+
+I treat latency as part of the review. A same-morning first pass, even if incomplete, is often more useful than a thorough essay tomorrow. "I am in this, the auth path looks right, I will finish the migration after lunch" unblocks planning. If I cannot get to it, I say so and find another reviewer.
+
+Speed is not rubber-stamping. A fast "this will race, let's talk" is high-quality review. A slow "nit: rename this" on a Friday afternoon is low-quality review with better grammar.
+
+## When comments are the wrong medium
+
+Some threads should not be threads.
+
+I move to a call or a pairing session when the discussion is about a design, not a line, or when a couple of rounds have not closed a conceptual gap.
+
+A good comment in those cases is a handoff:
+
+> I think we are debating the ownership model, not this function. Want to spend fifteen minutes on it? I can pair and we can push the result.
+
+Written comments are a great archive. They are a bad place to discover that you do not share a picture of the system. After we talk, one of us writes the decision back on the pull request so future readers do not have to reconstruct a hallway.
+
+## Seniors need to receive reviews well too
+
+Mentorship dies when only juniors get comments.
+
+If a senior's pull request is "lgtm" in four minutes, you have taught the team that status is a substitute for scrutiny. You have also robbed that senior of the chance to be wrong in public.
+
+I try to model the receiving side as carefully as the giving side:
+
+- assume the comment is about the code, then check whether I agree
+- answer the question that was asked, not the one that protects my ego
+- say "you are right, I will change it" quickly when that is true
+- say "I want to keep this, here is the constraint" when that is true
+- never merge around an open blocking thread because I have merge rights
+
+Authority that skips review is a shortcut the rest of the team will copy. A senior who thanks someone for catching a miss does more for culture than a senior who writes a perfect comment on someone else's diff.
+
+## Review norms become the culture
+
+Teams do not get the culture they write on a careers page. They get the culture of their review habits.
+
+If reviews are slow, people batch work and ship less. If they are picky about names and soft on behavior, people optimize for cosmetics. If they are hostile, people hide work until it is "safe," which is how you get huge pull requests and no one left who can review them. If they are curious and specific, people ask earlier, while the decision is still cheap.
+
+I care less about a style guide than about a few shared norms: label blocking vs non-blocking, explain the why, prefer questions until you are sure, praise the decisions you want repeated, respond fast enough that review is not the critical path, take it to a call when the thread stops teaching, and review everyone.
+
+Those norms are cheap to say and expensive to fake. Authors can feel the difference in a week.
+
+You do not need a program or a new meeting. Review is already happening. Stop treating the diff as the only thing being reviewed.
+
+Review the change. Teach the person. Leave the next pull request easier than this one.
