@@ -13,7 +13,7 @@ import {
   sunDirection,
   tileXY,
 } from '../workers/dog/src/world.ts';
-import { RUN_SPEED, createYard, nearGate } from '../workers/dog/src/room.ts';
+import { RUN_SPEED, createYard } from '../workers/dog/src/room.ts';
 import { FACADE_PALETTE, crossingsAtIntersections, dressPlants, facadeTint, isMajorRoad, lampsAlongRoads, plantsInParks, streetTreesAlongRoads, treesInParks } from '../components/dog/world/dress.ts';
 
 function assert(cond: unknown, message: string) {
@@ -56,8 +56,8 @@ if (trip.ok) {
 }
 
 const left = applyLeaveWorld(createYard(T0), T0);
-assert(left.location?.mode === 'world', 'leave walks out the gate');
-assert(left.location?.placeId === HOME_PLACE.id, 'the gate opens onto the public home park');
+assert(left.location?.mode === 'world', 'leave stays in the world');
+assert(left.location?.placeId === HOME_PLACE.id, 'default park is Washington Square');
 const stepped = applyWorldDrive(left, 0, -1, true, 0.1, T0 + 80);
 const moved = haversineMeters(left.location!.lat, left.location!.lng, stepped.location!.lat, stepped.location!.lng);
 assert(moved <= RUN_SPEED * 0.1 + 1.6, `world step ${moved} exceeded the cap`);
@@ -66,8 +66,8 @@ const jump = Math.hypot(tele.pose.x - stepped.pose.x, tele.pose.z - stepped.pose
 assert(jump < 3, `proposed teleport slipped through (${jump})`);
 
 const home = applyGoHome(left, T0 + 10);
-assert(home.location?.mode === 'home', 'Home returns to the porch');
-assert(nearGate(0, -3.05), 'the far fence is the gate');
+assert(home.location?.mode === 'world', 'old Home messages stay in the world');
+assert(home.location?.placeId === HOME_PLACE.id, 'Home does not teleport to a room');
 
 const square = [
   { x: -1, z: -1 },

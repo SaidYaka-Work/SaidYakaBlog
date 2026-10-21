@@ -105,7 +105,7 @@ export function decodeTile(
       }
     }
     buildings.sort((a, b) => b.area - a.area);
-    buildings.splice(240);
+    buildings.splice(160);
   }
 
   const transport = tile.layers.transportation;
@@ -119,7 +119,7 @@ export function decodeTile(
         if (line.length >= 2) roads.push({ line, width, klass });
       }
     }
-    if (roads.length > 420) roads.length = 420;
+    if (roads.length > 280) roads.length = 280;
   }
 
   for (const name of ['water', 'park', 'landcover', 'landuse'] as const) {

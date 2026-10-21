@@ -11,9 +11,12 @@ export type WorldColliders = {
   label: string;
 };
 
-const MAX_INFLIGHT = 4;
+const MAX_INFLIGHT = 3;
+const TILE_RING = 1;
 
 let templatePromise: Promise<string> | null = null;
+let sharedWorker: Worker | null = null;
+let workerUsers = 0;
 
 function tileTemplate() {
   if (!templatePromise) {
@@ -26,6 +29,26 @@ function tileTemplate() {
       });
   }
   return templatePromise;
+}
+
+function acquireWorker() {
+  if (!sharedWorker) {
+    try {
+      sharedWorker = new Worker(new URL('./tile.worker.ts', import.meta.url));
+    } catch {
+      sharedWorker = null;
+    }
+  }
+  workerUsers += 1;
+  return sharedWorker;
+}
+
+function releaseWorker() {
+  workerUsers = Math.max(0, workerUsers - 1);
+  if (workerUsers === 0 && sharedWorker) {
+    sharedWorker.terminate();
+    sharedWorker = null;
+  }
 }
 
 export default function useWorldTiles(originLat: number, originLng: number, lat: number, lng: number, enabled: boolean) {
@@ -43,22 +66,15 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
       origin.current = `${originLat},${originLng}`;
     }
     let dead = false;
-    const worker = (() => {
-      try {
-        return new Worker(new URL('./tile.worker.ts', import.meta.url));
-      } catch {
-        return null;
-      }
-    })();
+    const worker = acquireWorker();
     const pending = new Map<number, (tile: WorldTileData) => void>();
     let job = 1;
-    if (worker) {
-      worker.onmessage = (event: MessageEvent<{ id: number; tile?: WorldTileData }>) => {
-        const done = pending.get(event.data.id);
-        if (event.data.tile) done?.(event.data.tile);
-        pending.delete(event.data.id);
-      };
-    }
+    const onMessage = (event: MessageEvent<{ id: number; tile?: WorldTileData }>) => {
+      const done = pending.get(event.data.id);
+      if (event.data.tile) done?.(event.data.tile);
+      pending.delete(event.data.id);
+    };
+    worker?.addEventListener('message', onMessage);
 
     async function decode(buffer: ArrayBuffer, z: number, x: number, y: number) {
       if (!worker) return decodeTile(buffer, z, x, y, originLat, originLng);
@@ -70,25 +86,34 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
       });
     }
 
+    function publish(wantedKeys: Set<string>) {
+      const next = wantedKeys.size
+        ? Array.from(cache.current.entries())
+            .filter(([key]) => wantedKeys.has(key))
+            .map(([, tile]) => tile)
+        : [];
+      setTiles(next);
+      setColliders((current) => ({
+        buildings: next.flatMap((tile) => tile.buildings.map((b) => b.ring)),
+        roads: next.flatMap((tile) => tile.roads.map((r) => r.line)),
+        parks: next.flatMap((tile) => tile.parks),
+        label: current.label,
+      }));
+    }
+
     async function run() {
       const template = await tileTemplate();
       const wanted: { z: number; x: number; y: number; key: string }[] = [];
-      for (let dy = -1; dy <= 1; dy += 1) {
-        for (let dx = -1; dx <= 1; dx += 1) {
+      for (let dy = -TILE_RING; dy <= TILE_RING; dy += 1) {
+        for (let dx = -TILE_RING; dx <= TILE_RING; dx += 1) {
           const x = center.x + dx;
           const y = center.y + dy;
           wanted.push({ z: center.z, x, y, key: `${center.z}/${x}/${y}` });
         }
       }
-      const next: WorldTileData[] = [];
-      const queue = wanted.filter((tile) => {
-        const hit = cache.current.get(tile.key);
-        if (hit) {
-          next.push(hit);
-          return false;
-        }
-        return true;
-      });
+      const wantedKeys = new Set(wanted.map((tile) => tile.key));
+      const queue = wanted.filter((tile) => !cache.current.has(tile.key));
+      publish(wantedKeys);
       let inflight = 0;
       await new Promise<void>((resolve) => {
         const kick = () => {
@@ -104,7 +129,7 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
               .then((buffer) => decode(buffer, tile.z, tile.x, tile.y))
               .then((data) => {
                 cache.current.set(tile.key, data);
-                next.push(data);
+                if (!dead) publish(wantedKeys);
               })
               .catch(() => undefined)
               .finally(() => {
@@ -116,21 +141,16 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
         kick();
       });
       if (dead) return;
-      setTiles(next);
-      const wantedKeys = new Set(wanted.map((tile) => tile.key));
       Array.from(cache.current.keys()).forEach((key) => {
         if (!wantedKeys.has(key)) cache.current.delete(key);
       });
-      const buildings = next.flatMap((tile) => tile.buildings.map((b) => b.ring));
-      const roads = next.flatMap((tile) => tile.roads.map((r) => r.line));
-      const parks = next.flatMap((tile) => tile.parks);
-      setColliders((current) => ({ buildings, roads, parks, label: current.label }));
     }
 
     void run();
     return () => {
       dead = true;
-      worker?.terminate();
+      worker?.removeEventListener('message', onMessage);
+      releaseWorker();
     };
   }, [center.x, center.y, center.z, enabled, originLat, originLng, tileKey]);
 

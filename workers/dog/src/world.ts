@@ -19,19 +19,19 @@ import {
   WALK_CAP_SESSION_M,
   WALK_SPEED,
   YAW_TURN,
-  applyDrive,
   clamp,
   gaitFromSpeed,
   headingYaw,
   normalizeInput,
+  placeFeeder,
   wrapAngle,
+  type Gait,
   type Pose,
   type YardState,
 } from './room';
 
 export const WORLD_TILE_ZOOM = 14;
 export const TRAVEL_COOLDOWN_MS = 25_000;
-export const WORLD_IDLE_HOME_MS = 90_000;
 export const WORLD_WANDER_M = 80;
 export const METERS_PER_DEG = 111_320;
 export const TILEJSON_URL = 'https://tiles.openfreemap.org/planet';
@@ -83,7 +83,7 @@ export const PLACES: Place[] = [
 export const HOME_PLACE_ID = 'wsp';
 export const HOME_PLACE = PLACES[0];
 
-export type LocationMode = 'home' | 'world';
+export type LocationMode = 'world';
 
 /** Shared "where is Biscuit". Additive: weather, stamps, events can join later without breaking pose. */
 export type Location = {
@@ -117,9 +117,9 @@ export function placeById(id: string): Place | undefined {
   return PLACES.find((place) => place.id === id);
 }
 
-export function createLocation(now: number, place: Place = HOME_PLACE, mode: LocationMode = 'home'): Location {
+export function createLocation(now: number, place: Place = HOME_PLACE, _mode: LocationMode | 'home' | 'yard' = 'world'): Location {
   return {
-    mode,
+    mode: 'world',
     lat: place.lat,
     lng: place.lng,
     heading: 0,
@@ -131,16 +131,35 @@ export function createLocation(now: number, place: Place = HOME_PLACE, mode: Loc
   };
 }
 
+export function isLegacyIndoorMode(mode: unknown) {
+  return mode === 'home' || mode === 'yard';
+}
+
 export function migrateLocation(value: Location | undefined, now: number): Location {
   if (!value || !Number.isFinite(value.lat) || !Number.isFinite(value.lng)) return createLocation(now);
   const place = placeById(value.placeId) ?? HOME_PLACE;
   return {
-    ...createLocation(now, place, value.mode === 'world' ? 'world' : 'home'),
+    ...createLocation(now, place),
     ...value,
+    mode: 'world',
     placeId: place.id,
+    heading: Number.isFinite(value.heading) ? value.heading : 0,
     originLat: Number.isFinite(value.originLat) ? value.originLat : place.lat,
     originLng: Number.isFinite(value.originLng) ? value.originLng : place.lng,
   };
+}
+
+/** Align a yard that still thinks it is indoors onto its last geo (or WSP). */
+export function settleWorldYard(yard: YardState, now: number): YardState {
+  const priorMode = yard.location?.mode;
+  const location = migrateLocation(yard.location, now);
+  const parked = lngLatToLocal(location.lat, location.lng, location.originLat, location.originLng);
+  const pose = isLegacyIndoorMode(priorMode)
+    ? { ...yard.pose, x: parked.x, z: parked.z, yaw: location.heading, vx: 0, vz: 0 }
+    : yard.pose;
+  const bowl =
+    Number.isFinite(yard.feeder.x) && Number.isFinite(yard.feeder.z) ? yard.feeder : { ...yard.feeder, ...placeFeeder(pose) };
+  return { ...yard, pose, location, feeder: bowl };
 }
 
 export function publicLocation(location: Location): PublicLocation {
@@ -380,29 +399,13 @@ export function applyWorldDrive(
   };
 }
 
+/** Old clients still send leave/home. Stay parked in the world. */
 export function applyLeaveWorld(yard: YardState, now: number): YardState {
-  const pose: Pose = { x: 0, z: 4, yaw: Math.PI, vx: 0, vz: 0, gait: 'walk' };
-  const prior = migrateLocation(yard.location, now);
-  const location = syncLocationFromPose(
-    { ...createLocation(now, HOME_PLACE, 'world'), lastTravelAt: prior.lastTravelAt, lastWorldInputAt: now },
-    pose,
-  );
-  return {
-    ...yard,
-    pose,
-    location,
-    ai: { mode: 'wander', until: now + 4_000, tx: 0, tz: 8 },
-  };
+  return settleWorldYard(yard, now);
 }
 
 export function applyGoHome(yard: YardState, now: number): YardState {
-  const home = HOME_PLACE;
-  return {
-    ...yard,
-    pose: { x: 0, z: -2.2, yaw: 0, vx: 0, vz: 0, gait: 'idle' },
-    location: { ...createLocation(now, home, 'home'), lastTravelAt: now, lastWorldInputAt: now },
-    ai: { mode: 'idle', until: now + 2_400, tx: 0, tz: 0 },
-  };
+  return settleWorldYard(yard, now);
 }
 
 export function applyTravel(yard: YardState, placeId: string, now: number): { ok: true; yard: YardState } | { ok: false; code: 'invalid' | 'too_soon' } {
@@ -415,13 +418,15 @@ export function applyTravel(yard: YardState, placeId: string, now: number): { ok
     lastTravelAt: now,
     lastWorldInputAt: now,
   };
+  const pose: Pose = { x: 0, z: 0, yaw: Math.PI, vx: 0, vz: 0, gait: 'idle' };
   return {
     ok: true,
     yard: {
       ...yard,
-      pose: { x: 0, z: 0, yaw: Math.PI, vx: 0, vz: 0, gait: 'idle' },
+      pose,
       location: next,
-      ai: { mode: 'wander', until: now + 3_600, tx: 6, tz: 4 },
+      feeder: { ...yard.feeder, ...placeFeeder(pose) },
+      ai: { mode: 'idle', until: now + 3_600, tx: 0, tz: 0 },
     },
   };
 }
@@ -435,54 +440,34 @@ export function applyHomeOrWorldDrive(
   now: number,
   proposed?: { x: number; z: number } | null,
 ): YardState {
-  const location = migrateLocation(yard.location, now);
-  if (location.mode !== 'world') {
-    return { ...applyDrive(yard, ax, az, run, dt, now), location };
-  }
-  return applyWorldDrive({ ...yard, location }, ax, az, run, dt, now, proposed);
+  const settled = settleWorldYard(yard, now);
+  return applyWorldDrive(settled, ax, az, run, dt, now, proposed);
 }
 
 export function tickWorldAi(
   yard: YardState,
   now: number,
-  dt: number,
-  opts: { hungry?: boolean; buildings?: Ring[]; roads?: Ring[]; parks?: Ring[] } = {},
+  _dt: number,
+  _opts: { hungry?: boolean; buildings?: Ring[]; roads?: Ring[]; parks?: Ring[] } = {},
 ): YardState {
-  const location = migrateLocation(yard.location, now);
-  if (location.mode !== 'world') return { ...yard, location };
-  if (yard.leash.holderId) return { ...yard, location };
-  if (opts.hungry || now - location.lastWorldInputAt > WORLD_IDLE_HOME_MS) {
-    return applyGoHome(yard, now);
-  }
-  let { tx, tz, until, mode } = yard.ai;
+  const settled = settleWorldYard(yard, now);
+  if (settled.leash.holderId) return settled;
+  let { until, mode } = settled.ai;
+  let gait: Gait = settled.pose.gait === 'run' || settled.pose.gait === 'walk' ? 'idle' : settled.pose.gait;
   if (now >= until) {
-    const angle = ((now / 900) % 360) * 0.017453;
-    const radius = 18 + (now % 37);
-    tx = Math.sin(angle) * radius;
-    tz = Math.cos(angle) * radius;
-    if (opts.roads && opts.roads.length) {
-      const road = nearestOnLines(tx, tz, opts.roads);
-      if (road.dist < 40) {
-        tx = road.x;
-        tz = road.z;
-      }
-    } else if (opts.parks && opts.parks.length) {
-      const park = opts.parks[now % opts.parks.length];
-      if (park[0]) {
-        tx = park[0].x;
-        tz = park[0].z;
-      }
-    }
-    until = now + 3_400;
-    mode = 'wander';
+    const cycle = ['idle', 'sniff', 'sit', 'idle'] as const;
+    const pick = cycle[Math.floor(now / 3_200) % cycle.length];
+    mode = pick;
+    gait = pick;
+    until = now + 2_800 + (now % 900);
   }
-  const steerX = tx - yard.pose.x;
-  const steerZ = tz - yard.pose.z;
-  const mag = Math.hypot(steerX, steerZ);
-  const ax = mag < 0.4 ? 0 : steerX / mag;
-  const az = mag < 0.4 ? 0 : steerZ / mag;
-  const next = applyWorldDrive({ ...yard, ai: { mode, until, tx, tz }, location }, ax, az, false, dt, now, null, opts.buildings ?? []);
-  return { ...next, location: { ...next.location!, lastWorldInputAt: location.lastWorldInputAt } };
+  const pose = { ...settled.pose, vx: 0, vz: 0, gait };
+  return {
+    ...settled,
+    pose,
+    location: syncLocationFromPose(settled.location!, pose),
+    ai: { mode, until, tx: pose.x, tz: pose.z },
+  };
 }
 
 /** Cheap local solar vector so Phase 3 can swap in a fuller model without changing the scene. */

@@ -147,10 +147,12 @@ export type DogFeeder = {
   hasFood: boolean;
   eating: boolean;
   near: boolean;
+  x?: number;
+  z?: number;
 };
 
 export type DogLocation = {
-  mode: 'home' | 'world';
+  mode: 'world' | 'home';
   lat: number;
   lng: number;
   heading: number;

@@ -8,7 +8,8 @@ import Companions from './Companions';
 import type { PortraitReaction } from './look';
 import { CAMERA_YAW, frameCamera, followYardCamera, projectMeshBounds } from './frame';
 import DogRig, { type DriveControl } from './DogRig';
-import PorchWorld from './PorchWorld';
+import WorldBowl from './WorldBowl';
+import { HOME_PLACE } from '../../workers/dog/src/world';
 import type { WorldColliders } from './world/useWorldTiles';
 
 const WorldLayer = lazy(() => import('./world/WorldLayer'));
@@ -21,6 +22,39 @@ export type WorldView = {
   flight: number;
   nightHint?: boolean;
 };
+
+function PerfProbe() {
+  const { gl } = useThree();
+  useFrame((_, dt) => {
+    const host = window as Window & {
+      __DOG_PERF?: {
+        fps: number;
+        frameMs: number;
+        calls: number;
+        triangles: number;
+        geometries: number;
+        textures: number;
+        memMB: number;
+        samples: number;
+      };
+    };
+    const info = gl.info;
+    const mem = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
+    const prev = host.__DOG_PERF;
+    const fps = dt > 0 ? 1 / dt : 0;
+    host.__DOG_PERF = {
+      fps: prev ? prev.fps * 0.9 + fps * 0.1 : fps,
+      frameMs: dt * 1000,
+      calls: info.render.calls,
+      triangles: info.render.triangles,
+      geometries: info.memory.geometries,
+      textures: info.memory.textures,
+      memMB: mem ? Math.round(mem.usedJSHeapSize / 1e6) : 0,
+      samples: (prev?.samples ?? 0) + 1,
+    };
+  });
+  return null;
+}
 
 function FootShadow({ target }: { target: RefObject<Group | null> }) {
   const ref = useRef<Mesh>(null);
@@ -200,7 +234,7 @@ export default function DogCanvas({
   asleep,
   night,
   happiness = 70,
-  hungry = false,
+  hungry: _hungry = false,
   sad = false,
   compact = false,
   interactive = false,
@@ -209,6 +243,7 @@ export default function DogCanvas({
   drive = null,
   food = false,
   near = false,
+  bowl = null,
   world = null,
   onWorldColliders,
   onReady,
@@ -232,6 +267,7 @@ export default function DogCanvas({
   drive?: DriveControl | null;
   food?: boolean;
   near?: boolean;
+  bowl?: { x: number; z: number } | null;
   world?: WorldView | null;
   onWorldColliders?: (colliders: WorldColliders) => void;
   onReady?: () => void;
@@ -299,38 +335,51 @@ export default function DogCanvas({
       className={`biscuit-scene ${night ? 'is-night' : ''} ${compact ? 'is-compact' : ''} ${fill ? 'is-fill' : ''} is-${reaction}`}
     >
       <Canvas
-        dpr={[1, 1.6]}
-        camera={{ position: world ? [0, 6.8, 15] : [3.4, 3.2, 6.4], fov: world ? 44 : fill ? 36 : compact ? 36 : 32, near: 0.1, far: world ? 560 : 80 }}
-        shadows
+        dpr={[1, 1.5]}
+        camera={{ position: [0, 6.8, 15], fov: 44, near: 0.1, far: 560 }}
         frameloop={frameloop}
-        gl={{ antialias: true, alpha: false, powerPreference: 'default' }}
+        gl={{
+          antialias: typeof window === 'undefined' ? false : window.devicePixelRatio < 1.25,
+          alpha: false,
+          powerPreference: 'high-performance',
+          stencil: false,
+        }}
         onCreated={({ gl }) => {
           gl.toneMapping = ACESFilmicToneMapping;
           gl.outputColorSpace = SRGBColorSpace;
           gl.toneMappingExposure = night ? 1.16 : 0.92;
+          gl.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
         }}
       >
+        <PerfProbe />
         <Suspense fallback={null}>
-          {world ? (
-            <WorldLayer
-              originLat={world.originLat}
-              originLng={world.originLng}
-              lat={world.lat}
-              lng={world.lng}
-              night={world.nightHint}
-              onColliders={onWorldColliders}
-            />
-          ) : (
-            <PorchWorld
-              night={night}
-              showBowl={hungry || food || reaction === 'feed'}
-              compact={compact}
-              walking={reaction === 'walk'}
-              food={food || reaction === 'feed'}
-              near={near || reaction === 'feed'}
-              gate
-            />
-          )}
+          {(() => {
+            const view = world ?? {
+              originLat: HOME_PLACE.lat,
+              originLng: HOME_PLACE.lng,
+              lat: HOME_PLACE.lat,
+              lng: HOME_PLACE.lng,
+              flight: 0,
+              nightHint: night,
+            };
+            return (
+              <WorldLayer
+                originLat={view.originLat}
+                originLng={view.originLng}
+                lat={view.lat}
+                lng={view.lng}
+                night={view.nightHint}
+                onColliders={onWorldColliders}
+              />
+            );
+          })()}
+          <WorldBowl
+            x={bowl?.x ?? 1.15}
+            z={bowl?.z ?? 0.55}
+            night={night}
+            food={food || reaction === 'feed'}
+            near={near || reaction === 'feed'}
+          />
           {!empty && (
             <DogRig
               ref={dogRef}
@@ -358,7 +407,16 @@ export default function DogCanvas({
               fill={fill}
               asleep={asleep || reaction === 'sleep'}
               stage={stage}
-              world={world}
+              world={
+                world ?? {
+                  originLat: HOME_PLACE.lat,
+                  originLng: HOME_PLACE.lng,
+                  lat: HOME_PLACE.lat,
+                  lng: HOME_PLACE.lng,
+                  flight: 0,
+                  nightHint: night,
+                }
+              }
               onReady={onReady}
               onAnchor={onAnchor}
             />

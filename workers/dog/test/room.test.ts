@@ -102,11 +102,13 @@ test('feeder only counts as in-radius when the dog is next to the bowl', () => {
   assert.equal(far.room.yard?.feeder.hasFood, true);
   assert.equal(far.fed, undefined);
 
+  const yard = createYard(T0);
+  const bowl = yard.feeder;
   const nearRoom = {
     ...room,
     yard: {
-      ...createYard(T0),
-      pose: { x: FEEDER.x + 0.2, z: FEEDER.z, yaw: 0, vx: 0, vz: 0, gait: 'idle' as const },
+      ...yard,
+      pose: { x: (bowl.x ?? 0) + 0.2, z: bowl.z ?? 0, yaw: 0, vx: 0, vz: 0, gait: 'idle' as const },
     },
   };
   nearRoom.dog = { ...room.dog, lastFedAt: T0 - 20 * 60 * 1000 };

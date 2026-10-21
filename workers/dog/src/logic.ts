@@ -20,24 +20,23 @@ import {
   markWalkCredited,
   migrateYard,
   nearFeeder,
+  placeFeeder,
   publicFeeder,
   publicLeash,
   publicPose,
   releaseLeash,
   startEating,
-  tickYardAi,
   tryAcquireLeash,
   walkCreditPending,
   WALK_CREDIT_M,
   type YardState,
 } from './room';
 import {
-  applyGoHome,
   applyHomeOrWorldDrive,
-  applyLeaveWorld,
   applyTravel,
   migrateLocation,
   publicLocation,
+  settleWorldYard,
   tickWorldAi,
   type PublicLocation,
 } from './world';
@@ -282,6 +281,8 @@ export type PublicFeeder = {
   hasFood: boolean;
   eating: boolean;
   near: boolean;
+  x?: number;
+  z?: number;
 };
 
 export type PublicSnapshot = {
@@ -396,13 +397,13 @@ export function migrateRoom(room: RoomState, now = Date.now()): RoomState {
     dog: room.dog ? withGenome(room.dog) : null,
     memorial: room.memorial ? withGenome(room.memorial) : null,
     history: room.history.map((record) => withGenome(record)),
-    yard: withLocation(migrateYard(room.yard, now), now),
+    yard: settleWorldYard(migrateYard(room.yard, now), now),
     companions: room.companions ?? {},
   };
 }
 
 function withLocation(yard: YardState, now: number): YardState {
-  return { ...yard, location: migrateLocation(yard.location, now) };
+  return settleWorldYard(yard, now);
 }
 
 export function usedNameIds(room: RoomState) {
@@ -993,12 +994,8 @@ export function applyWorldAction(
   if (!acquired.ok) {
     return { room: { ...current, yard: acquired.yard }, acquired: false, code: acquired.code, retryAfterMs: acquired.retryAfterMs };
   }
-  if (kind === 'leave') {
-    if (acquired.yard.location?.mode === 'world') return { room: { ...current, yard: acquired.yard }, acquired: true };
-    return { room: { ...current, yard: applyLeaveWorld(acquired.yard, now) }, acquired: true };
-  }
-  if (kind === 'home') {
-    return { room: { ...current, yard: applyGoHome(acquired.yard, now) }, acquired: true };
+  if (kind === 'leave' || kind === 'home') {
+    return { room: { ...current, yard: acquired.yard }, acquired: true };
   }
   const traveled = applyTravel(acquired.yard, placeId ?? '', now);
   if (!traveled.ok) return { room: { ...current, yard: acquired.yard }, acquired: true, code: traveled.code };
@@ -1011,11 +1008,8 @@ export function applyBowlAction(
 ): { room: RoomState; fed?: ActionResult; code?: ErrorCode } {
   const current = applyDecay(room, now);
   const yard = withLocation(migrateYard(current.yard, now), now);
-  if (yard.location?.mode === 'world') {
-    return { room: { ...current, yard }, code: 'too_far' };
-  }
   const filled = fillFeeder(yard, now);
-  if (!nearFeeder(filled.pose.x, filled.pose.z)) {
+  if (!nearFeeder(filled.pose.x, filled.pose.z, filled.feeder)) {
     return { room: { ...current, yard: filled }, code: 'too_far' };
   }
   const allowed = canStartCare({ ...current, yard: filled }, 'feed', now);
@@ -1035,14 +1029,7 @@ export function tickSharedYard(room: RoomState, now: number, dt: number): { room
   const dog = current.dog;
   const care = dog ? careView(dog, now) : null;
   const hungry = Boolean(care && (care.feedOverdue || care.hunger > 58));
-  const nextYard =
-    yard.location?.mode === 'world'
-      ? tickWorldAi(yard, now, dt, { hungry })
-      : tickYardAi(yard, now, dt, {
-          hungry,
-          tired: Boolean(dog && dog.energy < 28),
-          asleep: Boolean(dog?.asleep),
-        });
+  const nextYard = tickWorldAi(yard, now, dt, { hungry });
   let next = { ...current, yard: nextYard };
   if (
     yard.feeder.hasFood &&
@@ -1089,7 +1076,15 @@ export function applyCatch(
       history: allowed.room.history,
       lastCatchAt: now,
       pendingName: { token, until: now + NAME_WINDOW_MS },
-      yard: createYard(now),
+      yard: (() => {
+        const parked = settleWorldYard(migrateYard(allowed.room.yard, now), now);
+        return {
+          ...createYard(now),
+          pose: { ...parked.pose, vx: 0, vz: 0, gait: 'idle' as const },
+          location: parked.location,
+          feeder: { ...createYard(now).feeder, ...placeFeeder(parked.pose) },
+        };
+      })(),
     },
     event,
   };

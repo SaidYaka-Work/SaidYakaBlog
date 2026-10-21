@@ -131,10 +131,10 @@ export default async function HomePage() {
           className="lift-card flex flex-col gap-2 rounded-[1.6rem] border border-[var(--line)] bg-[var(--bg-elevated)] px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
         >
           <div>
-            <p className="text-xs uppercase tracking-[0.16em] text-[var(--accent)]">The porch</p>
+            <p className="text-xs uppercase tracking-[0.16em] text-[var(--accent)]">The city</p>
             <p className="mt-2 font-serif text-2xl tracking-tight">The internet has a dog</p>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Biscuit lives here. Everyone who visits looks after the same one.
+              Biscuit lives out in the world. Everyone who visits looks after the same one.
             </p>
           </div>
           <span className="text-sm text-[var(--ink)]">Meet him →</span>

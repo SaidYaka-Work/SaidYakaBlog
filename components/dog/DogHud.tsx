@@ -25,7 +25,6 @@ export default function DogHud({
   hint,
   touch,
   near,
-  inWorld,
   placeName,
   streetName,
   worldReady,
@@ -38,7 +37,6 @@ export default function DogHud({
   onHall,
   onCatch,
   onStick,
-  onHome,
   onTravel,
   onToggleTravel,
   thoughtAnchor = null,
@@ -63,7 +61,6 @@ export default function DogHud({
   hint?: boolean;
   touch?: boolean;
   near?: boolean;
-  inWorld?: boolean;
   placeName?: string;
   streetName?: string;
   worldReady?: boolean;
@@ -76,7 +73,6 @@ export default function DogHud({
   onHall: () => void;
   onCatch: () => void;
   onStick?: (ax: number, az: number) => void;
-  onHome?: () => void;
   onTravel?: (placeId: string) => void;
   onToggleTravel?: () => void;
   thoughtAnchor?: { x: number; y: number } | null;
@@ -106,14 +102,9 @@ export default function DogHud({
       </div>
 
       <div className="dog-chips">
-        <span className="dog-chip" title="Neighbors on the porch">
+        <span className="dog-chip" title="Neighbors nearby">
           👥 {Math.max(presence, neighborCount)}
         </span>
-        {worldReady && inWorld && (
-          <button type="button" className="dog-chip" onClick={onHome}>
-            Home
-          </button>
-        )}
         {worldReady && (
           <button type="button" className="dog-chip" onClick={onToggleTravel} aria-expanded={travelOpen}>
             Travel
@@ -179,7 +170,7 @@ export default function DogHud({
         ))}
       </div>
 
-      {inWorld && (placeName || streetName) && (
+      {(placeName || streetName) && (
         <p className="dog-place" role="status">
           <span aria-hidden="true">N</span>
           {streetCaption(streetName, placeName)}
@@ -197,14 +188,11 @@ export default function DogHud({
         </div>
       )}
 
-      {hint && !empty && !near && !inWorld && (
-        <p className="dog-hint">{touch ? 'Joystick to walk · Feed at the bowl' : 'WASD to walk · through the gate for the world'}</p>
-      )}
-      {hint && !empty && inWorld && (
-        <p className="dog-hint">{touch ? 'Joystick to walk · Home to return' : 'WASD to walk · Home or Travel'}</p>
+      {hint && !empty && !near && (
+        <p className="dog-hint">{touch ? 'Joystick to walk · Feed at the bowl' : 'WASD to walk · Travel to a park'}</p>
       )}
 
-      {attribution && inWorld && <p className="dog-attrib">{attribution}</p>}
+      {attribution && <p className="dog-attrib">{attribution}</p>}
 
       {near && !empty && (
         <p className="dog-prompt" role="status">

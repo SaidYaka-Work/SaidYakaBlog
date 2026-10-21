@@ -20,7 +20,7 @@ import NamePicker from './NamePicker';
 import WalkGame from './WalkGame';
 import { playDogSfx } from './dogSound';
 import useDogDrive from './useDogDrive';
-import { nearFeeder, nearGate } from '../../workers/dog/src/room';
+import { nearFeeder } from '../../workers/dog/src/room';
 import { ATTRIBUTION, HOME_PLACE, PLACES, placeById, sunDirection } from '../../workers/dog/src/world';
 import type { WorldView } from './DogCanvas';
 import type { WorldColliders } from './world/useWorldTiles';
@@ -46,12 +46,12 @@ const ERRORS: Record<string, string> = {
   too_tired: 'He is too tired for that.',
   too_soon: 'Give him a moment.',
   gone: 'Nobody is on the rug right now.',
-  too_far: 'Feed him at the home feeder.',
+  too_far: 'Walk him to the bowl.',
   busy: 'A visitor already has the leash. You are in line.',
-  home: 'A dog is already home.',
+  home: 'A dog is already out in the city.',
   missed: 'The stray slipped past. Try again.',
   invalid: 'Pick a name from the list.',
-  porch_busy: 'Too many neighbors on the porch.',
+  porch_busy: 'Too many neighbors nearby.',
   not_catcher: 'Only the catcher can pick the name.',
   too_late: 'The naming window closed.',
   named: 'This dog already has a name.',
@@ -85,7 +85,6 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const [clientId, setClientId] = useState<string | null>(null);
   const [hint, setHint] = useState(true);
   const [nearBowl, setNearBowl] = useState(false);
-  const [localWorld, setLocalWorld] = useState(false);
   const [localPlaceId, setLocalPlaceId] = useState(HOME_PLACE.id);
   const [travelOpen, setTravelOpen] = useState(false);
   const [flight, setFlight] = useState(0);
@@ -95,8 +94,10 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const [localEmote, setLocalEmote] = useState<DogEmote | null>(null);
   const [selfHere, setSelfHere] = useState({ x: 0.95, z: -0.55 });
   const colliders = useRef<WorldColliders>({ buildings: [], roads: [], parks: [], label: '' });
-  const leftGate = useRef(false);
   const localPose = useRef<{ x: number; z: number } | null>(null);
+  const poseRef = useRef<DogSnapshot['pose'] | null>(null);
+  const lastHudAt = useRef(0);
+  const lastSelfHud = useRef(0);
   const feedRef = useRef<() => void>(() => undefined);
   const socket = useRef<WebSocket | null>(null);
   const toastId = useRef(1);
@@ -140,7 +141,6 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       if (next === 'sleep') setReaction('sleep');
       if (next === 'eat') setReaction('feed');
       if (next === 'pose-walk') setReaction('walk');
-      if (next === 'world' || next === 'travel') setLocalWorld(true);
       if (next === 'world' || next === 'travel' || next === 'leash') setReaction(next === 'leash' ? 'idle' : 'walk');
       if (next === 'room' || next === 'gate' || next === 'presence') setReaction('idle');
       if (next === 'travel') {
@@ -156,7 +156,6 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
     const place = params.get('place');
     if (place && placeById(place)) {
       setLocalPlaceId(place);
-      if (next === 'world' || next === 'travel' || !next) setLocalWorld(true);
     }
     try {
       const stored = localStorage.getItem('biscuit-muted');
@@ -195,6 +194,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   }, []);
 
   const apply = useCallback((data: DogSnapshot) => {
+    if (data.pose) poseRef.current = data.pose;
+    lastHudAt.current = Date.now();
     setSnapshot(data);
     setReach('up');
     setProgress((value) => Math.max(value, 78));
@@ -258,18 +259,26 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         if (message.type === 'pose') {
           const pose = message;
           setReach('up');
-          setSnapshot((current) =>
-            current
-              ? {
-                  ...current,
-                  pose: pose.pose ?? current.pose,
-                  leash: pose.leash ?? current.leash,
-                  feeder: pose.feeder ?? current.feeder,
-                  location: pose.location ?? current.location,
-                  companions: pose.companions ?? current.companions,
-                }
-              : current,
-          );
+          setSnapshot((current) => {
+            if (!current) return current;
+            const next = {
+              ...current,
+              pose: pose.pose ?? current.pose,
+              leash: pose.leash ?? current.leash,
+              feeder: pose.feeder ?? current.feeder,
+              location: pose.location ?? current.location,
+              companions: pose.companions ?? current.companions,
+            };
+            if (next.pose) poseRef.current = next.pose;
+            const leashChanged =
+              next.leash?.holderId !== current.leash?.holderId ||
+              next.leash?.nextId !== current.leash?.nextId ||
+              (next.companions?.length ?? 0) !== (current.companions?.length ?? 0);
+            const now = Date.now();
+            if (!leashChanged && now - lastHudAt.current < 200) return current;
+            lastHudAt.current = now;
+            return next;
+          });
         }
         if (message.type === 'state') {
           apply(message);
@@ -405,7 +414,6 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         : preview === 'sleep'
           ? 'sleep'
           : 'idle';
-  const yardNight = lightOverride === 'night' || (lightOverride !== 'day' && Boolean(dog?.night));
   const worldNightHint =
     lightOverride === 'night' ? true : lightOverride === 'day' ? false : undefined;
   const overlay = play || (awaitingName && canName) || panel;
@@ -433,29 +441,15 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const hideDrive = preview === 'eat' || preview === 'sleep' || preview === 'pose-walk';
   const inRange = preview === 'eat' || Boolean(snapshot?.feeder?.near) || nearBowl;
   const worldReady = Boolean(snapshot?.location) || previewing || !worker;
-  const serverWorld = snapshot?.location?.mode === 'world';
-  const inWorld = serverWorld || localWorld || preview === 'world' || preview === 'travel';
   const activePlace = placeById((previewing && localPlaceId) || snapshot?.location?.placeId || localPlaceId) ?? HOME_PLACE;
-  const worldView: WorldView | null = inWorld
-    ? {
-        originLat: previewing ? activePlace.lat : snapshot?.location?.originLat ?? activePlace.lat,
-        originLng: previewing ? activePlace.lng : snapshot?.location?.originLng ?? activePlace.lng,
-        lat: previewing ? activePlace.lat : snapshot?.location?.lat ?? activePlace.lat,
-        lng: previewing ? activePlace.lng : snapshot?.location?.lng ?? activePlace.lng,
-        flight,
-        nightHint: worldNightHint,
-      }
-    : null;
-
-  const goHome = useCallback(() => {
-    if (snapshot?.location) send({ type: 'home' });
-    leftGate.current = false;
-    setLocalWorld(false);
-    setLocalPlaceId(HOME_PLACE.id);
-    setTravelOpen(false);
-    setFlight(0.85);
-    pushToast('Back on the porch.');
-  }, [pushToast, snapshot?.location]);
+  const worldView: WorldView = {
+    originLat: previewing ? activePlace.lat : snapshot?.location?.originLat ?? activePlace.lat,
+    originLng: previewing ? activePlace.lng : snapshot?.location?.originLng ?? activePlace.lng,
+    lat: previewing ? activePlace.lat : snapshot?.location?.lat ?? activePlace.lat,
+    lng: previewing ? activePlace.lng : snapshot?.location?.lng ?? activePlace.lng,
+    flight,
+    nightHint: worldNightHint,
+  };
 
   const goTravel = useCallback(
     (placeId: string) => {
@@ -463,7 +457,6 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       if (snapshot?.location) send({ type: 'travel', placeId });
       else {
         setLocalPlaceId(placeId);
-        setLocalWorld(true);
       }
       setTravelOpen(false);
       setFlight(1);
@@ -494,10 +487,6 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
 
   function feedHim() {
     hideHint();
-    if (inWorld) {
-      pushToast('Dinner is at home. Walk him back through the gate, or tap Home.');
-      return;
-    }
     if (shared) {
       send({ type: 'bowl' });
       return;
@@ -518,24 +507,27 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       ax: input.ax,
       az: input.az,
       run: input.run,
-      ...(snapshot?.location && inWorld && localPose.current
+      ...(snapshot?.location && localPose.current
         ? { wx: localPose.current.x, wz: localPose.current.z }
         : {}),
     });
-  }, [inWorld, input, overlay, playing, shared, snapshot?.location]);
+  }, [input, overlay, playing, shared, snapshot?.location]);
 
   useEffect(() => {
     if (!playing || overlay || !shared || previewing || youHold) return;
     const moving = Math.hypot(input.ax, input.az) > 0.12;
     if (!moving) return;
     const now = performance.now();
-    if (now - lastHere.current < 130) return;
+    if (now - lastHere.current < 150) return;
     lastHere.current = now;
     mine.current = {
       x: mine.current.x + input.ax * 0.18,
       z: mine.current.z + input.az * 0.18,
     };
-    setSelfHere({ ...mine.current });
+    if (now - lastSelfHud.current >= 200) {
+      lastSelfHud.current = now;
+      setSelfHere({ ...mine.current });
+    }
     send({ type: 'here', x: mine.current.x, z: mine.current.z });
   }, [input, overlay, playing, previewing, shared, youHold]);
 
@@ -547,19 +539,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   useEffect(() => {
     if (previewRef.current) return;
     if (!snapshot?.location) return;
-    if (snapshot.location.mode === 'world') {
-      setLocalWorld(true);
-      setLocalPlaceId(snapshot.location.placeId);
-      return;
-    }
-    setLocalWorld(false);
-    leftGate.current = false;
-    setLocalPlaceId(HOME_PLACE.id);
+    setLocalPlaceId(snapshot.location.placeId);
   }, [snapshot?.location]);
-
-  useEffect(() => {
-    if (!inWorld) setStreetName('');
-  }, [inWorld]);
 
   const flying = flight > 0;
   useEffect(() => {
@@ -603,21 +584,10 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const handlePose = useCallback(
     (pose: { x: number; z: number }) => {
       localPose.current = pose;
-      if (inWorld) {
-        setNearBowl(false);
-        return;
-      }
-      const bowl = nearFeeder(pose.x, pose.z);
+      const bowl = nearFeeder(pose.x, pose.z, snapshot?.feeder);
       setNearBowl((current) => (current === bowl ? current : bowl));
-      if (!worldReady || !nearGate(pose.x, pose.z) || leftGate.current) return;
-      leftGate.current = true;
-      if (snapshot?.location) send({ type: 'leave' });
-      setLocalWorld(true);
-      setLocalPlaceId(HOME_PLACE.id);
-      setFlight(0.12);
-      pushToast('Out into the city.');
     },
-    [inWorld, pushToast, snapshot?.location, worldReady],
+    [snapshot?.feeder],
   );
 
   const drive = hideDrive
@@ -625,13 +595,14 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
     : {
         input,
         server: previewing ? null : snapshot?.pose ?? null,
+        serverRef: previewing ? undefined : poseRef,
         youHold: previewing || youHold,
         localOnly: previewing || !shared,
-        realm: inWorld ? ('world' as const) : ('home' as const),
-        originKey: inWorld ? `${activePlace.id}:${worldView?.originLat},${worldView?.originLng}` : 'home',
-        buildings: inWorld ? colliders.current.buildings : undefined,
-        roads: inWorld ? colliders.current.roads : undefined,
-        parks: inWorld ? colliders.current.parks : undefined,
+        realm: 'world' as const,
+        originKey: `${activePlace.id}:${worldView.originLat},${worldView.originLng}`,
+        buildings: colliders.current.buildings,
+        roads: colliders.current.roads,
+        parks: colliders.current.parks,
         onPose: handlePose,
       };
 
@@ -644,7 +615,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           genome={dog.genome}
           asleep={poseAsleep}
           reaction={poseReaction}
-          night={inWorld ? (worldNightHint ?? sunDirection(worldView!.lat, worldView!.lng, Date.now()).night) : yardNight}
+          night={worldNightHint ?? sunDirection(worldView.lat, worldView.lng, Date.now()).night}
           stage={dog.stage}
           happiness={dog.happiness}
           hungry={hungry}
@@ -653,6 +624,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           fill
           food={Boolean(snapshot?.feeder?.hasFood || snapshot?.feeder?.eating)}
           near={inRange}
+          bowl={snapshot?.feeder && Number.isFinite(snapshot.feeder.x) ? { x: snapshot.feeder.x!, z: snapshot.feeder.z! } : { x: 1.15, z: 0.55 }}
           world={worldView}
           drive={drive}
           onWorldColliders={onWorldColliders}
@@ -667,7 +639,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           genome={generateGenome(previewing ? 'biscuit-porch-1' : 'napping-biscuit')}
           asleep={fallbackAsleep}
           reaction={fallbackReaction}
-          night={inWorld ? (worldNightHint ?? sunDirection(worldView!.lat, worldView!.lng, Date.now()).night) : yardNight}
+          night={worldNightHint ?? sunDirection(worldView.lat, worldView.lng, Date.now()).night}
           stage="puppy"
           happiness={72}
           hungry={hungry}
@@ -677,6 +649,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           empty={!napping && !previewing && awaitingCatch}
           food={preview === 'eat'}
           near={inRange}
+          bowl={{ x: 1.15, z: 0.55 }}
           world={worldView}
           drive={previewing ? drive : null}
           onWorldColliders={onWorldColliders}
@@ -706,8 +679,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           hint={hint}
           touch={touch}
           near={inRange}
-          inWorld={inWorld}
-          placeName={inWorld ? `${activePlace.name}, ${activePlace.city}` : undefined}
+          placeName={`${activePlace.name}, ${activePlace.city}`}
           streetName={streetName}
           worldReady={worldReady}
           travelOpen={travelOpen}
@@ -727,7 +699,6 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
             start('catch');
           }}
           onStick={setStick}
-          onHome={goHome}
           onTravel={goTravel}
           onToggleTravel={() => setTravelOpen((open) => !open)}
           thoughtAnchor={thoughtAnchor}
@@ -748,7 +719,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
 
       {!playing && (
         <div className="dog-start">
-          <p className="dog-start-kicker">the porch</p>
+          <p className="dog-start-kicker">out in the city</p>
           <p className="dog-start-title">{shownName}</p>
           <div className="dog-start-bar" aria-hidden="true">
             <i style={{ width: `${Math.min(100, progress)}%` }} />
@@ -789,7 +760,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
               <h2>Biscuit is napping</h2>
             </div>
             <div className="dog-modal-body">
-              <p>back soon</p>
+              <p>out in the city · back soon</p>
             </div>
           </div>
         </div>

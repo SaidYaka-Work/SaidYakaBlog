@@ -44,6 +44,7 @@ type Wander = { mode: 'idle' | 'look' | 'turn' | 'step'; t: number; next: number
 export type DriveControl = {
   input: { ax: number; az: number; run: boolean };
   server: DogPose | null;
+  serverRef?: { current: DogPose | null };
   youHold: boolean;
   localOnly: boolean;
   onPose?: (pose: DogPose) => void;
@@ -112,6 +113,7 @@ const DogRig = forwardRef<Group, {
   const remoteBuf = useRef<PoseSample[]>([]);
   const hopAt = useRef(0);
   const lastStick = useRef(0);
+  const lastOnPose = useRef(0);
   const originKey = useRef(drive?.originKey || '');
   useImperativeHandle(ref, () => group.current as Group);
 
@@ -186,13 +188,14 @@ const DogRig = forwardRef<Group, {
 
     if (driving && control) {
       const now = Date.now();
+      const server = control.serverRef?.current ?? control.server;
       if (control.youHold || control.localOnly) {
         if (control.originKey && control.originKey !== originKey.current) {
           originKey.current = control.originKey;
-          if (control.server) {
-            localYard.current.pose.x = control.server.x;
-            localYard.current.pose.z = control.server.z;
-            localYard.current.pose.yaw = control.server.yaw;
+          if (server) {
+            localYard.current.pose.x = server.x;
+            localYard.current.pose.z = server.z;
+            localYard.current.pose.yaw = server.yaw;
           } else {
             localYard.current.pose.x = 0;
             localYard.current.pose.z = 0;
@@ -223,22 +226,26 @@ const DogRig = forwardRef<Group, {
             ? tickYardAi(localYard.current, now, dt)
             : stepDrive(localYard.current, control.input.ax, control.input.az, control.input.run, dt, now);
         }
-        const mixed = reconcileDriver(localYard.current.pose, control.server);
+        const mixed = reconcileDriver(localYard.current.pose, server);
         localYard.current.pose.x = mixed.x;
         localYard.current.pose.z = mixed.z;
         localYard.current.pose.yaw = mixed.yaw;
         w.x = localYard.current.pose.x;
         w.z = localYard.current.pose.z;
         w.yaw = localYard.current.pose.yaw;
-        const gait = control.server?.gait === 'eat' ? 'eat' : localYard.current.pose.gait;
+        const gait = server?.gait === 'eat' ? 'eat' : localYard.current.pose.gait;
         const clip = clipForGait(gait, sad, asleep && gait !== 'walk' && gait !== 'run');
         play(clip);
         const action = actions.current[clip];
         const speed = Math.hypot(localYard.current.pose.vx, localYard.current.pose.vz);
         action?.setEffectiveTimeScale(strideTimeScale(clip, speed, figure.timeScale * (sad ? 0.7 : 1)));
-        control.onPose?.({ x: w.x, z: w.z, yaw: w.yaw, gait });
-      } else if (control.server) {
-        pushSample(remoteBuf.current, { at: now, ...control.server });
+        if (now - lastOnPose.current >= 80) {
+          lastOnPose.current = now;
+          control.onPose?.({ x: w.x, z: w.z, yaw: w.yaw, gait });
+        }
+      } else if (server) {
+        const last = remoteBuf.current[remoteBuf.current.length - 1];
+        if (!last || last.at !== now) pushSample(remoteBuf.current, { at: now, ...server });
         const sampled = sampleBuffer(remoteBuf.current, now);
         if (sampled) {
           w.x = sampled.x;
@@ -246,7 +253,10 @@ const DogRig = forwardRef<Group, {
           w.yaw = sampled.yaw;
           play(clipForGait(sampled.gait, sad, asleep && sampled.gait === 'lie'));
         }
-        control.onPose?.(control.server);
+        if (now - lastOnPose.current >= 80) {
+          lastOnPose.current = now;
+          control.onPose?.(server);
+        }
       }
     }
 
@@ -326,7 +336,8 @@ const DogRig = forwardRef<Group, {
       }
     }
 
-    const lieDown = (asleep && !driving) || (driving && (localYard.current.pose.gait === 'lie' || control?.server?.gait === 'lie'));
+    const liveServer = control?.serverRef?.current ?? control?.server;
+    const lieDown = (asleep && !driving) || (driving && (localYard.current.pose.gait === 'lie' || liveServer?.gait === 'lie'));
     const yard = roomy ? YARD_BODY[stage] ?? 1 : 1;
     const hop = reaction === 'pet' && !driving ? hopHeight(hopAt.current, performance.now()) : 0;
     node.position.set(w.x, 0, w.z);
@@ -335,11 +346,11 @@ const DogRig = forwardRef<Group, {
 
     const wag = asleep || sad || lieDown ? 0 : (performance.now() / 1000) * (1000 / Math.max(180, wagMs(happiness, asleep, sad))) * Math.PI * 2;
     applyMoodBones(scene, {
-      sad: sad || control?.server?.gait === 'sniff',
+      sad: sad || liveServer?.gait === 'sniff',
       asleep: lieDown,
       lookX: lookRef.current.x + w.look,
       lookY: lookRef.current.y,
-      eat: eating || control?.server?.gait === 'eat' || localYard.current.pose.gait === 'eat',
+      eat: eating || liveServer?.gait === 'eat' || localYard.current.pose.gait === 'eat',
       wag,
     });
     scene.traverse((child) => {

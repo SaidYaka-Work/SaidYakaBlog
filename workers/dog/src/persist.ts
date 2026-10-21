@@ -2,8 +2,8 @@
  * Durable Object write budget for the shared dog.
  *
  * Hot yard/pose/leash/ai/presence/location/feeder stay in memory.
- * SQLite rows are written only on meaningful care/life events, or at most
- * once every PERSIST_MIN_MS while dirty. One batched put per flush.
+ * SQLite rows are written only on meaningful care/life/travel/park events, or at most
+ * once every PERSIST_MIN_MS while dirty. Pose ticks never write by themselves.
  */
 
 import { applyDecay, applyVisitorMove, createRoom, migrateRoom, tickSharedYard, type RoomState } from './logic';
@@ -24,7 +24,7 @@ export type PersistReason =
   | 'catch'
   | 'name'
   | 'travel'
-  | 'home';
+  | 'park';
 
 export type PersistKind = 'read' | 'connect' | 'tick' | 'action';
 
@@ -38,7 +38,7 @@ export const MEANINGFUL_REASONS = new Set<PersistReason>([
   'catch',
   'name',
   'travel',
-  'home',
+  'park',
 ]);
 
 export function persistReason(prev: RoomState, next: RoomState): PersistReason | null {
@@ -60,11 +60,10 @@ export function persistReason(prev: RoomState, next: RoomState): PersistReason |
       return 'walk';
     }
   }
+  if (prev.yard?.leash.holderId && !next.yard?.leash.holderId) return 'park';
   const prevLoc = prev.yard?.location;
   const nextLoc = next.yard?.location;
-  if (prevLoc && nextLoc && (prevLoc.mode !== nextLoc.mode || prevLoc.placeId !== nextLoc.placeId)) {
-    return nextLoc.mode === 'home' ? 'home' : 'travel';
-  }
+  if (prevLoc && nextLoc && prevLoc.placeId !== nextLoc.placeId) return 'travel';
   return null;
 }
 

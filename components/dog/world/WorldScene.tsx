@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import {
   BoxGeometry,
@@ -30,15 +30,64 @@ function shapeFrom(ring: { x: number; z: number }[]) {
   return shape;
 }
 
-function mergeChunks(geos: BufferGeometry[], size = 36) {
-  const chunks: BufferGeometry[] = [];
-  for (let i = 0; i < geos.length; i += size) {
-    const slice = geos.slice(i, i + size);
-    const merged = mergeGeometries(slice, false);
-    slice.forEach((geo) => geo.dispose());
-    if (merged) chunks.push(merged);
+function mergeAll(geos: BufferGeometry[]) {
+  if (!geos.length) return [] as BufferGeometry[];
+  const merged = mergeGeometries(geos, false);
+  geos.forEach((geo) => geo.dispose());
+  return merged ? [merged] : [];
+}
+
+type BuiltTile = {
+  key: string;
+  buildings: BufferGeometry[];
+  roofs: BufferGeometry[];
+  parks: BufferGeometry | null;
+  water: BufferGeometry | null;
+  sidewalks: BufferGeometry | null;
+  roads: BufferGeometry | null;
+  major: BufferGeometry | null;
+};
+
+function disposeBuilt(tile: BuiltTile) {
+  tile.buildings.forEach((geo) => geo.dispose());
+  tile.roofs.forEach((geo) => geo.dispose());
+  tile.parks?.dispose();
+  tile.water?.dispose();
+  tile.sidewalks?.dispose();
+  tile.roads?.dispose();
+  tile.major?.dispose();
+}
+
+function tileAnchor(tile: WorldTileData) {
+  if (tile.labels[0]) return tile.labels[0];
+  if (tile.buildings[0]) return centroid(tile.buildings[0].ring);
+  if (tile.roads[0]?.line[0]) return tile.roads[0].line[0];
+  return { x: 0, z: 0 };
+}
+
+function pushBuilding(building: WorldTileData['buildings'][number], walls: BufferGeometry[], roofs: BufferGeometry[], withRoof: boolean) {
+  try {
+    const height = Math.max(3.2, building.height - building.min);
+    const geo = new ExtrudeGeometry(shapeFrom(building.ring), {
+      depth: height,
+      bevelEnabled: false,
+      curveSegments: 1,
+    });
+    geo.rotateX(-Math.PI / 2);
+    geo.translate(0, building.min, 0);
+    const mid = centroid(building.ring);
+    paintBuilding(geo, facadeTint(mid.x, mid.z), height);
+    walls.push(geo);
+    if (!withRoof) return;
+    const box = ringBounds(building.ring);
+    if (box.w > 1.2 && box.d > 1.2) {
+      const cap = new BoxGeometry(box.w + 0.2, 0.32, box.d + 0.2);
+      cap.translate((box.minX + box.maxX) / 2, building.min + height + 0.1, (box.minZ + box.maxZ) / 2);
+      roofs.push(cap);
+    }
+  } catch {
+    // skip a broken ring
   }
-  return chunks;
 }
 
 function paintBuilding(geo: BufferGeometry, tint: readonly number[], height: number) {
@@ -55,35 +104,17 @@ function paintBuilding(geo: BufferGeometry, tint: readonly number[], height: num
   geo.setAttribute('aHeight', new BufferAttribute(heights, 1));
 }
 
-function extrudeBuildings(tiles: WorldTileData[]) {
-  const walls: BufferGeometry[] = [];
-  const roofs: BufferGeometry[] = [];
-  for (const tile of tiles) {
-    for (const building of tile.buildings) {
-      try {
-        const height = Math.max(3.2, building.height - building.min);
-        const geo = new ExtrudeGeometry(shapeFrom(building.ring), {
-          depth: height,
-          bevelEnabled: false,
-          curveSegments: 1,
-        });
-        geo.rotateX(-Math.PI / 2);
-        geo.translate(0, building.min, 0);
-        const mid = centroid(building.ring);
-        paintBuilding(geo, facadeTint(mid.x, mid.z), height);
-        walls.push(geo);
-        const box = ringBounds(building.ring);
-        if (box.w > 1.2 && box.d > 1.2) {
-          const cap = new BoxGeometry(box.w + 0.2, 0.32, box.d + 0.2);
-          cap.translate((box.minX + box.maxX) / 2, building.min + height + 0.1, (box.minZ + box.maxZ) / 2);
-          roofs.push(cap);
-        }
-      } catch {
-        // skip a broken ring
-      }
-    }
-  }
-  return { walls: mergeChunks(walls), roofs: mergeChunks(roofs, 48) };
+function finishTile(tile: WorldTileData, walls: BufferGeometry[], roofs: BufferGeometry[], lod: boolean): BuiltTile {
+  return {
+    key: tile.key,
+    buildings: mergeAll(walls),
+    roofs: mergeAll(roofs),
+    parks: flattenRings(tile.parks, 0.018),
+    water: flattenRings(tile.water, 0.008),
+    sidewalks: ribbon([tile], 1.15, 0.016),
+    roads: ribbon([tile], 0, 0.03),
+    major: lod ? null : ribbon([tile], 0, 0.032, true),
+  };
 }
 
 function ribbon(tiles: WorldTileData[], pad: number, y: number, majorOnly = false) {
@@ -388,7 +419,7 @@ function SkyDome({ night }: { night: boolean }) {
   });
   return (
     <mesh ref={ref} renderOrder={-2}>
-      <sphereGeometry args={[420, 28, 18]} />
+      <sphereGeometry args={[420, 16, 10]} />
       <shaderMaterial
         side={DoubleSide}
         depthWrite={false}
@@ -499,19 +530,19 @@ function Forest({ plants, night }: { plants: Plant[]; night: boolean }) {
     <group>
       {trees.length > 0 && (
         <>
-          <instancedMesh ref={trunk} args={[undefined, undefined, trees.length]} frustumCulled={false} castShadow>
-            <cylinderGeometry args={[0.18, 0.24, 1.7, 6]} />
+          <instancedMesh ref={trunk} args={[undefined, undefined, trees.length]}>
+            <cylinderGeometry args={[0.18, 0.24, 1.7, 5]} />
             <meshStandardMaterial color="#6a4a32" />
           </instancedMesh>
-          <instancedMesh ref={leaf} args={[undefined, undefined, trees.length]} frustumCulled={false} castShadow>
-            <coneGeometry args={[1.9, 3.8, 7]} />
+          <instancedMesh ref={leaf} args={[undefined, undefined, trees.length]}>
+            <coneGeometry args={[1.9, 3.8, 6]} />
             <meshStandardMaterial color={night ? '#7a9a58' : '#4f7a48'} />
           </instancedMesh>
         </>
       )}
       {bushes.length > 0 && (
-        <instancedMesh ref={bush} args={[undefined, undefined, bushes.length]} frustumCulled={false} castShadow>
-          <sphereGeometry args={[0.7, 8, 6]} />
+        <instancedMesh ref={bush} args={[undefined, undefined, bushes.length]}>
+          <sphereGeometry args={[0.7, 7, 5]} />
           <meshStandardMaterial color={night ? '#5a7a46' : '#3f6a38'} />
         </instancedMesh>
       )}
@@ -549,31 +580,20 @@ function Lamps({ lamps, night }: { lamps: { x: number; z: number }[]; night: boo
     );
   }, [lamps, night]);
   if (!lamps.length) return null;
-  const lit = night ? lamps.slice(0, 3) : [];
   return (
     <group>
-      <instancedMesh ref={poles} args={[undefined, undefined, lamps.length]} frustumCulled={false}>
-        <cylinderGeometry args={[0.08, 0.1, 3.4, 6]} />
+      <instancedMesh ref={poles} args={[undefined, undefined, lamps.length]}>
+        <cylinderGeometry args={[0.08, 0.1, 3.4, 5]} />
         <meshStandardMaterial color={night ? '#3a3a3e' : '#4a4a4c'} metalness={0.3} roughness={0.5} />
       </instancedMesh>
-      <instancedMesh ref={bulbs} args={[undefined, undefined, lamps.length]} frustumCulled={false}>
-        <sphereGeometry args={[0.24, 8, 8]} />
+      <instancedMesh ref={bulbs} args={[undefined, undefined, lamps.length]}>
+        <sphereGeometry args={[0.24, 6, 6]} />
         <meshBasicMaterial color={night ? '#ffe2a0' : '#f4e8c8'} />
       </instancedMesh>
-      <instancedMesh ref={pools} args={[undefined, undefined, lamps.length]} frustumCulled={false}>
-        <circleGeometry args={[5.4, 18]} />
+      <instancedMesh ref={pools} args={[undefined, undefined, lamps.length]}>
+        <circleGeometry args={[5.4, 12]} />
         <meshBasicMaterial color="#ffd080" transparent opacity={night ? 0.34 : 0.08} depthWrite={false} />
       </instancedMesh>
-      {lit.map((lamp) => (
-        <pointLight
-          key={`lit-${lamp.x}:${lamp.z}`}
-          position={[lamp.x, 3.2, lamp.z]}
-          color="#ffd89a"
-          intensity={1.8}
-          distance={14}
-          decay={2}
-        />
-      ))}
     </group>
   );
 }
@@ -598,30 +618,57 @@ export default function WorldScene({
   const night = nightHint ?? sun.night;
   const here = useMemo(() => lngLatToLocal(lat, lng, originLat, originLng), [lat, lng, originLat, originLng]);
   const slim = typeof window !== 'undefined' && window.innerWidth < 700;
+  const hereRef = useRef(here);
+  hereRef.current = here;
+  const cache = useRef(new Map<string, BuiltTile>());
+  const queue = useRef<WorldTileData[]>([]);
+  const pending = useRef<{
+    tile: WorldTileData;
+    lod: boolean;
+    walls: BufferGeometry[];
+    roofs: BufferGeometry[];
+    index: number;
+    list: WorldTileData['buildings'];
+  } | null>(null);
+  const [ready, setReady] = useState<BuiltTile[]>([]);
 
-  const meshes = useMemo(() => {
-    const built = extrudeBuildings(tiles);
-    return {
-      buildings: built.walls,
-      roofs: built.roofs,
-      parks: flattenRings(tiles.flatMap((tile) => tile.parks), 0.018),
-      water: flattenRings(tiles.flatMap((tile) => tile.water), 0.008),
-      sidewalks: ribbon(tiles, 1.15, 0.016),
-      roads: ribbon(tiles, 0, 0.03),
-      major: ribbon(tiles, 0, 0.032, true),
-    };
+  useEffect(() => {
+    const wanted = new Set(tiles.map((tile) => tile.key));
+    let removed = false;
+    cache.current.forEach((built, key) => {
+      if (wanted.has(key)) return;
+      disposeBuilt(built);
+      cache.current.delete(key);
+      removed = true;
+    });
+    queue.current = queue.current.filter((tile) => wanted.has(tile.key) && !cache.current.has(tile.key));
+    if (pending.current && !wanted.has(pending.current.tile.key)) pending.current = null;
+    for (const tile of tiles) {
+      if (cache.current.has(tile.key)) continue;
+      if (queue.current.some((item) => item.key === tile.key)) continue;
+      if (pending.current?.tile.key === tile.key) continue;
+      queue.current.push(tile);
+    }
+    if (removed) setReady(Array.from(cache.current.values()));
   }, [tiles]);
 
+  useEffect(() => () => {
+    cache.current.forEach(disposeBuilt);
+    cache.current.clear();
+    queue.current = [];
+    pending.current = null;
+  }, []);
+
   const lamps = useMemo(
-    () => lampsAlongRoads(tiles.flatMap((tile) => tile.roads), here, slim ? 16 : 28),
+    () => lampsAlongRoads(tiles.flatMap((tile) => tile.roads), here, slim ? 6 : 10),
     [here, slim, tiles],
   );
   const plants = useMemo(
-    () => dressPlants(tiles.flatMap((tile) => tile.parks), tiles.flatMap((tile) => tile.roads), here, slim ? 160 : 320),
+    () => dressPlants(tiles.flatMap((tile) => tile.parks), tiles.flatMap((tile) => tile.roads), here, slim ? 48 : 96),
     [here, slim, tiles],
   );
   const crossings = useMemo(
-    () => crossingsAtIntersections(tiles.flatMap((tile) => tile.roads), here, slim ? 6 : 10),
+    () => crossingsAtIntersections(tiles.flatMap((tile) => tile.roads), here, slim ? 3 : 5),
     [here, slim, tiles],
   );
   const crossingGeo = useMemo(() => crossingMesh(crossings), [crossings]);
@@ -631,6 +678,22 @@ export default function WorldScene({
   const marked = useMemo(() => roadMaterial(night, true), [night]);
   const water = useMemo(() => waterMaterial(night), [night]);
   const zebra = useMemo(() => crossingMaterial(night), [night]);
+  const roofMat = useMemo(
+    () => new MeshStandardMaterial({ color: night ? '#4a403c' : '#8a7468', roughness: 0.8 }),
+    [night],
+  );
+  const parkMat = useMemo(
+    () => new MeshStandardMaterial({ color: night ? '#4a6a42' : '#6f9a54' }),
+    [night],
+  );
+  const walkMat = useMemo(
+    () => new MeshStandardMaterial({ color: night ? '#6a665e' : '#d8cebe', roughness: 0.9 }),
+    [night],
+  );
+  const groundMat = useMemo(
+    () => new MeshStandardMaterial({ color: night ? '#3e4a40' : '#b8a888' }),
+    [night],
+  );
   useEffect(() => {
     if (facade.uniforms?.uSunDir) {
       facade.uniforms.uSunDir.value = [sun.x, Math.max(0.25, sun.y + (night ? 0.4 : 0)), sun.z];
@@ -640,37 +703,63 @@ export default function WorldScene({
   useFrame((_, dt) => {
     const clock = water.userData.uTime;
     if (clock) clock.value = (clock.value + dt) % 1000;
+    const budget = slim ? 5 : 8;
+    const start = performance.now();
+    let changed = false;
+    while (performance.now() - start < budget) {
+      if (!pending.current) {
+        const next = queue.current.shift();
+        if (!next) break;
+        if (cache.current.has(next.key)) continue;
+        const anchor = tileAnchor(next);
+        const lod = Math.hypot(anchor.x - hereRef.current.x, anchor.z - hereRef.current.z) > 88;
+        const list = lod
+          ? next.buildings.filter((building) => building.area > 28).slice(0, 80)
+          : next.buildings.slice(0, 160);
+        pending.current = { tile: next, lod, walls: [], roofs: [], index: 0, list };
+      }
+      const job = pending.current;
+      const end = Math.min(job.list.length, job.index + 10);
+      for (; job.index < end; job.index += 1) {
+        pushBuilding(job.list[job.index], job.walls, job.roofs, !job.lod);
+      }
+      if (job.index < job.list.length) break;
+      cache.current.set(job.tile.key, finishTile(job.tile, job.walls, job.roofs, job.lod));
+      pending.current = null;
+      changed = true;
+    }
+    if (changed) setReady(Array.from(cache.current.values()));
   });
 
   useEffect(() => {
     const fog = night ? '#4a5c7a' : '#c8d6e4';
     scene.background = new Color(fog);
-    scene.fog = new Fog(fog, 36, slim ? 150 : 220);
+    scene.fog = new Fog(fog, 36, slim ? 140 : 200);
     gl.setClearColor(fog, 1);
     gl.toneMappingExposure = night ? 1.22 : 0.9;
-    return () => {
-      meshes.buildings.forEach((geo) => geo.dispose());
-      meshes.roofs.forEach((geo) => geo.dispose());
-      meshes.parks?.dispose();
-      meshes.water?.dispose();
-      meshes.sidewalks?.dispose();
-      meshes.roads?.dispose();
-      meshes.major?.dispose();
-      crossingGeo?.dispose();
-      facade.dispose();
-      asphalt.dispose();
-      marked.dispose();
-      water.dispose();
-      zebra.dispose();
-    };
-  }, [asphalt, crossingGeo, facade, gl, marked, meshes, night, scene, slim, water, zebra]);
+  }, [gl, night, scene, slim]);
+
+  useEffect(() => () => {
+    facade.dispose();
+    asphalt.dispose();
+    marked.dispose();
+    water.dispose();
+    zebra.dispose();
+    roofMat.dispose();
+    parkMat.dispose();
+    walkMat.dispose();
+    groundMat.dispose();
+  }, [asphalt, facade, groundMat, marked, parkMat, roofMat, walkMat, water, zebra]);
+
+  useEffect(() => () => {
+    crossingGeo?.dispose();
+  }, [crossingGeo]);
 
   return (
     <group>
       <SkyDome night={night} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} material={groundMat}>
         <planeGeometry args={[2400, 2400]} />
-        <meshStandardMaterial color={night ? '#3e4a40' : '#b8a888'} />
       </mesh>
       <ambientLight intensity={night ? 0.62 : 0.26} color={night ? '#b4c6e4' : '#fff4e6'} />
       <hemisphereLight args={[night ? '#9eb6e6' : '#fff1dc', night ? '#3a342c' : '#c4a888', night ? 1.32 : 0.82]} />
@@ -678,34 +767,23 @@ export default function WorldScene({
         position={[sun.x, Math.max(8, sun.y + (night ? 6 : 0)), sun.z]}
         intensity={night ? 0.88 : 0.82}
         color={night ? '#d0def8' : '#ffe4bc'}
-        castShadow={!slim}
       />
-      {meshes.parks && (
-        <mesh geometry={meshes.parks} receiveShadow>
-          <meshStandardMaterial color={night ? '#4a6a42' : '#6f9a54'} />
-        </mesh>
-      )}
-      {meshes.sidewalks && (
-        <mesh geometry={meshes.sidewalks} receiveShadow>
-          <meshStandardMaterial color={night ? '#6a665e' : '#d8cebe'} roughness={0.9} />
-        </mesh>
-      )}
-      {meshes.roads && (
-        <mesh geometry={meshes.roads} receiveShadow material={asphalt} />
-      )}
-      {meshes.major && (
-        <mesh geometry={meshes.major} receiveShadow material={marked} />
-      )}
+      {ready.map((tile) => (
+        <group key={tile.key}>
+          {tile.parks && <mesh geometry={tile.parks} material={parkMat} />}
+          {tile.sidewalks && <mesh geometry={tile.sidewalks} material={walkMat} />}
+          {tile.roads && <mesh geometry={tile.roads} material={asphalt} />}
+          {tile.major && <mesh geometry={tile.major} material={marked} />}
+          {tile.water && <mesh geometry={tile.water} material={water} />}
+          {tile.buildings.map((geo, index) => (
+            <mesh key={`${tile.key}-b-${index}`} geometry={geo} material={facade} />
+          ))}
+          {tile.roofs.map((geo, index) => (
+            <mesh key={`${tile.key}-r-${index}`} geometry={geo} material={roofMat} />
+          ))}
+        </group>
+      ))}
       {crossingGeo && <mesh geometry={crossingGeo} material={zebra} />}
-      {meshes.water && <mesh geometry={meshes.water} material={water} />}
-      {meshes.buildings.map((geo, index) => (
-        <mesh key={`b-${index}`} geometry={geo} material={facade} castShadow />
-      ))}
-      {meshes.roofs.map((geo, index) => (
-        <mesh key={`r-${index}`} geometry={geo} castShadow>
-          <meshStandardMaterial color={night ? '#4a403c' : '#8a7468'} roughness={0.8} />
-        </mesh>
-      ))}
       <Forest plants={plants} night={night} />
       <Lamps lamps={lamps} night={night} />
     </group>

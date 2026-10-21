@@ -44,7 +44,7 @@ export default function HistoryBoard({ embedded = false }: { embedded?: boolean 
         <Leader label="Most petted" record={page.leaders.mostPets} detail={(dog) => `${dog.totals.pets} pets`} />
       </div>
       {page.dogs.length === 0 ? (
-        <p className="mt-10 text-[var(--muted)]">No one has left the porch yet. The first dog is still home.</p>
+        <p className="mt-10 text-[var(--muted)]">No one has left the city yet. The first dog is still out walking.</p>
       ) : (
         <ul className="mt-10 grid gap-5 sm:grid-cols-2">
           {page.dogs.map((dog) => (

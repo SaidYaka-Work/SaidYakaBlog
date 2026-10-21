@@ -37,7 +37,7 @@ test('old clients still parse move and extra world keys are allowed', () => {
 test('snapshot always includes a public location so clients can feature-detect', () => {
   const snap = snapshot(createRoom(T0), T0, 1);
   assert.ok(snap.location);
-  assert.equal(snap.location?.mode, 'home');
+  assert.equal(snap.location?.mode, 'world');
   assert.equal(snap.location?.placeId, HOME_PLACE.id);
   assert.equal(snap.location?.country, HOME_PLACE.country);
 });
@@ -60,9 +60,11 @@ test('travel only accepts the preset list and enforces cooldown', () => {
 
 test('world movement is speed-capped in meters and proposed teleports are rejected', () => {
   let room = createRoom(T0);
+  assert.equal(room.yard?.location?.mode ?? snapshot(room, T0, 1).location?.mode, 'world');
   const leave = applyWorldAction(room, 'aaa', '1.1.1.1', T0, 'leave');
   assert.equal(leave.acquired, true);
   room = leave.room;
+  assert.equal(room.yard?.location?.mode, 'world');
   const step = applyVisitorMove(room, 'aaa', '1.1.1.1', 0, -1, true, 0.1, T0 + 80);
   const moved = haversineMeters(
     room.yard!.location!.lat,
@@ -76,13 +78,26 @@ test('world movement is speed-capped in meters and proposed teleports are reject
   assert.ok(jump < 3, `teleport ${jump}`);
 });
 
-test('feeding is home-only and walking through the world still credits the leash', () => {
-  let room = createRoom(T0);
-  room = applyWorldAction(room, 'aaa', '1.1.1.1', T0, 'leave').room;
-  const bowl = applyBowlAction(room, T0 + 20);
-  assert.equal(bowl.code, 'too_far');
-  const walked = applyVisitorMove(room, 'aaa', '1.1.1.1', 0, -1, false, 0.1, T0 + 80);
+test('feeding works at the portable bowl in the world and walking still credits the leash', () => {
+  const start = createRoom(T0);
+  start.yard = { ...start.yard!, pose: { ...start.yard!.pose, yaw: Math.PI } };
+  const leashed = applyWorldAction(start, 'aaa', '1.1.1.1', T0, 'leave').room;
+  const walked = applyVisitorMove(leashed, 'aaa', '1.1.1.1', 0, -1, false, 0.1, T0 + 80);
   assert.ok((walked.room.yard?.leash.sessionMeters ?? 0) > 0);
+
+  const far = applyBowlAction(leashed, T0 + 20);
+  assert.equal(far.code, 'too_far');
+  const bowl = leashed.yard!.feeder;
+  const atBowl = {
+    ...leashed,
+    dog: leashed.dog ? { ...leashed.dog, lastFedAt: T0 - 20 * 60 * 1000 } : null,
+    yard: {
+      ...leashed.yard!,
+      pose: { ...leashed.yard!.pose, x: bowl.x ?? 0, z: bowl.z ?? 0 },
+    },
+  };
+  const dinner = applyBowlAction(atBowl, T0 + 40);
+  assert.equal(dinner.code, undefined);
 });
 
 test('second visitor cannot travel while the first holds the leash', () => {

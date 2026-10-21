@@ -14,7 +14,7 @@ function wrapAngle(value: number) {
 }
 
 export const FLOOR_Y = 0;
-export const POSE_DELAY_MS = 120;
+export const POSE_DELAY_MS = 100;
 export const SNAP_DISTANCE = 1.65;
 export const WALK_STRIDE = 1.18;
 export const GALLOP_STRIDE = 2.75;

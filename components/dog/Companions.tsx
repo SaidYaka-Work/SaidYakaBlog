@@ -106,13 +106,15 @@ function Spirit({
   const blush = useMemo(() => coat.clone().offsetHSL(-0.02, 0.22, -0.08), [coat]);
   const phase = hash01(companion.id) * Math.PI * 2;
 
-  useFrame((state) => {
+  useFrame((state, dt) => {
     const group = root.current;
     const float = body.current;
     if (!group || !float) return;
-    group.position.set(companion.x, 0, companion.z);
-    const dx = lookAt.x - companion.x;
-    const dz = lookAt.z - companion.z;
+    const ease = 1 - Math.exp(-dt * 10);
+    group.position.x += (companion.x - group.position.x) * ease;
+    group.position.z += (companion.z - group.position.z) * ease;
+    const dx = lookAt.x - group.position.x;
+    const dz = lookAt.z - group.position.z;
     if (Math.hypot(dx, dz) > 0.04) group.rotation.y = Math.atan2(dx, dz);
     const bob = Math.sin(state.clock.elapsedTime * 1.85 + phase) * 0.045;
     float.position.y = 0.16 + bob;

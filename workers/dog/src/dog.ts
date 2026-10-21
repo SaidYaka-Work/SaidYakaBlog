@@ -17,6 +17,7 @@ import {
   originAllowed,
   parseClientMessage,
   pruneBuckets,
+  publicCompanions,
   snapshot,
   takeConnectionGap,
   takeEmoteRate,
@@ -30,7 +31,8 @@ import {
 } from './logic';
 import { flushIfNeeded, RoomSession, scheduleAlarm, type PersistKind } from './persist';
 import { HERE_GAP_MS } from './presence';
-import { MOVE_MIN_MS, migrateYard, releaseLeash } from './room';
+import { MOVE_MIN_MS, migrateYard, publicFeeder, publicLeash, publicPose, releaseLeash } from './room';
+import { migrateLocation, publicLocation } from './world';
 
 export interface Env {
   DOG: DurableObjectNamespace;
@@ -68,6 +70,7 @@ export class DogRoom {
   private session: RoomSession | null = null;
   private rates: Record<string, RateBucket> = {};
   private emoteRates: Record<string, EmoteBucket> = {};
+  private lastPoseAt = 0;
   private readonly ready: Promise<void>;
 
   constructor(
@@ -204,7 +207,7 @@ export class DogRoom {
       if (!moved.acquired && moved.code) {
         ws.send(JSON.stringify({ type: 'error', code: moved.code, retryAfterMs: moved.retryAfterMs }));
       }
-      this.broadcastPose(session.room, now);
+      this.emitPose(session.room, now);
       if (moved.walk && moved.walk.ok) {
         this.broadcast(snapshot(session.room, now, this.sockets()));
         this.broadcast({ type: 'event', text: moved.walk.event.text, at: moved.walk.event.at });
@@ -221,7 +224,7 @@ export class DogRoom {
       const next = applyCompanionHere(await this.load(now, 'action'), meta.clientId, parsed.x, parsed.z, now);
       ws.serializeAttachment({ ...meta, lastHereAt: now } satisfies SocketMeta);
       await this.commit(next, now, 'action');
-      this.broadcastPose(next, now);
+      this.emitPose(next, now);
       return;
     }
 
@@ -234,7 +237,7 @@ export class DogRoom {
       this.emoteRates[meta.clientId] = taken.bucket;
       const next = applyCompanionEmote(await this.load(now, 'action'), meta.clientId, parsed.emote, now);
       await this.commit(next, now, 'action');
-      this.broadcastPose(next, now);
+      this.emitPose(next, now, true);
       return;
     }
 
@@ -267,7 +270,7 @@ export class DogRoom {
       await this.commit(result.room, now, 'action');
       if (result.code === 'too_far') {
         ws.send(JSON.stringify({ type: 'error', code: 'too_far', text: 'Walk him to the feeder.' }));
-        this.broadcastPose(result.room, now);
+        this.emitPose(result.room, now, true);
         return;
       }
       if (result.fed && !result.fed.ok) {
@@ -415,7 +418,7 @@ export class DogRoom {
     const ticked = session.tick(now, sockets);
     await this.flush(session, ticked, now);
     if (sockets > 0) {
-      this.broadcastPose(session.room, now);
+      this.emitPose(session.room, now);
       if (ticked.fed && ticked.fed.ok) {
         this.broadcast(snapshot(session.room, now, sockets));
         this.broadcast({ type: 'event', text: ticked.fed.event.text, at: ticked.fed.event.at });
@@ -534,15 +537,17 @@ export class DogRoom {
     });
   }
 
-  private broadcastPose(room: RoomState, now: number) {
-    const snap = snapshot(room, now, this.sockets());
+  private emitPose(room: RoomState, now: number, force = false) {
+    if (!force && now - this.lastPoseAt < POSE_BROADCAST_MS) return;
+    this.lastPoseAt = now;
+    const yard = migrateYard(room.yard, now);
     this.broadcast({
       type: 'pose',
-      pose: snap.pose,
-      leash: snap.leash,
-      feeder: snap.feeder,
-      location: snap.location,
-      companions: snap.companions,
+      pose: publicPose(yard.pose),
+      leash: publicLeash(yard.leash, now),
+      feeder: publicFeeder(yard.feeder, yard.pose, now),
+      location: publicLocation(migrateLocation(yard.location, now)),
+      companions: publicCompanions(room.companions, yard.pose, now),
     });
   }
 
@@ -563,3 +568,4 @@ export class DogRoom {
 }
 
 const PERSIST_BROADCAST_MS = 60_000;
+const POSE_BROADCAST_MS = 80;
