@@ -14,6 +14,7 @@ import {
   tileXY,
 } from '../workers/dog/src/world.ts';
 import { RUN_SPEED, createYard, nearGate } from '../workers/dog/src/room.ts';
+import { FACADE_PALETTE, facadeTint, isMajorRoad, lampsAlongRoads, treesInParks } from '../components/dog/world/dress.ts';
 
 function assert(cond: unknown, message: string) {
   if (!cond) throw new Error(message);
@@ -81,5 +82,24 @@ assert(!pointInRing(out.x, out.z, square), 'buildings push the dog out');
 const noon = sunDirection(origin.lat, origin.lng, Date.parse('2026-06-21T16:00:00Z'));
 const midnight = sunDirection(origin.lat, origin.lng, Date.parse('2026-06-21T04:00:00Z'));
 assert(!noon.night && midnight.night, 'sunDirection is lat/lng/UTC so Phase 3 can replace the model');
+
+assert(FACADE_PALETTE.length >= 8, 'need a curated facade palette');
+const tints = new Set(FACADE_PALETTE.map((tint) => tint.join(',')));
+assert(tints.size >= 8, 'facades must vary, not one beige');
+assert(facadeTint(0, 0) !== facadeTint(40, 12) || facadeTint(3, 9) !== facadeTint(18, 2), 'hash picks different walls');
+assert(isMajorRoad(9, 'primary') && !isMajorRoad(3, 'path'), 'lane paint is for main roads');
+const lamps = lampsAlongRoads(
+  [{ line: [{ x: 0, z: 0 }, { x: 80, z: 0 }], width: 8, klass: 'primary' }],
+  { x: 0, z: 0 },
+  8,
+  20,
+);
+assert(lamps.length >= 3 && lamps.length <= 8, `streetlamps ${lamps.length}`);
+const trees = treesInParks(
+  [[{ x: -20, z: -20 }, { x: 20, z: -20 }, { x: 20, z: 20 }, { x: -20, z: 20 }]],
+  { x: 0, z: 0 },
+  6,
+);
+assert(trees.length >= 1 && trees.length <= 6, `park trees ${trees.length}`);
 
 console.log('dog-world-check ok');

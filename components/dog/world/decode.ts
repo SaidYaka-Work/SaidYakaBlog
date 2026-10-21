@@ -3,7 +3,7 @@ import { VectorTile } from '@mapbox/vector-tile';
 import { lngLatToLocal, type Ring } from '../../../workers/dog/src/world';
 
 export type BuildingFeat = { ring: Ring; height: number; min: number; area: number };
-export type RoadFeat = { line: Ring; width: number };
+export type RoadFeat = { line: Ring; width: number; klass: string };
 export type WorldTileData = {
   key: string;
   buildings: BuildingFeat[];
@@ -116,7 +116,7 @@ export function decodeTile(
       const width = ROAD_WIDTH[klass] ?? 5;
       const lines = toLocal(feat.loadGeometry(), z, x, y, transport.extent, originLat, originLng);
       for (const line of lines) {
-        if (line.length >= 2) roads.push({ line, width });
+        if (line.length >= 2) roads.push({ line, width, klass });
       }
     }
     if (roads.length > 420) roads.length = 420;

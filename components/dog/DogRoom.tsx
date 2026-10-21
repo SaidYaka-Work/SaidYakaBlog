@@ -19,7 +19,7 @@ import WalkGame from './WalkGame';
 import { playDogSfx } from './dogSound';
 import useDogDrive from './useDogDrive';
 import { nearFeeder, nearGate } from '../../workers/dog/src/room';
-import { ATTRIBUTION, HOME_PLACE, PLACES, placeById } from '../../workers/dog/src/world';
+import { ATTRIBUTION, HOME_PLACE, PLACES, placeById, sunDirection } from '../../workers/dog/src/world';
 import type { WorldView } from './DogCanvas';
 import type { WorldColliders } from './world/useWorldTiles';
 import './dog.css';
@@ -82,6 +82,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const [travelOpen, setTravelOpen] = useState(false);
   const [flight, setFlight] = useState(0);
   const [streetName, setStreetName] = useState('');
+  const [lightOverride, setLightOverride] = useState<'day' | 'night' | null>(null);
   const colliders = useRef<WorldColliders>({ buildings: [], roads: [], parks: [], label: '' });
   const leftGate = useRef(false);
   const localPose = useRef<{ x: number; z: number } | null>(null);
@@ -125,6 +126,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       if (next === 'eat') setReaction('feed');
       if (next === 'pose-walk') setReaction('walk');
       if (next === 'world' || next === 'travel') setLocalWorld(true);
+      if (next === 'world' || next === 'travel' || next === 'leash') setReaction(next === 'leash' ? 'idle' : 'walk');
+      if (next === 'room' || next === 'gate') setReaction('idle');
       if (next === 'travel') {
         setLocalPlaceId('shibuya');
         setFlight(1);
@@ -132,6 +135,13 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
     } else if (initialPanel === 'hall') {
       setPlaying(true);
       setPanel('hall');
+    }
+    const light = params.get('light');
+    if (light === 'day' || light === 'night') setLightOverride(light);
+    const place = params.get('place');
+    if (place && placeById(place)) {
+      setLocalPlaceId(place);
+      if (next === 'world' || next === 'travel' || !next) setLocalWorld(true);
     }
     try {
       const stored = localStorage.getItem('biscuit-muted');
@@ -326,7 +336,16 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const poseSad = preview === 'sad' || (!previewing && (dog?.happiness ?? 100) < 40);
   const fallbackAsleep = preview === 'sleep' || preview === 'start' || !preview;
   const fallbackReaction: Reaction =
-    preview === 'eat' ? 'feed' : preview === 'pose-walk' ? 'walk' : preview === 'sleep' ? 'sleep' : preview === 'sad' || preview === 'hungry' ? 'idle' : 'sleep';
+    preview === 'eat'
+      ? 'feed'
+      : preview === 'pose-walk' || preview === 'world' || preview === 'travel'
+        ? 'walk'
+        : preview === 'sleep'
+          ? 'sleep'
+          : 'idle';
+  const yardNight = lightOverride === 'night' || (lightOverride !== 'day' && Boolean(dog?.night));
+  const worldNightHint =
+    lightOverride === 'night' ? true : lightOverride === 'day' ? false : undefined;
   const overlay = play || (awaitingName && canName) || panel;
   const canTap = ready || progress >= 88 || napping;
   const shared = Boolean(snapshot?.pose);
@@ -345,6 +364,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         lat: previewing ? activePlace.lat : snapshot?.location?.lat ?? activePlace.lat,
         lng: previewing ? activePlace.lng : snapshot?.location?.lng ?? activePlace.lng,
         flight,
+        nightHint: worldNightHint,
       }
     : null;
 
@@ -514,7 +534,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           genome={dog.genome}
           asleep={poseAsleep}
           reaction={poseReaction}
-          night={dog.night}
+          night={inWorld ? (worldNightHint ?? sunDirection(worldView!.lat, worldView!.lng, Date.now()).night) : yardNight}
           stage={dog.stage}
           happiness={dog.happiness}
           hungry={hungry}
@@ -533,7 +553,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           genome={generateGenome(previewing ? 'biscuit-porch-1' : 'napping-biscuit')}
           asleep={fallbackAsleep}
           reaction={fallbackReaction}
-          night={false}
+          night={inWorld ? (worldNightHint ?? sunDirection(worldView!.lat, worldView!.lng, Date.now()).night) : yardNight}
           stage="puppy"
           happiness={72}
           hungry={hungry}

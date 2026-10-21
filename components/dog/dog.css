@@ -15,7 +15,7 @@
     radial-gradient(1px 1px at 63% 24%, rgba(255, 255, 255, 0.4), transparent),
     radial-gradient(1px 1px at 78% 12%, rgba(255, 255, 255, 0.66), transparent),
     radial-gradient(1.2px 1.2px at 88% 30%, rgba(255, 255, 255, 0.5), transparent),
-    linear-gradient(180deg, #0b1220 0%, #1a2438 100%);
+    linear-gradient(180deg, #2a4068 0%, #5a4e68 58%, #3a4238 100%);
 }
 
 .biscuit-scene.is-fill {

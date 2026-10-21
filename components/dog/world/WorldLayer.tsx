@@ -23,5 +23,14 @@ export default function WorldLayer({
   useEffect(() => {
     onColliders?.(colliders);
   }, [colliders, onColliders]);
-  return <WorldScene tiles={tiles} lat={lat} lng={lng} nightHint={night} />;
+  return (
+    <WorldScene
+      tiles={tiles}
+      lat={lat}
+      lng={lng}
+      originLat={originLat}
+      originLng={originLng}
+      nightHint={night}
+    />
+  );
 }

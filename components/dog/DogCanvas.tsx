@@ -2,7 +2,7 @@
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Suspense, lazy, useEffect, useRef, useState, type RefObject } from 'react';
-import { PerspectiveCamera, Vector3, type Group, type Mesh } from 'three';
+import { ACESFilmicToneMapping, PerspectiveCamera, PointLight, SRGBColorSpace, Vector3, type Group, type Mesh } from 'three';
 import type { DogGenome, LifeStage } from '@/lib/dog';
 import type { PortraitReaction } from './look';
 import { CAMERA_YAW, frameCamera, followYardCamera, projectMeshBounds } from './frame';
@@ -18,6 +18,7 @@ export type WorldView = {
   lat: number;
   lng: number;
   flight: number;
+  nightHint?: boolean;
 };
 
 function FootShadow({ target }: { target: RefObject<Group | null> }) {
@@ -81,15 +82,19 @@ function FramedCamera({
     if (world) {
       const flight = Math.max(0, Math.min(1, world.flight));
       const yaw = object.rotation.y;
-      const dist = 10 + flight * 170;
-      const pitch = 0.34 + flight * 0.86;
-      const height = 3.2 + flight * 210;
+      const dist = 14.8 + flight * 170;
+      const pitch = 0.5 + flight * 0.7;
+      const height = 6.6 + flight * 210;
       street.current.set(
         object.position.x - Math.sin(yaw) * dist * Math.cos(pitch),
         height,
         object.position.z - Math.cos(yaw) * dist * Math.cos(pitch),
       );
-      look.current.set(object.position.x, 0.7 + flight * 8, object.position.z);
+      look.current.set(
+        object.position.x + Math.sin(yaw) * (2.4 + flight * 6),
+        1.15 + flight * 8,
+        object.position.z + Math.cos(yaw) * (2.4 + flight * 6),
+      );
       camera.near = flight > 0.5 ? 2 : 0.2;
       camera.far = 520;
       camera.up.set(0, 1, 0);
@@ -151,6 +156,31 @@ function FramedCamera({
     }
   });
   return null;
+}
+
+function DogKeyLight({
+  target,
+  night,
+}: {
+  target: RefObject<Group | null>;
+  night: boolean;
+}) {
+  const ref = useRef<PointLight>(null);
+  useFrame(() => {
+    const dog = target.current;
+    const light = ref.current;
+    if (!dog || !light) return;
+    light.position.set(dog.position.x + 0.7, 2.35, dog.position.z + 1.15);
+  });
+  return (
+    <pointLight
+      ref={ref}
+      color={night ? '#ffe2b4' : '#fff6e4'}
+      intensity={night ? 1.55 : 0.22}
+      distance={night ? 10 : 5}
+      decay={2}
+    />
+  );
 }
 
 export default function DogCanvas({
@@ -252,10 +282,15 @@ export default function DogCanvas({
     >
       <Canvas
         dpr={[1, 1.6]}
-        camera={{ position: [3.4, 3.2, 6.4], fov: world ? 42 : fill ? 36 : compact ? 36 : 32, near: 0.1, far: world ? 520 : 80 }}
+        camera={{ position: world ? [0, 6.8, 15] : [3.4, 3.2, 6.4], fov: world ? 44 : fill ? 36 : compact ? 36 : 32, near: 0.1, far: world ? 560 : 80 }}
         shadows
         frameloop={frameloop}
         gl={{ antialias: true, alpha: false, powerPreference: 'default' }}
+        onCreated={({ gl }) => {
+          gl.toneMapping = ACESFilmicToneMapping;
+          gl.outputColorSpace = SRGBColorSpace;
+          gl.toneMappingExposure = night ? 1.16 : 0.92;
+        }}
       >
         <Suspense fallback={null}>
           {world ? (
@@ -264,6 +299,7 @@ export default function DogCanvas({
               originLng={world.originLng}
               lat={world.lat}
               lng={world.lng}
+              night={world.nightHint}
               onColliders={onWorldColliders}
             />
           ) : (
@@ -293,6 +329,7 @@ export default function DogCanvas({
               roomy={fill}
             />
           )}
+          {!empty && <DogKeyLight target={dogRef} night={night} />}
           {!empty && fill && <FootShadow target={dogRef} />}
           {!empty && (
             <FramedCamera
