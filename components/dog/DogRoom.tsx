@@ -543,6 +543,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const inRange = preview === 'eat' || Boolean(snapshot?.feeder?.near) || nearBowl;
   const worldReady = Boolean(snapshot?.location) || previewing || !worker;
   const activePlace = placeById((previewing && localPlaceId) || snapshot?.location?.placeId || localPlaceId) ?? HOME_PLACE;
+  const pillPlace = debugSpawn ? nearestPlace(debugSpawn.lat, debugSpawn.lng) : activePlace;
   const worldView: WorldView = {
     originLat: debugSpawn?.lat ?? (previewing ? activePlace.lat : snapshot?.location?.originLat ?? activePlace.lat),
     originLng: debugSpawn?.lng ?? (previewing ? activePlace.lng : snapshot?.location?.originLng ?? activePlace.lng),
@@ -834,7 +835,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           hint={hint}
           touch={touch}
           near={inRange}
-          placeName={`${activePlace.name}, ${activePlace.city}`}
+          placeName={`${pillPlace.name}, ${pillPlace.city}`}
           streetName={streetName}
           worldReady={worldReady}
           travelOpen={travelOpen}

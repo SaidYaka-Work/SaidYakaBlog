@@ -282,7 +282,7 @@ function FramedCamera({
         street.current.x = placed.x;
         street.current.z = placed.z;
         const clear = footprintClearance(street.current.x, street.current.z, grid);
-        camFade.fade = placed.inside || placed.t < 0.97 || clear < 0.5 ? 1 : Math.max(0, camFade.fade - dt * 2.4);
+        camFade.fade = placed.inside || clear < 0.5 ? 1 : Math.max(0, camFade.fade - dt * 2.4);
       } else {
         camFade.fade = 0;
       }

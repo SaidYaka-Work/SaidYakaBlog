@@ -124,13 +124,12 @@ function facadeMaterial(night: boolean) {
         float span = max(dot(b, b), 0.001);
         float t = clamp(dot(a, b) / span, 0.0, 1.0);
         float occ = length(a - b * t);
-        float along = uFade * (1.0 - smoothstep(2.2, 9.0, occ)) * smoothstep(0.04, 0.18, t);
-        float nearWide = uFade * (1.0 - smoothstep(0.35, 6.2, length(vWorldPos.xz - uCam.xz)));
-        float nearSafety = 1.0 - smoothstep(0.18, 0.72, length(vWorldPos.xz - uCam.xz));
-        float fade = max(max(along, nearWide), nearSafety);
-        if (fade > 0.55) discard;
-        litCol = mix(litCol, uFogColor, fade * 0.92);
-        gl_FragColor = vec4(mix(litCol, uFogColor, fog), 1.0 - fade);
+        float distCam = length(vWorldPos.xz - uCam.xz);
+        float along = uFade * (1.0 - smoothstep(2.2, 9.0, occ)) * smoothstep(0.04, 0.18, t) * (1.0 - smoothstep(0.82, 1.0, t));
+        float nearCam = uFade * (1.0 - smoothstep(0.35, 2.4, distCam));
+        float fade = max(along, nearCam);
+        litCol = mix(litCol, uFogColor, fade * 0.78);
+        gl_FragColor = vec4(mix(litCol, uFogColor, fog), 1.0 - fade * 0.55);
       }
     `,
   });
@@ -652,12 +651,16 @@ export default function WorldScene({
   }, [facade, night, sun.x, sun.y, sun.z]);
 
   const skipUpload = useRef(0);
+  const compiled = useRef(false);
   const compile = useCallback(() => {
+    if (compiled.current) return;
+    compiled.current = true;
     try {
       const renderer = gl as typeof gl & { compileAsync?: (s: object, c: object) => Promise<void> };
       if (typeof renderer.compileAsync === 'function') void renderer.compileAsync(scene, camera);
       else gl.compile(scene, camera);
     } catch (error) {
+      compiled.current = false;
       console.warn('[dog] shader prewarm failed', error);
     }
   }, [camera, gl, scene]);
@@ -677,7 +680,7 @@ export default function WorldScene({
     if (clock) clock.value = (clock.value + dt) % 1000;
     const host = window as Window & { __DOG_PERF?: { tiles?: number; geometries?: number; textures?: number } };
     if (host.__DOG_PERF) {
-      host.__DOG_PERF.tiles = cache.current.size;
+      host.__DOG_PERF.tiles = ready.length || cache.current.size;
       host.__DOG_PERF.geometries = gl.info.memory.geometries;
       host.__DOG_PERF.textures = gl.info.memory.textures;
     }
@@ -702,7 +705,6 @@ export default function WorldScene({
       upload.layer += 1;
       if (upload.layer >= PACK_LAYERS.length) {
         uploads.current.shift();
-        compile();
         evictTileCache(
           cache.current,
           tiles[0]
