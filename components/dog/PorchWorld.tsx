@@ -1,9 +1,9 @@
 'use client';
 
 import { Html } from '@react-three/drei';
-import { useThree } from '@react-three/fiber';
-import { useEffect, useMemo } from 'react';
-import { BackSide, CanvasTexture, Color, SRGBColorSpace } from 'three';
+import { useFrame, useThree } from '@react-three/fiber';
+import { useEffect, useMemo, useRef } from 'react';
+import { BackSide, CanvasTexture, Color, Group, SRGBColorSpace } from 'three';
 import { BED, BLOCKERS, FEEDER, ROOM_HALF } from '../../workers/dog/src/room';
 
 function makeRugTexture(fill: string, ring: string) {
@@ -96,8 +96,20 @@ function FenceSide({
 }
 
 function PorchLamp({ night }: { night: boolean }) {
+  const lamp = useRef<Group>(null);
+  useFrame(({ camera }) => {
+    const node = lamp.current;
+    if (!node) return;
+    const camX = camera.position.x;
+    const camZ = camera.position.z;
+    const lx = -2.88;
+    const lz = -2.88;
+    const along = ((lx - 0) * camX + (lz - 0) * camZ) / Math.max(1e-4, camX * camX + camZ * camZ);
+    const between = along > 0.12 && along < 0.92;
+    node.visible = !between;
+  });
   return (
-    <group position={[-2.55, 0, -2.55]}>
+    <group ref={lamp} position={[-2.88, 0, -2.88]} rotation={[0, Math.PI, 0]}>
       <mesh position={[0, 1.05, 0]} castShadow>
         <cylinderGeometry args={[0.045, 0.06, 2.1, 8]} />
         <meshStandardMaterial color={night ? '#4a4038' : '#6a5850'} metalness={0.35} roughness={0.45} />

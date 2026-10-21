@@ -196,14 +196,17 @@
   font-weight: 400;
   line-height: 1;
   color: var(--ink);
-  text-shadow: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
   -webkit-text-stroke: 0;
   paint-order: normal;
-  background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
-  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-  border-radius: 0.45rem;
-  padding: 0.12rem 0.42rem 0.18rem;
-  width: fit-content;
+  text-shadow:
+    0 1px 0 rgba(255, 248, 236, 0.88),
+    0 2px 8px rgba(20, 16, 12, 0.32),
+    0 0 18px rgba(255, 248, 236, 0.28);
 }
 
 .dog-id span {
@@ -438,6 +441,51 @@
   backdrop-filter: blur(10px);
   font-size: 0.78rem;
   white-space: nowrap;
+}
+
+.dog-leash.is-next {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+}
+
+.dog-emotes {
+  position: absolute;
+  right: 14px;
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.28rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-elevated) 90%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.dog-emotes button {
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.dog-emotes button:hover,
+.dog-emotes button:focus-visible {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.dog-emote-pop {
+  display: grid;
+  place-items: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.94);
+  box-shadow: 0 8px 18px -10px rgba(20, 16, 12, 0.45);
+  font-size: 1.15rem;
+  line-height: 1;
 }
 
 .dog-hint {

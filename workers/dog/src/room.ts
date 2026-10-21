@@ -17,6 +17,7 @@ export const FEEDER = { x: -1.62, y: 0.07, z: 1.38, radius: 0.74 };
 export const BED = { x: 1.72, z: -1.52, radius: 0.58 };
 export const RUG = { x: 0.05, z: 0.06, radius: 0.95 };
 export const WALK_CREDIT_M = 8;
+export const MAX_LEASH_QUEUE = 16;
 export const WALK_CAP_SESSION_M = 40;
 export const WALK_CAP_HOUR_M = 80;
 export const EAT_MS = 2_400;
@@ -34,6 +35,8 @@ export type Pose = {
   gait: Gait;
 };
 
+export type LeashWait = { id: string; ip: string };
+
 export type Leash = {
   holderId: string | null;
   holderIp: string | null;
@@ -44,7 +47,8 @@ export type Leash = {
   hourMeters: number;
   hourStartedAt: number;
   cooldownUntil: Record<string, number>;
-  /** Phase 2: fair handoff can add a wait queue here without changing holder rules. */
+  /** FIFO waiters. Handoff on release; older rooms migrate to []. */
+  queue: LeashWait[];
 };
 
 export type FeederState = {
@@ -114,6 +118,7 @@ export function createYard(now: number): YardState {
       hourMeters: 0,
       hourStartedAt: now,
       cooldownUntil: {},
+      queue: [],
     },
     feeder: { hasFood: false, filledAt: 0, eatingUntil: 0 },
     ai: { mode: 'idle', until: now + 2_400, tx: 0, tz: 0 },
@@ -128,6 +133,7 @@ export function migrateYard(yard: YardState | undefined, now: number): YardState
       ...createYard(now).leash,
       ...yard.leash,
       cooldownUntil: yard.leash.cooldownUntil ?? {},
+      queue: migrateQueue(yard.leash.queue),
     },
     feeder: { ...createYard(now).feeder, ...yard.feeder },
     ai: { ...createYard(now).ai, ...yard.ai },
@@ -274,6 +280,34 @@ export function steerToward(x: number, z: number, tx: number, tz: number) {
   return { ax, az };
 }
 
+export function migrateQueue(raw: Leash['queue'] | string[] | undefined): LeashWait[] {
+  if (!Array.isArray(raw)) return [];
+  const next: LeashWait[] = [];
+  for (const item of raw) {
+    if (typeof item === 'string' && item) next.push({ id: item, ip: '' });
+    else if (item && typeof item === 'object' && typeof item.id === 'string' && item.id) {
+      next.push({ id: item.id, ip: typeof item.ip === 'string' ? item.ip : '' });
+    }
+    if (next.length >= MAX_LEASH_QUEUE) break;
+  }
+  return next;
+}
+
+export function enqueueLeash(queue: LeashWait[], id: string, ip: string): LeashWait[] {
+  if (!id || queue.some((wait) => wait.id === id)) return queue;
+  return [...queue, { id, ip }].slice(0, MAX_LEASH_QUEUE);
+}
+
+export function dropLeashWait(yard: YardState, clientId: string): YardState {
+  return {
+    ...yard,
+    leash: {
+      ...yard.leash,
+      queue: (yard.leash.queue ?? []).filter((wait) => wait.id !== clientId),
+    },
+  };
+}
+
 export function pruneCooldowns(map: Record<string, number>, now: number) {
   const next: Record<string, number> = {};
   for (const [ip, until] of Object.entries(map)) {
@@ -289,13 +323,42 @@ export function leashExpired(leash: Leash, now: number) {
   return false;
 }
 
-export function releaseLeash(yard: YardState, now: number): YardState {
+export function releaseLeash(yard: YardState, now: number, liveIds?: Iterable<string>): YardState {
   const leash = yard.leash;
   const cooldownUntil = { ...pruneCooldowns(leash.cooldownUntil, now) };
   if (leash.holderIp) cooldownUntil[leash.holderIp] = now + LEASH_COOLDOWN_MS;
+  const live = liveIds ? new Set(liveIds) : null;
+  const waiting = migrateQueue(leash.queue).filter(
+    (wait) => wait.id && wait.id !== leash.holderId && (!live || live.has(wait.id)),
+  );
+  const next = waiting[0];
+  const idlePose = {
+    ...yard.pose,
+    vx: 0,
+    vz: 0,
+    gait: yard.pose.gait === 'run' || yard.pose.gait === 'walk' ? 'idle' : yard.pose.gait,
+  };
+  if (next) {
+    return {
+      ...yard,
+      pose: idlePose,
+      leash: {
+        ...leash,
+        holderId: next.id,
+        holderIp: next.ip || null,
+        since: now,
+        lastInputAt: now,
+        sessionMeters: 0,
+        creditedMeters: 0,
+        cooldownUntil,
+        queue: waiting.slice(1),
+      },
+      ai: { mode: 'idle', until: now + 1_200, tx: yard.pose.x, tz: yard.pose.z },
+    };
+  }
   return {
     ...yard,
-    pose: { ...yard.pose, vx: 0, vz: 0, gait: yard.pose.gait === 'run' || yard.pose.gait === 'walk' ? 'idle' : yard.pose.gait },
+    pose: idlePose,
     leash: {
       ...leash,
       holderId: null,
@@ -305,6 +368,7 @@ export function releaseLeash(yard: YardState, now: number): YardState {
       sessionMeters: 0,
       creditedMeters: 0,
       cooldownUntil,
+      queue: waiting,
     },
     ai: { mode: 'idle', until: now + 1_200, tx: yard.pose.x, tz: yard.pose.z },
   };
@@ -325,14 +389,26 @@ export function tryAcquireLeash(
       ok: true,
       yard: {
         ...current,
-        leash: { ...current.leash, lastInputAt: now },
+        leash: {
+          ...current.leash,
+          lastInputAt: now,
+          queue: (current.leash.queue ?? []).filter((wait) => wait.id !== clientId),
+        },
       },
     };
   }
   if (current.leash.holderId) {
     const idleLeft = Math.max(0, LEASH_IDLE_MS - (now - current.leash.lastInputAt));
     const maxLeft = Math.max(0, LEASH_MAX_MS - (now - current.leash.since));
-    return { ok: false, code: 'busy', retryAfterMs: Math.min(idleLeft || maxLeft, maxLeft), yard: current };
+    return {
+      ok: false,
+      code: 'busy',
+      retryAfterMs: Math.min(idleLeft || maxLeft, maxLeft),
+      yard: {
+        ...current,
+        leash: { ...current.leash, queue: enqueueLeash(current.leash.queue ?? [], clientId, ip) },
+      },
+    };
   }
   const blockedUntil = current.leash.cooldownUntil[ip] ?? 0;
   if (blockedUntil > now) {
@@ -352,6 +428,7 @@ export function tryAcquireLeash(
         sessionMeters: 0,
         creditedMeters: 0,
         cooldownUntil: pruneCooldowns(current.leash.cooldownUntil, now),
+        queue: (current.leash.queue ?? []).filter((wait) => wait.id !== clientId),
       },
     },
   };
@@ -567,9 +644,13 @@ export function publicPose(pose: Pose) {
 }
 
 export function publicLeash(leash: Leash, now: number) {
+  const held = Boolean(leash.holderId) && !leashExpired(leash, now);
+  const queue = migrateQueue(leash.queue).map((wait) => wait.id);
   return {
-    held: Boolean(leash.holderId) && !leashExpired(leash, now),
-    holderId: leash.holderId && !leashExpired(leash, now) ? leash.holderId : null,
+    held,
+    holderId: held ? leash.holderId : null,
+    queue,
+    nextId: queue[0] ?? null,
   };
 }
 

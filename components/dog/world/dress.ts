@@ -112,7 +112,7 @@ export function lampsAlongRoads(roads: RoadLine[], here: PointXZ, max = 24, spac
 function sampleInside(ring: PointXZ[], want: number, seed: number) {
   const box = ringBounds(ring);
   const hits: PointXZ[] = [];
-  for (let i = 0; i < want * 10 && hits.length < want; i += 1) {
+  for (let i = 0; i < want * 14 && hits.length < want; i += 1) {
     const x = box.minX + hash2(seed + i, box.minZ) * box.w;
     const z = box.minZ + hash2(box.maxX, seed + i * 3) * box.d;
     if (pointInRing(x, z, ring)) hits.push({ x, z });
@@ -121,20 +121,39 @@ function sampleInside(ring: PointXZ[], want: number, seed: number) {
   return hits;
 }
 
-export function plantsInParks(parks: PointXZ[][], here: PointXZ, max = 80) {
+function sampleNear(ring: PointXZ[], here: PointXZ, want: number, radius: number, seed: number) {
+  const hits: PointXZ[] = [];
+  for (let i = 0; i < want * 16 && hits.length < want; i += 1) {
+    const ang = hash2(seed, i) * Math.PI * 2;
+    const r = Math.sqrt(hash2(i, seed + 3)) * radius;
+    const x = here.x + Math.cos(ang) * r;
+    const z = here.z + Math.sin(ang) * r;
+    if (pointInRing(x, z, ring)) hits.push({ x, z });
+  }
+  return hits;
+}
+
+export function plantsInParks(parks: PointXZ[][], here: PointXZ, max = 160) {
   const plants: Plant[] = [];
   for (const park of parks) {
     if (park.length < 3) continue;
     const area = ringArea(park);
-    if (area < 30) continue;
-    const trees = Math.min(36, 6 + Math.floor(area / 90));
-    const bushes = Math.min(24, 4 + Math.floor(area / 140));
+    if (area < 24) continue;
+    const trees = Math.min(140, 32 + Math.floor(area / 22));
+    const bushes = Math.min(72, 18 + Math.floor(area / 48));
     const seed = centroid(park);
-    sampleInside(park, trees, seed.x).forEach((p, i) => {
-      plants.push({ ...p, s: 1.1 + hash2(i, seed.x) * 0.8, kind: 'tree' });
+    const near = sampleNear(park, here, Math.min(80, trees), 42, seed.x);
+    const fill = sampleInside(park, trees, seed.x);
+    [...near, ...fill].forEach((p, i) => {
+      const dist = Math.hypot(p.x - here.x, p.z - here.z);
+      if (dist < 3.2) return;
+      const s = dist < 8 ? 0.55 + hash2(i, p.x) * 0.55 : 0.7 + hash2(i, p.x) * 0.95;
+      plants.push({ ...p, s, kind: 'tree' });
     });
     sampleInside(park, bushes, seed.z + 9).forEach((p, i) => {
-      plants.push({ ...p, s: 0.45 + hash2(i + 4, seed.z) * 0.35, kind: 'bush' });
+      const dist = Math.hypot(p.x - here.x, p.z - here.z);
+      if (dist < 2.2) return;
+      plants.push({ ...p, s: 0.38 + hash2(i + 4, seed.z) * 0.55, kind: 'bush' });
     });
   }
   return plants
@@ -142,10 +161,10 @@ export function plantsInParks(parks: PointXZ[][], here: PointXZ, max = 80) {
     .slice(0, max);
 }
 
-export function streetTreesAlongRoads(roads: RoadLine[], here: PointXZ, max = 36, spacing = 12) {
+export function streetTreesAlongRoads(roads: RoadLine[], here: PointXZ, max = 70, spacing = 8) {
   const trees: Plant[] = [];
   for (const road of roads) {
-    if (road.width < 4.8) continue;
+    if (road.width < 4.4) continue;
     let traveled = 0;
     for (let i = 1; i < road.line.length; i += 1) {
       const a = road.line[i - 1];
@@ -156,15 +175,13 @@ export function streetTreesAlongRoads(roads: RoadLine[], here: PointXZ, max = 36
       if (len < 2) continue;
       const nx = -dz / len;
       const nz = dx / len;
-      const side = road.width * 0.5 + 1.6;
+      const side = road.width * 0.5 + 1.45;
       let t = (spacing * 0.5 - (traveled % spacing) + spacing) % spacing;
-      while (t < len && trees.length < 80) {
-        trees.push({
-          x: a.x + (dx / len) * t + nx * side,
-          z: a.z + (dz / len) * t + nz * side,
-          s: 0.85 + hash2(t, a.x) * 0.45,
-          kind: 'tree',
-        });
+      while (t < len && trees.length < 160) {
+        const x = a.x + (dx / len) * t;
+        const z = a.z + (dz / len) * t;
+        trees.push({ x: x + nx * side, z: z + nz * side, s: 0.75 + hash2(t, a.x) * 0.55, kind: 'tree' });
+        trees.push({ x: x - nx * side, z: z - nz * side, s: 0.7 + hash2(a.z, t) * 0.5, kind: 'tree' });
         t += spacing;
       }
       traveled += len;
@@ -175,9 +192,9 @@ export function streetTreesAlongRoads(roads: RoadLine[], here: PointXZ, max = 36
     .slice(0, max);
 }
 
-export function dressPlants(parks: PointXZ[][], roads: RoadLine[], here: PointXZ, max = 120) {
-  const park = plantsInParks(parks, here, Math.ceil(max * 0.7));
-  const street = streetTreesAlongRoads(roads, here, Math.floor(max * 0.35));
+export function dressPlants(parks: PointXZ[][], roads: RoadLine[], here: PointXZ, max = 320) {
+  const park = plantsInParks(parks, here, Math.ceil(max * 0.74));
+  const street = streetTreesAlongRoads(roads, here, Math.floor(max * 0.4));
   return [...park, ...street]
     .sort((a, b) => Math.hypot(a.x - here.x, a.z - here.z) - Math.hypot(b.x - here.x, b.z - here.z))
     .slice(0, max);

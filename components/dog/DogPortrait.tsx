@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import type { DogGenome, LifeStage } from '@/lib/dog';
+import type { DogCompanion, DogGenome, LifeStage } from '@/lib/dog';
 import type { DriveControl } from './DogRig';
 import type { PortraitReaction } from './look';
 import type { WorldView } from './DogCanvas';
@@ -32,6 +32,9 @@ export default function DogPortrait({
   onWorldColliders,
   onReady,
   onAnchor,
+  companions = [],
+  youId = null,
+  lookAt = { x: 0, z: 0 },
 }: {
   genome?: DogGenome | null;
   asleep: boolean;
@@ -52,6 +55,9 @@ export default function DogPortrait({
   onWorldColliders?: (colliders: WorldColliders) => void;
   onReady?: () => void;
   onAnchor?: (pos: { x: number; y: number } | null) => void;
+  companions?: DogCompanion[];
+  youId?: string | null;
+  lookAt?: { x: number; z: number };
 }) {
   if (compact) {
     return <DogStill genome={genome} stage={stage} reaction={reaction} asleep={asleep} night={night} sad={sad} />;
@@ -76,6 +82,9 @@ export default function DogPortrait({
       onWorldColliders={onWorldColliders}
       onReady={onReady}
       onAnchor={onAnchor}
+      companions={companions}
+      youId={youId}
+      lookAt={lookAt}
     />
   );
 }

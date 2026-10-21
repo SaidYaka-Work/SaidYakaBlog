@@ -3,7 +3,8 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Suspense, lazy, useEffect, useRef, useState, type RefObject } from 'react';
 import { ACESFilmicToneMapping, PerspectiveCamera, PointLight, SRGBColorSpace, Vector3, type Group, type Mesh } from 'three';
-import type { DogGenome, LifeStage } from '@/lib/dog';
+import type { DogCompanion, DogGenome, LifeStage } from '@/lib/dog';
+import Companions from './Companions';
 import type { PortraitReaction } from './look';
 import { CAMERA_YAW, frameCamera, followYardCamera, projectMeshBounds } from './frame';
 import DogRig, { type DriveControl } from './DogRig';
@@ -212,6 +213,9 @@ export default function DogCanvas({
   onWorldColliders,
   onReady,
   onAnchor,
+  companions = [],
+  youId = null,
+  lookAt = { x: 0, z: 0 },
 }: {
   genome?: DogGenome | null;
   stage?: LifeStage;
@@ -232,6 +236,9 @@ export default function DogCanvas({
   onWorldColliders?: (colliders: WorldColliders) => void;
   onReady?: () => void;
   onAnchor?: (pos: { x: number; y: number } | null) => void;
+  companions?: DogCompanion[];
+  youId?: string | null;
+  lookAt?: { x: number; z: number };
 }) {
   const host = useRef<HTMLDivElement>(null);
   const dogRef = useRef<Group>(null);
@@ -340,6 +347,7 @@ export default function DogCanvas({
               roomy={fill}
             />
           )}
+          {!empty && <Companions guests={companions} night={night} youId={youId} lookAt={lookAt} />}
           {!empty && <DogKeyLight target={dogRef} night={night} />}
           {!empty && fill && <FootShadow target={dogRef} />}
           {!empty && (

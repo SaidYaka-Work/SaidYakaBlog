@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useRef, type CSSProperties, type PointerEvent } from 'react';
 import { englishPath } from '@/lib/site';
+import type { DogEmote } from '@/lib/dog';
+import { EMOTE_SET } from './emotes';
 
 export type Toast = { id: number; emote: string; text: string };
 
@@ -40,6 +42,10 @@ export default function DogHud({
   onTravel,
   onToggleTravel,
   thoughtAnchor = null,
+  onEmote,
+  youNext = false,
+  queueAhead = 0,
+  neighborCount = 0,
 }: {
   name: string;
   stageLabel: string;
@@ -74,6 +80,10 @@ export default function DogHud({
   onTravel?: (placeId: string) => void;
   onToggleTravel?: () => void;
   thoughtAnchor?: { x: number; y: number } | null;
+  onEmote?: (kind: DogEmote) => void;
+  youNext?: boolean;
+  queueAhead?: number;
+  neighborCount?: number;
 }) {
   return (
     <div className={`dog-hud ${touch ? 'is-touch' : ''}`}>
@@ -97,7 +107,7 @@ export default function DogHud({
 
       <div className="dog-chips">
         <span className="dog-chip" title="Neighbors on the porch">
-          👥 {presence}
+          👥 {Math.max(presence, neighborCount)}
         </span>
         {worldReady && inWorld && (
           <button type="button" className="dog-chip" onClick={onHome}>
@@ -117,10 +127,29 @@ export default function DogHud({
         </button>
       </div>
 
-      {visitorWalking && (
+      {youNext && (
+        <p className="dog-leash is-next" role="status">
+          You&apos;re next
+        </p>
+      )}
+      {!youNext && queueAhead > 0 && (
+        <p className="dog-leash" role="status">
+          Waiting · {queueAhead} ahead
+        </p>
+      )}
+      {visitorWalking && !youNext && (
         <p className="dog-leash" role="status">
           🐾 a visitor is walking {name}
         </p>
+      )}
+      {onEmote && !empty && (
+        <div className="dog-emotes" role="group" aria-label="Emotes">
+          {EMOTE_SET.map((item) => (
+            <button key={item.kind} type="button" onClick={() => onEmote(item.kind)} aria-label={item.kind}>
+              {item.label}
+            </button>
+          ))}
+        </div>
       )}
 
       {(hungry || wantsWalk) && !empty && (
