@@ -5,7 +5,7 @@ import { englishUrl } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'Games',
-  description: 'A shelf of original browser games: a daily chat puzzle, plus skill, timing, words, logic, and herding.',
+  description: 'A shelf of original browser games: a daily chat puzzle, a FakeGPT party toy, plus skill, timing, words, logic, and herding.',
   alternates: {
     canonical: englishUrl('/games'),
     languages: {
@@ -25,8 +25,8 @@ export default function GamesPage() {
       <p className="hero-kicker text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Arcade</p>
       <h1 className="hero-title mt-3 font-serif text-5xl tracking-tight sm:text-6xl">Play</h1>
       <p className="hero-copy mt-5 max-w-xl text-lg text-[var(--muted)]">
-        A running shelf for experiments, arcade distractions, and odd little browser toys. A new
-        one lands most days.
+        A running shelf for experiments, arcade distractions, and odd little browser toys — including
+        FakeGPT, where you secretly do every job by hand while customers join and lose patience. A new set lands most days.
       </p>
       {dailies.length ? (
         <section className="mt-12">

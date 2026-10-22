@@ -126,19 +126,34 @@ export default async function HomePage() {
       )}
 
       <section className="mx-auto max-w-6xl px-5 pb-6 pt-4 sm:px-8">
-        <Link
-          href={englishPath('/dog')}
-          className="lift-card flex flex-col gap-2 rounded-[1.6rem] border border-[var(--line)] bg-[var(--bg-elevated)] px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <div>
-            <p className="text-xs uppercase tracking-[0.16em] text-[var(--accent)]">The city</p>
-            <p className="mt-2 font-serif text-2xl tracking-tight">The internet has a dog</p>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Biscuit lives out in the world. Everyone who visits looks after the same one.
-            </p>
-          </div>
-          <span className="text-sm text-[var(--ink)]">Meet him →</span>
-        </Link>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Link
+            href={englishPath('/dog')}
+            className="lift-card flex flex-col gap-2 rounded-[1.6rem] border border-[var(--line)] bg-[var(--bg-elevated)] px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div>
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--accent)]">The city</p>
+              <p className="mt-2 font-serif text-2xl tracking-tight">The internet has a dog</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Biscuit lives out in the world. Everyone who visits looks after the same one.
+              </p>
+            </div>
+            <span className="text-sm text-[var(--ink)]">Meet him →</span>
+          </Link>
+          <Link
+            href={englishPath('/fakegpt')}
+            className="lift-card flex flex-col gap-2 rounded-[1.6rem] border border-[var(--line)] bg-[var(--bg-elevated)] px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div>
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--accent)]">Arcade</p>
+              <p className="mt-2 font-serif text-2xl tracking-tight">You are FakeGPT</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Pretend to be the AI. Juggle customers as they join, each with a queue and a patience meter.
+              </p>
+            </div>
+            <span className="text-sm text-[var(--ink)]">Open a chat →</span>
+          </Link>
+        </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-5 pb-24 pt-6 sm:px-8">
