@@ -17,6 +17,7 @@ type GameShellProps = {
   restartLabel?: string;
   extraActions?: React.ReactNode;
   tight?: boolean;
+  wide?: boolean;
   hud?: 'cards' | 'line';
   children: React.ReactNode;
 };
@@ -35,6 +36,7 @@ export default function GameShell({
   restartLabel = 'Restart',
   extraActions,
   tight = false,
+  wide = false,
   hud = 'cards',
   children,
 }: GameShellProps) {
@@ -59,7 +61,7 @@ export default function GameShell({
   );
 
   return (
-    <section className={`mx-auto max-w-3xl px-5 ${tight ? 'py-6 sm:px-8 sm:py-8' : 'py-10 sm:px-8 sm:py-14'}`}>
+    <section className={`mx-auto px-5 ${wide ? 'max-w-6xl' : 'max-w-3xl'} ${tight ? 'py-6 sm:px-8 sm:py-8' : 'py-10 sm:px-8 sm:py-14'}`}>
       <Link
         href={englishPath('/games')}
         className="link-underline text-sm text-[var(--muted)] hover:text-[var(--ink)]"

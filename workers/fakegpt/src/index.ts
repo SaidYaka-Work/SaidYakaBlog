@@ -1,4 +1,4 @@
-import { chatTurn, generateDailySet, judgeRound, todayOr, type AiRunner } from './ai';
+import { chatTurn, generateDailySet, gradeTyped, judgeRound, todayOr, type AiRunner } from './ai';
 import { kvGetJson, kvPutJson, takeBudget, takeWindow, type Counter, type KVNamespace } from './budget';
 import { fallbackDailySet } from './fallback';
 import {
@@ -7,9 +7,10 @@ import {
   GLOBAL_AI_CALLS_PER_DAY,
   IP_CHAT_PER_HOUR,
   IP_DAILY_GET_PER_HOUR,
+  IP_GRADE_PER_HOUR,
   IP_JUDGE_PER_HOUR,
 } from './models';
-import { clientIp, parseChatRequest, parseJudgeRequest, type DailySet, utcDate } from './schema';
+import { clientIp, parseChatRequest, parseGradeRequest, parseJudgeRequest, type DailySet, utcDate } from './schema';
 
 export type Env = {
   AI?: AiRunner;
@@ -83,7 +84,7 @@ export async function dailySet(env: Env, date: string): Promise<DailySet> {
   const key = dailyCacheKey(date);
   const cached = await kvGetJson<DailySet>(env.FAKEGPT, key);
   if (cached?.rounds?.length) return cached;
-  const generated = (await spend(env, date, 1)) ? await generateDailySet(env.AI, date) : fallbackDailySet(date);
+  const generated = (await spend(env, date, 2)) ? await generateDailySet(env.AI, date) : fallbackDailySet(date);
   await kvPutJson(env.FAKEGPT, key, generated, dailyCacheTtlSec(generated.source));
   return generated;
 }
@@ -135,6 +136,24 @@ export default {
         return json({ fallback: true, reason: 'budget' }, 200, origin, env);
       }
       const result = await judgeRound(env.AI, parsed.value);
+      return json(result, 200, origin, env);
+    }
+
+    if (request.method === 'POST' && url.pathname === '/grade') {
+      if (!(await limited(env, `rl:grade:${date}:${ip}`, IP_GRADE_PER_HOUR, HOUR))) {
+        return json({ error: 'rate', fallback: true, correct: false }, 429, origin, env);
+      }
+      let parsed;
+      try {
+        parsed = parseGradeRequest(await readJson(request));
+      } catch {
+        return json({ error: 'invalid' }, 400, origin, env);
+      }
+      if (!parsed.ok) return json({ error: parsed.error }, 400, origin, env);
+      if (!(await spend(env, parsed.value.date, 1))) {
+        return json({ fallback: true, correct: false, reason: 'budget' }, 200, origin, env);
+      }
+      const result = await gradeTyped(env.AI, parsed.value);
       return json(result, 200, origin, env);
     }
 

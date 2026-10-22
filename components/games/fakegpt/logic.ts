@@ -1,15 +1,28 @@
-import type { Prompt, RoundAttempt, ScoreResult, Thumbs } from './types';
+import { asTriviaItems, isBonusKind, localJobPool } from './jobs';
+import { comboPoints } from './lanes';
+import { BONUS, TRIVIA, type TriviaItem } from './trivia';
+import type { Prompt, PromptKind, RoundAttempt, ScoreResult, Thumbs } from './types';
+import type { DailyRound } from '../../../workers/fakegpt/src/schema';
 
 export const ROUNDS_PER_RUN = 8;
 export const BASE_SECONDS = 24;
 export const MIN_SECONDS = 14;
+export const MC_SECONDS = 16;
+export const TYPED_SECONDS = 20;
 export const STORAGE_KEY = 'fakegpt-best';
+export const MAX_BONUS_PER_RUN = 1;
 
 export const NUDGE_MARKS = [
   { at: 0.42, text: 'hello??' },
   { at: 0.68, text: 'are you still generating?' },
   { at: 0.86, text: 'my context window is getting bored' },
 ] as const;
+
+const HALLUCINATION_ROASTS = [
+  "that's a hallucination, buddy. I asked a fact and you invented a vibe.",
+  'wrong. confidently wrong. the worst model crime.',
+  'I fact-checked you against a cereal box and the cereal box won.',
+];
 
 const EMPTY_ROASTS = [
   'that is a blank reply. my stapler could do that, and the stapler is unionized.',
@@ -62,7 +75,9 @@ export function shuffle<T>(items: readonly T[], random = Math.random): T[] {
   return next;
 }
 
-export function roundSeconds(roundIndex: number): number {
+export function roundSeconds(roundIndex: number, kind?: PromptKind): number {
+  if (kind === 'mc') return Math.max(10, MC_SECONDS - Math.floor(roundIndex / 2));
+  if (kind === 'typed') return Math.max(12, TYPED_SECONDS - Math.floor(roundIndex / 2));
   return Math.max(MIN_SECONDS, BASE_SECONDS - roundIndex);
 }
 
@@ -74,39 +89,182 @@ export function formatTimer(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
-/** Alternate draw/sound so a full run always exercises both verbs. */
-export function pickPrompts(pool: readonly Prompt[], count: number, random = Math.random): Prompt[] {
-  const draw = shuffle(
-    pool.filter((prompt) => prompt.kind === 'draw'),
-    random,
-  );
-  const sound = shuffle(
-    pool.filter((prompt) => prompt.kind === 'sound'),
-    random,
-  );
-  const picked: Prompt[] = [];
-  let drawIndex = 0;
-  let soundIndex = 0;
-  let takeDraw = random() < 0.5;
+export function shouldIncludeBonus(seed: number): boolean {
+  return seed % 2 === 0;
+}
 
-  while (picked.length < count && (drawIndex < draw.length || soundIndex < sound.length)) {
-    if (takeDraw && drawIndex < draw.length) {
-      picked.push(draw[drawIndex]);
-      drawIndex += 1;
-    } else if (!takeDraw && soundIndex < sound.length) {
-      picked.push(sound[soundIndex]);
-      soundIndex += 1;
-    } else if (drawIndex < draw.length) {
-      picked.push(draw[drawIndex]);
-      drawIndex += 1;
-    } else {
-      picked.push(sound[soundIndex]);
-      soundIndex += 1;
+export function bonusCountFor(rounds: readonly { kind: string }[]): number {
+  return rounds.filter((round) => round.kind === 'draw' || round.kind === 'sound').length;
+}
+
+/** Trivia-first run: mostly MC/typed, at most one draw/sound bonus. */
+export function pickPrompts(pool: readonly TriviaItem[], count: number, random = Math.random, seed = 1): Prompt[] {
+  const mc = shuffle(
+    pool.filter((item) => item.kind === 'mc'),
+    random,
+  );
+  const typed = shuffle(
+    pool.filter((item) => item.kind === 'typed'),
+    random,
+  );
+  const bonusPool = shuffle(
+    pool.filter((item) => item.kind === 'draw' || item.kind === 'sound'),
+    random,
+  );
+  const wantBonus = shouldIncludeBonus(seed) && bonusPool.length > 0;
+  const typedCount = wantBonus ? 2 : 3;
+  const mcCount = count - typedCount - (wantBonus ? 1 : 0);
+  const usedAnswers = new Set<string>();
+  const takeUnique = (items: TriviaItem[], n: number) => {
+    const picked: TriviaItem[] = [];
+    for (const item of takeByDifficulty(items, items.length, random)) {
+      const key = item.answer.trim().toLowerCase();
+      if (usedAnswers.has(key)) continue;
+      usedAnswers.add(key);
+      picked.push(item);
+      if (picked.length >= n) break;
     }
-    takeDraw = !takeDraw;
+    return picked;
+  };
+  const trivia: TriviaItem[] = [];
+  trivia.push(...takeUnique(mc, mcCount));
+  trivia.push(...takeUnique(typed, typedCount));
+  if (trivia.length < mcCount + typedCount) {
+    for (const item of shuffle([...mc, ...typed], random)) {
+      if (trivia.length >= mcCount + typedCount) break;
+      const key = item.answer.trim().toLowerCase();
+      if (usedAnswers.has(key) || trivia.some((row) => row.id === item.id)) continue;
+      usedAnswers.add(key);
+      trivia.push(item);
+    }
   }
+  trivia.sort((a, b) => a.difficulty - b.difficulty);
+  const dressed = trivia.map((item, index) => dressTrivia(item, random, index));
+  if (wantBonus) {
+    const bonus = dressTrivia(bonusPool[0], random, dressed.length);
+    const insertAt = Math.min(dressed.length, 4 + (seed % 2));
+    dressed.splice(insertAt, 0, bonus);
+  }
+  return dressed.slice(0, count);
+}
 
+function takeByDifficulty(pool: TriviaItem[], count: number, random: () => number): TriviaItem[] {
+  const bands = [1, 2, 3].map((level) => pool.filter((item) => item.difficulty === level));
+  const picked: TriviaItem[] = [];
+  const used = new Set<string>();
+  const targets = [Math.max(1, Math.ceil(count * 0.45)), Math.max(1, Math.ceil(count * 0.8)), count];
+  for (let band = 0; band < bands.length && picked.length < count; band += 1) {
+    for (const item of bands[band]) {
+      if (picked.length >= count || picked.length >= targets[band]) break;
+      if (used.has(item.id)) continue;
+      used.add(item.id);
+      picked.push(item);
+    }
+  }
+  for (const item of shuffle(pool, random)) {
+    if (picked.length >= count) break;
+    if (used.has(item.id)) continue;
+    used.add(item.id);
+    picked.push(item);
+  }
   return picked;
+}
+
+const PERSONAS = [
+  'Kira the intern',
+  'Uncle Modem',
+  'a sentient stapler',
+  'the microwave',
+  'Roomba 4',
+  'a tired sysadmin',
+  'Fax from 1997',
+  'the last cookie',
+];
+
+const VIBES = [
+  'panicking at a gate',
+  'pub-quiz smug',
+  'half-charged and impatient',
+  'fact-checking the void',
+  'on hold with reality',
+  'one espresso past polite',
+];
+
+function dressTrivia(item: TriviaItem, random: () => number, index: number): DailyRound {
+  const options = item.options?.length === 4 ? shuffle(item.options, random) : [];
+  return {
+    id: item.id,
+    kind: item.kind,
+    text: item.text,
+    persona: PERSONAS[Math.floor(random() * PERSONAS.length)] ?? PERSONAS[0],
+    vibe: VIBES[Math.floor(random() * VIBES.length)] ?? VIBES[0],
+    category: item.category,
+    difficulty: item.difficulty,
+    answer: item.answer,
+    aliases: item.aliases ?? [],
+    options,
+    nudges: index % 2 === 0 ? ['hello??', 'any day now'] : ['are you still generating?', 'my context window is bored'],
+    good: 'ok wait. the model knew a thing. screenshotting the void.',
+    bad: `that's a hallucination, buddy. it's ${item.answer}.`,
+  };
+}
+
+export function localTriviaPool(): TriviaItem[] {
+  return [...TRIVIA, ...BONUS];
+}
+
+export function pickJobs(pool: readonly TriviaItem[] = asTriviaItems(localJobPool()), count: number, random = Math.random, seed = 1): Prompt[] {
+  const jobs = pool.filter((item) => !isBonusKind(item.kind as PromptKind) && item.kind !== 'mc' && item.kind !== 'typed');
+  if (!jobs.length) return pickPrompts(pool, count, random, seed);
+  const mc = shuffle(
+    pool.filter((item) => item.kind === 'mc'),
+    random,
+  );
+  const typed = shuffle(
+    pool.filter((item) => item.kind === 'typed'),
+    random,
+  );
+  const other = shuffle(jobs, random);
+  const bonusPool = shuffle(
+    pool.filter((item) => isBonusKind(item.kind as PromptKind)),
+    random,
+  );
+  const wantBonus = shouldIncludeBonus(seed) && bonusPool.length > 0;
+  const slots = count - (wantBonus ? 1 : 0);
+  const otherCount = Math.min(other.length, Math.max(4, Math.round(slots * 0.4)));
+  const typedCount = Math.min(typed.length, Math.max(2, Math.round((slots - otherCount) * 0.4)));
+  const mcCount = Math.max(2, slots - otherCount - typedCount);
+  const usedAnswers = new Set<string>();
+  const usedIds = new Set<string>();
+  const take = (items: TriviaItem[], n: number) => {
+    const picked: TriviaItem[] = [];
+    for (const item of items) {
+      if (picked.length >= n) break;
+      const key = item.answer.trim().toLowerCase();
+      if (usedIds.has(item.id) || (item.kind !== 'draw' && item.kind !== 'sound' && usedAnswers.has(key))) continue;
+      usedIds.add(item.id);
+      if (item.kind !== 'draw' && item.kind !== 'sound') usedAnswers.add(key);
+      picked.push(item);
+    }
+    return picked;
+  };
+  const mixed: TriviaItem[] = [...take(mc, mcCount), ...take(typed, typedCount), ...take(other, otherCount)];
+  if (mixed.length < slots) {
+    for (const item of shuffle(pool.filter((row) => !isBonusKind(row.kind as PromptKind)), random)) {
+      if (mixed.length >= slots) break;
+      const key = item.answer.trim().toLowerCase();
+      if (usedIds.has(item.id) || usedAnswers.has(key)) continue;
+      usedIds.add(item.id);
+      usedAnswers.add(key);
+      mixed.push(item);
+    }
+  }
+  const dressed = mixed.map((item, index) => dressTrivia(item, random, index));
+  if (wantBonus) {
+    const bonus = dressTrivia(bonusPool[0], random, dressed.length);
+    dressed.splice(Math.min(dressed.length, 6 + (seed % 3)), 0, bonus);
+  }
+  return dressed.slice(0, count);
 }
 
 export function nextNudge(elapsedRatio: number, shown: number, custom?: string[]): string | null {
@@ -114,6 +272,49 @@ export function nextNudge(elapsedRatio: number, shown: number, custom?: string[]
   if (!text) return null;
   const at = NUDGE_MARKS[shown]?.at ?? 0.42 + shown * 0.22;
   return elapsedRatio >= at ? text : null;
+}
+
+export function scoreJob(
+  attempt: Pick<RoundAttempt, 'submittedInTime' | 'remainingMs' | 'totalMs'> & { correct: boolean; empty: boolean },
+  combo = 1,
+  random = Math.random,
+): ScoreResult {
+  const base = scoreTrivia(attempt, random);
+  if (!attempt.correct || attempt.empty) return base;
+  return { ...base, points: comboPoints(base.points, combo) };
+}
+
+export function scoreTrivia(
+  attempt: Pick<RoundAttempt, 'submittedInTime' | 'remainingMs' | 'totalMs'> & { correct: boolean; empty: boolean },
+  random = Math.random,
+): ScoreResult {
+  const late = !attempt.submittedInTime;
+  if (attempt.empty) {
+    return { points: 0, quality: 0, thumbs: 'down', stars: 0, empty: true, late, reaction: pickFrom(EMPTY_ROASTS, random) };
+  }
+  if (!attempt.correct) {
+    return {
+      points: late ? 0 : 8,
+      quality: 14,
+      thumbs: 'down',
+      stars: 1,
+      empty: false,
+      late,
+      reaction: pickFrom(HALLUCINATION_ROASTS, random),
+    };
+  }
+  const remainingRatio = attempt.totalMs > 0 ? clamp(attempt.remainingMs / attempt.totalMs, 0, 1) : 0;
+  const speedBonus = late ? 0 : Math.round(remainingRatio * 40);
+  const onTime = late ? 0 : 100;
+  return {
+    points: onTime + speedBonus + (late ? 20 : 40),
+    quality: late ? 52 : 92,
+    thumbs: late ? 'down' : 'up',
+    stars: late ? 3 : 5,
+    empty: false,
+    late,
+    reaction: late ? pickFrom(LATE_ROASTS, random) : pickFrom(UP_NOTES, random),
+  };
 }
 
 export function scoreWithJudge(attempt: RoundAttempt, judgeScore: number, random = Math.random): ScoreResult {
@@ -171,6 +372,18 @@ function pickFrom(list: readonly string[], random: () => number) {
 }
 
 export function scoreRound(attempt: RoundAttempt, random = Math.random): ScoreResult {
+  if (attempt.kind === 'mc' || attempt.kind === 'typed') {
+    return scoreTrivia(
+      {
+        submittedInTime: attempt.submittedInTime,
+        remainingMs: attempt.remainingMs,
+        totalMs: attempt.totalMs,
+        correct: Boolean(attempt.correct),
+        empty: Boolean(attempt.empty),
+      },
+      random,
+    );
+  }
   const empty = attempt.kind === 'draw' ? isEmptyDraw(attempt) : isEmptySound(attempt);
   const late = !attempt.submittedInTime;
   const remainingRatio = attempt.totalMs > 0 ? clamp(attempt.remainingMs / attempt.totalMs, 0, 1) : 0;
