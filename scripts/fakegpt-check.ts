@@ -90,6 +90,10 @@ assert.equal(isEmptyDraw({ strokeCount: 0, coverage: 0 }), true);
 assert.equal(isEmptySound({ audioMs: 0, peakLevel: 0, padHits: 0 }), true);
 assert.equal(matchTypedAnswer('Tokio', 'Tokyo', ['Tokio']), 'correct');
 assert.equal(matchTypedAnswer('Lyon', 'Paris'), 'wrong');
+assert.equal(matchTypedAnswer('michaelangelo', 'Michelangelo'), 'correct');
+const rainbow = JOBS.find((item) => item.id === 'or-rgb');
+assert.ok(rainbow && /yellow,\s*red,\s*orange/i.test(rainbow.text));
+assert.equal(checkJob('order', 'red, orange, yellow', rainbow?.answer ?? '', [], rainbow?.options ?? []), 'correct');
 
 const emptyDraw = scoreRound(
   {

@@ -10,7 +10,8 @@ import {
   matchOrder,
   parseFlexibleNumber,
 } from '../../../components/games/fakegpt/jobs.ts';
-import { matchChoice } from '../../../components/games/fakegpt/match.ts';
+import { matchChoice, normalizeAnswer } from '../../../components/games/fakegpt/match.ts';
+import { filterAliases } from '../src/schema.ts';
 import { pickJobs } from '../../../components/games/fakegpt/logic.ts';
 
 test('job bank covers the desk-job mix and is locally checkable', () => {
@@ -57,6 +58,46 @@ test('each checker accepts the right shape of answer', () => {
   assert.equal(parseFlexibleNumber('1,024 km'), 1024);
   assert.equal(matchNumeric('1.61', '1.6', 0.05), 'correct');
   assert.equal(matchOrder('mercury venus earth', 'Mercury, Venus, Earth'), 'correct');
+});
+
+test('local bank answers match their options and listed order items', () => {
+  const rgb = JOBS.find((item) => item.id === 'or-rgb');
+  assert.ok(rgb);
+  assert.match(rgb.text, /yellow,\s*red,\s*orange/i);
+  assert.equal(normalizeAnswer(rgb.answer), normalizeAnswer('red, orange, yellow'));
+
+  const listedItems = (text: string): string[] | null => {
+    const afterColon = text.split(':')[1];
+    if (!afterColon) return null;
+    const list = afterColon.split(/[—–-]/)[0];
+    const items = list
+      .split(',')
+      .map((item) => normalizeAnswer(item))
+      .filter(Boolean);
+    return items.length >= 3 ? items : null;
+  };
+
+  for (const item of JOBS) {
+    if (isChoiceKind(item.kind, item.options ?? [])) {
+      assert.equal(item.options?.length, 4, item.id);
+      assert.equal(
+        item.options?.filter((option) => matchChoice(option, item.answer)).length,
+        1,
+        `${item.id} answer must be among its options`,
+      );
+    }
+    if (item.kind === 'order') {
+      const listed = listedItems(item.text);
+      if (listed) {
+        const answer = normalizeAnswer(item.answer).split(' ').filter(Boolean);
+        assert.deepEqual([...answer].sort(), [...listed].sort(), `${item.id} prompt list must match the answer set`);
+      }
+    }
+    if (item.kind === 'translate') {
+      const aliases = filterAliases(item.kind, item.text, item.answer, item.aliases ?? []);
+      assert.deepEqual(aliases, item.aliases ?? [], `${item.id} bank aliases must pass the source-word rule`);
+    }
+  }
 });
 
 test('pickJobs fills a max-customer daily set from the bank', () => {

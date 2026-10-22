@@ -248,7 +248,7 @@ export const JOBS: JobItem[] = [
     kind: 'order',
     category: 'order',
     difficulty: 2,
-    text: 'rainbow start: indigo, red, orange — first three classic colors',
+    text: 'rainbow start: yellow, red, orange — first three classic colors',
     answer: 'red, orange, yellow',
     options: ['red, orange, yellow', 'red, yellow, orange', 'orange, red, yellow', 'yellow, orange, red'],
   },

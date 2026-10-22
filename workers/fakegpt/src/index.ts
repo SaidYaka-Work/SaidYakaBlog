@@ -1,7 +1,10 @@
-import { chatTurn, generateDailySet, gradeTyped, judgeRound, todayOr, type AiRunner } from './ai';
+import { chatTurn, generateDailySet, gradeTyped, judgeRound, logAiFailure, todayOr, type AiRunner } from './ai';
 import { kvGetJson, kvPutJson, takeBudget, takeWindow, type Counter, type KVNamespace } from './budget';
 import { fallbackDailySet } from './fallback';
 import {
+  AI_TIMEOUT_MS_CRON,
+  AI_TIMEOUT_MS_DAILY,
+  DAILY_GENERATE_SPEND,
   dailyCacheKey,
   dailyCacheTtlSec,
   GLOBAL_AI_CALLS_PER_DAY,
@@ -11,6 +14,10 @@ import {
   IP_JUDGE_PER_HOUR,
 } from './models';
 import { clientIp, parseChatRequest, parseGradeRequest, parseJudgeRequest, type DailySet, utcDate } from './schema';
+
+export type ExecutionContextLike = {
+  waitUntil(promise: Promise<unknown>): void;
+};
 
 export type Env = {
   AI?: AiRunner;
@@ -80,13 +87,44 @@ async function spend(env: Env, date: string, cost: number): Promise<boolean> {
   return true;
 }
 
-export async function dailySet(env: Env, date: string): Promise<DailySet> {
+export async function generateAndCache(
+  env: Env,
+  date: string,
+  timeoutMs = AI_TIMEOUT_MS_CRON,
+): Promise<DailySet> {
   const key = dailyCacheKey(date);
-  const cached = await kvGetJson<DailySet>(env.FAKEGPT, key);
-  if (cached?.rounds?.length) return cached;
-  const generated = (await spend(env, date, 2)) ? await generateDailySet(env.AI, date) : fallbackDailySet(date);
+  const generated = (await spend(env, date, DAILY_GENERATE_SPEND))
+    ? await generateDailySet(env.AI, date, { timeoutMs })
+    : fallbackDailySet(date);
   await kvPutJson(env.FAKEGPT, key, generated, dailyCacheTtlSec(generated.source));
   return generated;
+}
+
+export type DailySetOpts = {
+  /** Serve a fallback immediately and generate in the background. */
+  waitUntil?: (promise: Promise<unknown>) => void;
+  timeoutMs?: number;
+};
+
+export async function dailySet(env: Env, date: string, opts: DailySetOpts = {}): Promise<DailySet> {
+  const key = dailyCacheKey(date);
+  const cached = await kvGetJson<DailySet>(env.FAKEGPT, key);
+  if (cached?.rounds?.length && cached.source === 'ai') return cached;
+
+  if (opts.waitUntil) {
+    const fallback = cached?.rounds?.length ? cached : fallbackDailySet(date);
+    if (!cached?.rounds?.length) {
+      await kvPutJson(env.FAKEGPT, key, fallback, dailyCacheTtlSec(fallback.source));
+    }
+    opts.waitUntil(
+      generateAndCache(env, date, opts.timeoutMs ?? AI_TIMEOUT_MS_DAILY).catch((error) => {
+        logAiFailure('daily-bg', error);
+      }),
+    );
+    return fallback;
+  }
+
+  return generateAndCache(env, date, opts.timeoutMs ?? AI_TIMEOUT_MS_CRON);
 }
 
 async function readJson(request: Request): Promise<unknown> {
@@ -94,7 +132,7 @@ async function readJson(request: Request): Promise<unknown> {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx?: ExecutionContextLike): Promise<Response> {
     const url = new URL(request.url);
     const origin = request.headers.get('Origin');
 
@@ -117,7 +155,11 @@ export default {
       if (!(await limited(env, `rl:daily:${date}:${ip}`, IP_DAILY_GET_PER_HOUR, HOUR))) {
         return json({ error: 'rate' }, 429, origin, env);
       }
-      const set = await dailySet(env, date);
+      const set = await dailySet(env, date, {
+        waitUntil: (promise) => {
+          if (ctx?.waitUntil) ctx.waitUntil(promise);
+        },
+      });
       return json(set, 200, origin, env, 'public, max-age=60');
     }
 
@@ -180,6 +222,6 @@ export default {
 
   async scheduled(_event: unknown, env: Env): Promise<void> {
     const date = utcDate();
-    await dailySet(env, date);
+    await dailySet(env, date, { timeoutMs: AI_TIMEOUT_MS_CRON });
   },
 };

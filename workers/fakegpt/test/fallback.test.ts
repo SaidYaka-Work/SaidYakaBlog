@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { fallbackDailySet } from '../src/fallback.ts';
+import { fallbackDailySet, fillDailySet } from '../src/fallback.ts';
 import { dateSeed, validateDailySet } from '../src/schema.ts';
 
 test('date seeding is stable', () => {
@@ -28,4 +28,19 @@ test('fallback daily set is deterministic and valid', () => {
   assert.ok(valid.rounds.filter((round) => round.kind === 'mc' || round.kind === 'tone' || round.kind === 'order').length >= 2);
   assert.ok(valid.rounds.filter((round) => round.kind !== 'draw' && round.kind !== 'sound').length >= 2);
   assert.ok(valid.rounds.filter((round) => round.kind === 'draw' || round.kind === 'sound').length <= 1);
+});
+
+test('bank fills use the day personas, not leftover costume names', () => {
+  const personas = [
+    { id: 'dana', name: 'Dana', vibe: 'calm until the spinner spins' },
+    { id: 'lily', name: 'Lily', vibe: 'already late' },
+    { id: 'jamie', name: 'Jamie', vibe: 'three tabs of panic' },
+    { id: 'ethan', name: 'Ethan', vibe: 'mute button philosopher' },
+    { id: 'ava', name: 'Ava', vibe: 'inbox on fire' },
+  ];
+  const set = fillDailySet('2026-10-21', [], 'ai', personas);
+  const names = new Set(set.personas.map((row) => row.name));
+  assert.deepEqual([...names].sort(), personas.map((row) => row.name).sort());
+  assert.ok(set.rounds.every((round) => names.has(round.persona)));
+  assert.equal(set.rounds.some((round) => round.persona === 'Uncle Modem'), false);
 });

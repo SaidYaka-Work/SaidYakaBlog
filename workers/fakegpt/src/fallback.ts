@@ -8,6 +8,15 @@ export function fallbackDailySet(date: string): DailySet {
   return fillDailySet(date, [], 'fallback');
 }
 
+/** Every round, including bank fills, belongs to one of today's personas. */
+export function assignDayPersonas(rounds: DailyRound[], personas: DailyPersona[]): DailyRound[] {
+  if (!personas.length) return rounds;
+  return rounds.map((round, index) => {
+    const persona = personas[index % personas.length];
+    return { ...round, persona: persona.name, vibe: persona.vibe || round.vibe };
+  });
+}
+
 /** Keep valid AI rounds and personas, cap bonus at one, fill remaining slots from the local bank. */
 export function fillDailySet(
   date: string,
@@ -60,8 +69,9 @@ export function fillDailySet(
     ],
     dateSeed(date),
   );
+  const assigned = assignDayPersonas(kept, personas);
 
-  const assembled = validateDailySet({ rounds: kept, personas, source }, date);
+  const assembled = validateDailySet({ rounds: assigned, personas, source }, date);
   if (assembled) return assembled;
   const pureLocal = pickJobs(
     asTriviaItems(localJobPool()),
@@ -69,8 +79,9 @@ export function fillDailySet(
     mulberry32(dateSeed(`${date}-local`)),
     dateSeed(date),
   );
+  const localPersonas = fillPersonas(PERSONA_BANK, dateSeed(`${date}-local`));
   const fallback = validateDailySet(
-    { rounds: pureLocal, personas: fillPersonas(PERSONA_BANK, dateSeed(`${date}-local`)), source: 'fallback' },
+    { rounds: assignDayPersonas(pureLocal, localPersonas), personas: localPersonas, source: 'fallback' },
     date,
   );
   if (!fallback) throw new Error('local job bank failed validation');

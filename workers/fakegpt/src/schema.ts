@@ -1,5 +1,5 @@
 import { MAX_CUSTOMERS, fillPersonas, type DailyPersona } from '../../../components/games/fakegpt/lanes';
-import { matchChoice, normalizeAnswer } from '../../../components/games/fakegpt/match';
+import { levenshtein, matchChoice, normalizeAnswer } from '../../../components/games/fakegpt/match';
 
 export type { DailyPersona };
 import { DAILY_PERSONAS, DAILY_ROUNDS, DAILY_ROUNDS_MAX, MAX_BONUS_PER_RUN, PLAYER_TEXT_MAX } from './models';
@@ -185,6 +185,78 @@ function asDifficulty(value: unknown): 1 | 2 | 3 {
   return 2;
 }
 
+const SOURCE_CLUSTERS: readonly (readonly string[])[] = [
+  ['hello', 'hi', 'hey', 'howdy', 'yo', 'hiya'],
+  ['goodbye', 'bye', 'good bye', 'farewell', 'cya', 'see you'],
+  ['thank you', 'thanks', 'thx', 'thank'],
+  ['yes', 'yeah', 'yep', 'yup'],
+  ['no', 'nope', 'nah'],
+  ['please', 'pls'],
+];
+
+const FORMAT_STOP = new Set(['a', 'an', 'the', 'of', 'and', 'de', 'la', 'el']);
+
+/** Quoted phrases plus "translate X to …" / "what does X mean" source terms. */
+export function translateSourceTerms(text: string): string[] {
+  const terms = new Set<string>();
+  const add = (raw: string) => {
+    const normalized = normalizeAnswer(raw);
+    if (!normalized) return;
+    terms.add(normalized);
+    for (const word of normalized.split(' ')) {
+      if (word.length >= 2) terms.add(word);
+    }
+  };
+  const src = String(text || '');
+  for (const match of src.matchAll(/["“”']([^"'“”]{1,40})["“”']/g)) add(match[1]);
+  const translateTo = src.match(/translate\s+(.+?)\s+to\s+[a-z]+/i);
+  if (translateTo) add(translateTo[1]);
+  const whatDoes = src.match(/what does\s+["']?([^"'?]+?)["']?\s+mean/i);
+  if (whatDoes) add(whatDoes[1]);
+  return [...terms];
+}
+
+function sourceLanguageCluster(terms: readonly string[]): Set<string> {
+  const out = new Set<string>();
+  for (const cluster of SOURCE_CLUSTERS) {
+    if (cluster.some((word) => terms.includes(word))) {
+      for (const word of cluster) out.add(word);
+    }
+  }
+  return out;
+}
+
+/** Spelling/format variants of the same answer, not nicknames like "City of Love". */
+export function isFormatAlias(alias: string, answer: string): boolean {
+  const got = normalizeAnswer(alias);
+  const want = normalizeAnswer(answer);
+  if (!got || !want) return false;
+  if (got === want) return true;
+  if (got.replace(/ /g, '') === want.replace(/ /g, '')) return true;
+  const gotWords = got.split(' ').filter(Boolean);
+  const wantWords = want.split(' ').filter(Boolean);
+  if (gotWords.every((word) => wantWords.includes(word)) || wantWords.every((word) => gotWords.includes(word))) {
+    return true;
+  }
+  const initials = (words: string[]) => words.filter((word) => !FORMAT_STOP.has(word)).map((word) => word[0]).join('');
+  if (got.replace(/ /g, '') === initials(wantWords) || want.replace(/ /g, '') === initials(gotWords)) return true;
+  const dist = levenshtein(got, want);
+  const budget = want.length <= 3 ? 0 : want.length <= 7 ? 1 : 2;
+  return budget > 0 && dist <= budget;
+}
+
+export function filterAliases(kind: PromptKind, text: string, answer: string, aliases: readonly string[]): string[] {
+  const source = kind === 'translate' ? translateSourceTerms(text) : [];
+  const cluster = kind === 'translate' ? sourceLanguageCluster(source) : new Set<string>();
+  return aliases.filter((alias) => {
+    const normalized = normalizeAnswer(alias);
+    if (!normalized) return false;
+    if (source.includes(normalized) || cluster.has(normalized)) return false;
+    if (kind === 'translate') return true;
+    return isFormatAlias(alias, answer);
+  });
+}
+
 export function parseDailyRound(raw: unknown): DailyRound | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Record<string, unknown>;
@@ -195,10 +267,12 @@ export function parseDailyRound(raw: unknown): DailyRound | null {
   if (!kind || text.length < 8 || answer.length < 1) return null;
   const id = sanitizeLine(row.id, 32).replace(/[^a-z0-9-]/gi, '');
   if (!id) return null;
-  const aliases = (Array.isArray(row.aliases) ? row.aliases : [])
-    .map((alias) => sanitizeLine(alias, 80))
-    .filter(Boolean)
-    .slice(0, 6);
+  const aliases = filterAliases(
+    kind,
+    text,
+    answer,
+    (Array.isArray(row.aliases) ? row.aliases : []).map((alias) => sanitizeLine(alias, 80)).filter(Boolean),
+  ).slice(0, 6);
   const options = (Array.isArray(row.options) ? row.options : [])
     .map((option) => sanitizeLine(option, 80))
     .filter(Boolean)

@@ -35,7 +35,18 @@ export function levenshtein(a: string, b: string): number {
 function typoBudget(length: number): number {
   if (length <= 3) return 0;
   if (length <= 7) return 1;
-  return 2;
+  if (length <= 14) return 2;
+  return 3;
+}
+
+function fuzzyHit(got: string, target: string): 'correct' | 'close' | null {
+  const dist = levenshtein(got, target);
+  const budget = typoBudget(target.length);
+  const sameStart = got[0] === target[0];
+  if (budget > 0 && dist <= budget && (sameStart || dist <= 1)) return 'correct';
+  const contained = got.length >= 4 && target.length >= 4 && (target.includes(got) || got.includes(target));
+  if (contained || (sameStart && dist === budget + 1 && budget > 0)) return 'close';
+  return null;
 }
 
 export function matchTypedAnswer(player: string, answer: string, aliases: readonly string[] = []): MatchVerdict {
@@ -46,12 +57,15 @@ export function matchTypedAnswer(player: string, answer: string, aliases: readon
 
   let close = false;
   for (const target of targets) {
-    const dist = levenshtein(got, target);
-    const budget = typoBudget(target.length);
-    const sameStart = got[0] === target[0];
-    if (budget > 0 && dist <= budget && sameStart) return 'correct';
-    const contained = got.length >= 4 && target.length >= 4 && (target.includes(got) || got.includes(target));
-    if (contained || (sameStart && dist === budget + 1 && budget > 0)) close = true;
+    const whole = fuzzyHit(got, target);
+    if (whole === 'correct') return 'correct';
+    if (whole === 'close') close = true;
+    for (const token of target.split(' ')) {
+      if (token.length < 6) continue;
+      const part = fuzzyHit(got, token);
+      if (part === 'correct') return 'correct';
+      if (part === 'close') close = true;
+    }
   }
   return close ? 'ambiguous' : 'wrong';
 }

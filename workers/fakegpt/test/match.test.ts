@@ -21,6 +21,8 @@ test('matchTypedAnswer accepts aliases and small typos', () => {
   assert.equal(matchTypedAnswer('Lyon', 'Paris', []), 'wrong');
   assert.equal(matchTypedAnswer('   ', 'Paris', []), 'empty');
   assert.equal(matchTypedAnswer('cat', 'Paris', []), 'wrong');
+  assert.equal(matchTypedAnswer('michaelangelo', 'Michelangelo', []), 'correct');
+  assert.equal(matchTypedAnswer('michaelangelo', 'Michelangelo Buonarroti', []), 'correct');
 });
 
 test('matchChoice is exact after normalize and never needs fuzzy help', () => {

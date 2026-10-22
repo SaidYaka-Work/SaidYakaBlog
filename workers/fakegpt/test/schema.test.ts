@@ -2,9 +2,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { fallbackDailySet } from '../src/fallback.ts';
 import {
+  filterAliases,
+  isFormatAlias,
   parseChatRequest,
+  parseDailyRound,
   parseGradeRequest,
   parseJudgeRequest,
+  translateSourceTerms,
   utcDate,
   validateChatResult,
   validateDailySet,
@@ -172,6 +176,46 @@ test('validateJudgeResult and chat result sanitize lines', () => {
   assert.equal(judged.score, 10);
   assert.ok(!judged.messages[1].includes('<'));
   assert.equal(validateChatResult({ messages: [] }), null);
+});
+
+test('translate aliases drop source-language words', () => {
+  const text = 'please translate hello to Spanish for me now';
+  assert.ok(translateSourceTerms(text).includes('hello'));
+  const aliases = filterAliases('translate', text, 'hola', ['hi', 'hello', 'hey', 'hola']);
+  assert.deepEqual(aliases, ['hola']);
+  const hola = parseDailyRound({
+    id: 'tr-hello',
+    kind: 'translate',
+    text,
+    persona: 'Dana',
+    answer: 'hola',
+    aliases: ['hi', 'hello', 'hey', 'hola'],
+    nudges: ['hello??'],
+    good: 'ok',
+    bad: 'nope',
+  });
+  assert.ok(hola);
+  assert.deepEqual(hola.aliases, ['hola']);
+});
+
+test('fact aliases reject nicknames and keep format variants', () => {
+  assert.equal(isFormatAlias('City of Love', 'Paris'), false);
+  assert.equal(isFormatAlias('paris', 'Paris'), true);
+  assert.equal(isFormatAlias('Tokio', 'Tokyo'), true);
+  const paris = parseDailyRound({
+    id: 'geo-paris',
+    kind: 'typed',
+    text: 'what city is the capital of france today',
+    persona: 'Dana',
+    answer: 'Paris',
+    aliases: ['City of Love', 'paris', 'PARIS'],
+    nudges: ['hello??'],
+    good: 'ok',
+    bad: 'nope',
+  });
+  assert.ok(paris);
+  assert.equal(paris.aliases.includes('City of Love'), false);
+  assert.ok(paris.aliases.includes('paris'));
 });
 
 test('utcDate is YYYY-MM-DD', () => {
