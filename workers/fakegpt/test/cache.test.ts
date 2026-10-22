@@ -5,13 +5,26 @@ import { fallbackDailySet } from '../src/fallback.ts';
 import {
   AI_DAILY_CACHE_TTL_SEC,
   DAILY_CACHE_KEY_PREFIX,
+  DAILY_TASKS_PER_BATCH,
   FALLBACK_DAILY_CACHE_TTL_SEC,
-  TEXT_MAX_TOKENS_BATCH,
   TEXT_MAX_TOKENS_PERSONAS,
   TEXT_MAX_TOKENS_VERIFY,
   dailyCacheKey,
   dailyCacheTtlSec,
+  dailySourceFor,
 } from '../src/models.ts';
+import type { DailySet } from '../src/schema.ts';
+
+function userText(input: Record<string, unknown>): string {
+  const messages = input.messages as Array<{ role?: string; content?: string }> | undefined;
+  return messages?.find((row) => row.role === 'user')?.content ?? '';
+}
+
+function roundsForBatch(valid: DailySet, input: Record<string, unknown>) {
+  const hit = userText(input).match(/batch (\d+)/i);
+  const batch = hit ? Number(hit[1]) - 1 : 0;
+  return valid.rounds.slice(batch * DAILY_TASKS_PER_BATCH, batch * DAILY_TASKS_PER_BATCH + DAILY_TASKS_PER_BATCH);
+}
 
 function aiThatReturns(valid: ReturnType<typeof fallbackDailySet>) {
   return {
@@ -19,8 +32,7 @@ function aiThatReturns(valid: ReturnType<typeof fallbackDailySet>) {
       const max = Number(input.max_tokens);
       if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: valid.personas } };
       if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
-      if (max === TEXT_MAX_TOKENS_BATCH) return { response: { rounds: valid.rounds.slice(0, 10) } };
-      return { response: { rounds: valid.rounds } };
+      return { response: { rounds: roundsForBatch(valid, input) } };
     },
   };
 }
@@ -48,6 +60,7 @@ test('dailyCacheTtlSec keeps AI sets for a day and fallbacks for a few minutes',
   assert.ok(FALLBACK_DAILY_CACHE_TTL_SEC <= 5 * 60);
   assert.ok(FALLBACK_DAILY_CACHE_TTL_SEC < AI_DAILY_CACHE_TTL_SEC);
   assert.equal(dailyCacheKey('2026-10-21'), `${DAILY_CACHE_KEY_PREFIX}2026-10-21`);
+  assert.match(DAILY_CACHE_KEY_PREFIX, /daily:v6:/);
 });
 
 test('dailySet caches an AI set for the full day', async () => {
@@ -102,7 +115,7 @@ test('dailySet retries generation after a short-lived fallback cache expires', a
           const max = Number(input.max_tokens);
           if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: fallback.personas } };
           if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
-          return { response: { rounds: fallback.rounds.slice(0, 10) } };
+          return { response: { rounds: roundsForBatch(fallback, input) } };
         },
       },
     },
@@ -128,10 +141,13 @@ test('player /daily serves fallback immediately while generation runs in waitUnt
     {
       FAKEGPT: kv,
       AI: {
-        async run() {
+        async run(_name, input) {
           started.push(Date.now());
           await hang;
-          return { response: { rounds: valid.rounds.slice(0, 10) } };
+          const max = Number(input.max_tokens);
+          if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: valid.personas } };
+          if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
+          return { response: { rounds: roundsForBatch(valid, input) } };
         },
       },
     },
@@ -147,6 +163,31 @@ test('player /daily serves fallback immediately while generation runs in waitUnt
   const aiPut = kv.puts.find((row) => row.key === dailyCacheKey(date) && row.source === 'ai');
   assert.ok(aiPut);
   assert.equal(aiPut.ttl, AI_DAILY_CACHE_TTL_SEC);
+});
+
+test('a mostly-bank harvest is cached only briefly', async () => {
+  const date = '2026-10-21';
+  const valid = fallbackDailySet(date);
+  const kv = memoryKv();
+  const set = await dailySet(
+    {
+      FAKEGPT: kv,
+      AI: {
+        async run(_name, input) {
+          const max = Number(input.max_tokens);
+          if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: valid.personas } };
+          if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
+          return { response: { rounds: roundsForBatch(valid, input).slice(0, 1) } };
+        },
+      },
+    },
+    date,
+  );
+  assert.equal(set.source, 'fallback');
+  assert.equal(dailySourceFor(4), 'fallback');
+  const dailyPut = kv.puts.find((row) => row.key === dailyCacheKey(date));
+  assert.equal(dailyPut?.source, 'fallback');
+  assert.equal(dailyPut?.ttl, FALLBACK_DAILY_CACHE_TTL_SEC);
 });
 
 test('cron regenerates even when a short-lived fallback is already cached', async () => {

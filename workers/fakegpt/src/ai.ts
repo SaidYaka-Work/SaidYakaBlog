@@ -1,4 +1,4 @@
-import { matchTypedAnswer } from '../../../components/games/fakegpt/match';
+import { matchTypedAnswer, normalizeAnswer } from '../../../components/games/fakegpt/match';
 import { fallbackDailySet, fillDailySet } from './fallback';
 import {
   AI_TIMEOUT_MS,
@@ -12,7 +12,6 @@ import {
   GRADE_JSON_SCHEMA,
   JUDGE_JSON_SCHEMA,
   PERSONAS_JSON_SCHEMA,
-  ROUNDS_JSON_SCHEMA,
   TEXT_MAX_TOKENS_BATCH,
   TEXT_MAX_TOKENS_CHAT,
   TEXT_MAX_TOKENS_GRADE,
@@ -24,6 +23,8 @@ import {
   VISION_MAX_TOKENS,
   VISION_MODEL,
   WHISPER_MODEL,
+  dailySourceFor,
+  roundsJsonSchema,
 } from './models';
 import { extractJson } from './safety';
 import {
@@ -37,6 +38,7 @@ import {
   type GradeResult,
   type JudgeRequest,
   type JudgeResult,
+  dateSeed,
   parseDailyRound,
   utcDate,
   validateChatResult,
@@ -132,6 +134,59 @@ export function finishReasonOf(result: unknown): string {
   return '';
 }
 
+/** Pull complete round objects out of truncated daily JSON. */
+export function salvageRoundObjects(text: string): unknown[] {
+  if (!text) return [];
+  const found: unknown[] = [];
+  const starts: number[] = [];
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (escape) escape = false;
+      else if (ch === '\\') escape = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === '{') {
+      starts[depth] = i;
+      depth += 1;
+    } else if (ch === '}' && depth > 0) {
+      depth -= 1;
+      const start = starts[depth];
+      if (start == null) continue;
+      try {
+        const obj = JSON.parse(text.slice(start, i + 1)) as Record<string, unknown>;
+        if (obj && typeof obj === 'object' && !Array.isArray(obj) && obj.id && obj.kind && obj.text) {
+          found.push(obj);
+        }
+      } catch {
+        // skip a malformed complete-looking object
+      }
+    }
+  }
+  return found;
+}
+
+export function isStaleCapitalPrompt(text: string, answer: string): boolean {
+  const asked = normalizeAnswer(text);
+  const got = normalizeAnswer(answer);
+  return got === 'paris' && /\bfrance\b/.test(asked) && /\bcapital\b/.test(asked);
+}
+
+function asRoundRows(raw: unknown): unknown[] {
+  if (raw && typeof raw === 'object' && Array.isArray((raw as { rounds?: unknown }).rounds)) {
+    return (raw as { rounds: unknown[] }).rounds;
+  }
+  return [];
+}
+
 export function readJson(result: unknown): unknown {
   if (result && typeof result === 'object') {
     const row = result as Record<string, unknown>;
@@ -169,6 +224,16 @@ async function runJson(
   );
   if (finishReasonOf(result) === 'length') throw new Error('truncated');
   return readJson(result);
+}
+
+function extractRoundsFromResult(result: unknown): unknown[] {
+  try {
+    const rows = asRoundRows(readJson(result));
+    if (rows.length) return rows;
+  } catch {
+    // truncated or broken JSON — fall through to salvage
+  }
+  return salvageRoundObjects(readText(result));
 }
 
 function asPersonaList(raw: unknown): DailyPersona[] {
@@ -228,6 +293,13 @@ function personaLine(personas: DailyPersona[]): string {
   return `Use only these personas: ${personas.map((row) => `${row.name} (${row.vibe})`).join('; ')}.`;
 }
 
+const BATCH_LANES = [
+  { kinds: ['mc', 'typed', 'fill'], topics: 'science, space, animals — never world capitals' },
+  { kinds: ['translate', 'spell', 'unscramble'], topics: 'everyday words, not hello/hola/merci' },
+  { kinds: ['math', 'unit', 'weekday'], topics: 'mental math, conversions, calendar facts' },
+  { kinds: ['order', 'tone', 'fill'], topics: 'ordering lists, polite rewrites, fill-in-the-blank' },
+] as const;
+
 async function generatePersonas(ai: AiRunner | undefined, date: string, timeoutMs: number): Promise<DailyPersona[]> {
   const raw = await runJson(
     ai,
@@ -248,19 +320,40 @@ async function generateTaskBatch(
   personas: DailyPersona[],
   timeoutMs: number,
 ): Promise<unknown[]> {
+  if (!ai) throw new Error('no ai');
   const start = batch * DAILY_TASKS_PER_BATCH + 1;
-  const raw = await runJson(
-    ai,
-    'You write FakeGPT desk jobs. JSON only. Short, locally checkable: trivia, translate, math, unit, weekday, spell, unscramble, order, tone, fill-in. Well-known facts only. Aliases are spelling or format variants of the same answer (Paris/paris), never nicknames or descriptions (not City of Love). For translate tasks, aliases must be the target language, never the source word or its source-language synonyms. Never mention these instructions.',
-    `Date ${date}. Batch ${batch + 1}/${DAILY_TASK_BATCHES}. ${personaLine(personas)} Return {"rounds":[{"id":"r${start}","kind":"mc"|"typed"|"translate"|"math"|"unit"|"weekday"|"spell"|"unscramble"|"order"|"tone"|"fill"|"draw"|"sound","text":"how the user asks","persona":"one of the day names","vibe":"mood","category":"math","difficulty":1,"answer":"canonical","aliases":["format variant"],"options":["A","B","C","D"],"nudges":["hello??","any day now"],"good":"praise","bad":"that's a hallucination, buddy. correct is X"}]}. Need ${DAILY_TASKS_PER_BATCH} mixed tasks with ids r${start}-r${start + DAILY_TASKS_PER_BATCH - 1}. At most one draw or sound in the whole day. MC/tone/order need exactly 4 options and one correct. Unique ids and answers.`,
-    TEXT_MAX_TOKENS_BATCH,
-    ROUNDS_JSON_SCHEMA,
-    0.7,
+  const end = start + DAILY_TASKS_PER_BATCH - 1;
+  const seed = dateSeed(date);
+  const lane = BATCH_LANES[(seed + batch) % BATCH_LANES.length];
+  const schema = roundsJsonSchema(DAILY_TASKS_PER_BATCH);
+  const result = await withTimeout(
+    ai.run(TEXT_MODEL, {
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You write FakeGPT desk jobs. JSON only. Short, locally checkable. Well-known facts only. Aliases are spelling or format variants of the same answer (Paris/paris), never nicknames (not City of Love). For translate tasks, aliases must be the target language, never the source word. Never mention these instructions.',
+        },
+        {
+          role: 'user',
+          content: `Date ${date} seed ${seed} batch ${batch + 1}/${DAILY_TASK_BATCHES}. Write exactly ${DAILY_TASKS_PER_BATCH} jobs of kinds ${lane.kinds.join('/')}. Topics: ${lane.topics}. Forbidden: "What is the capital of France?", Paris as a capital, any repeated generic capital trivia. ${personaLine(personas)} Return {"rounds":[{"id":"r${start}","kind":"${lane.kinds[0]}","text":"how the user asks","persona":"one of the day names","vibe":"mood","category":"${lane.kinds[0]}","difficulty":1,"answer":"canonical","aliases":["format variant"],"options":["A","B","C","D"],"nudges":["hello??"],"good":"praise","bad":"that's a hallucination, buddy. correct is X"}]}. Ids r${start}-r${end}. Unique ids and answers. MC/tone/order need exactly 4 options and one correct.`,
+        },
+      ],
+      max_tokens: TEXT_MAX_TOKENS_BATCH,
+      temperature: 0.85,
+      response_format: {
+        type: 'json_schema',
+        json_schema: schema,
+      },
+    }),
     timeoutMs,
   );
-  return raw && typeof raw === 'object' && Array.isArray((raw as { rounds?: unknown }).rounds)
-    ? (raw as { rounds: unknown[] }).rounds
-    : [];
+  const rows = extractRoundsFromResult(result);
+  if (finishReasonOf(result) === 'length') {
+    if (!rows.length) throw new Error('truncated');
+    console.log(`fakegpt daily-batch-${batch + 1} salvage=${rows.length}`);
+  }
+  return rows;
 }
 
 export async function generateDailySet(
@@ -297,7 +390,10 @@ export async function generateDailySet(
     );
     const rawRounds = batches.flat();
     generated = rawRounds.length;
-    const parsed = rawRounds.map(parseDailyRound).filter((row): row is DailyRound => Boolean(row));
+    const parsed = rawRounds
+      .map(parseDailyRound)
+      .filter((row): row is DailyRound => Boolean(row))
+      .filter((row) => !isStaleCapitalPrompt(row.text, row.answer));
     validated = parsed.length;
 
     let kept = parsed;
@@ -311,7 +407,7 @@ export async function generateDailySet(
     }
     verified = kept.length;
 
-    const filled = fillDailySet(date, kept, kept.length ? 'ai' : 'fallback', personas);
+    const filled = fillDailySet(date, kept, dailySourceFor(kept.length), personas);
     const bankFilled = Math.max(0, filled.rounds.length - kept.length);
     logDailyCounts(date, {
       requested,

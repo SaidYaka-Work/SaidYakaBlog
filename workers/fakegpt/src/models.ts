@@ -3,9 +3,10 @@ export const TEXT_MODEL = '@cf/meta/llama-3.1-8b-instruct-fast';
 export const VISION_MODEL = '@cf/llava-hf/llava-1.5-7b-hf';
 export const WHISPER_MODEL = '@cf/openai/whisper';
 
-/** Split daily gen: personas, then two ~10-task batches. One 1600-token blob timed out at 8s. */
+/** Split daily gen: personas, then four batches of 5. Live 10-round/900-token calls undershot or truncated. */
 export const TEXT_MAX_TOKENS_PERSONAS = 280;
-export const TEXT_MAX_TOKENS_BATCH = 900;
+/** ~5 rounds × ~110 tokens plus MC-option headroom. */
+export const TEXT_MAX_TOKENS_BATCH = 800;
 export const TEXT_MAX_TOKENS_DAILY = TEXT_MAX_TOKENS_BATCH;
 export const TEXT_MAX_TOKENS_VERIFY = 220;
 export const TEXT_MAX_TOKENS_GRADE = 80;
@@ -20,14 +21,15 @@ export const AI_TIMEOUT_MS_DAILY = 14_000;
 export const AI_TIMEOUT_MS_CRON = 28_000;
 /** Live /judge fell back at 8.6s after vision + 5.5s judge. Typical judge is 3–5.5s. */
 export const AI_TIMEOUT_MS_JUDGE = 9000;
-export const DAILY_TASK_BATCHES = 2;
-export const DAILY_TASKS_PER_BATCH = 10;
-export const DAILY_GENERATE_SPEND = 4;
+export const DAILY_TASK_BATCHES = 4;
+export const DAILY_TASKS_PER_BATCH = 5;
+export const DAILY_AI_MIN = 12;
+export const DAILY_GENERATE_SPEND = 6;
 
 /** Full-day cache for a validated AI set. Fallback is cached only briefly so we retry. */
 export const AI_DAILY_CACHE_TTL_SEC = 26 * 60 * 60;
 export const FALLBACK_DAILY_CACHE_TTL_SEC = 3 * 60;
-export const DAILY_CACHE_KEY_PREFIX = 'daily:v5:';
+export const DAILY_CACHE_KEY_PREFIX = 'daily:v6:';
 
 export function dailyCacheTtlSec(source: 'ai' | 'fallback'): number {
   return source === 'ai' ? AI_DAILY_CACHE_TTL_SEC : FALLBACK_DAILY_CACHE_TTL_SEC;
@@ -35,6 +37,10 @@ export function dailyCacheTtlSec(source: 'ai' | 'fallback'): number {
 
 export function dailyCacheKey(date: string): string {
   return `${DAILY_CACHE_KEY_PREFIX}${date}`;
+}
+
+export function dailySourceFor(aiRounds: number): 'ai' | 'fallback' {
+  return aiRounds >= DAILY_AI_MIN ? 'ai' : 'fallback';
 }
 
 const PERSONA_SCHEMA = {
@@ -92,13 +98,22 @@ export const PERSONAS_JSON_SCHEMA = {
   required: ['personas'],
 };
 
-export const ROUNDS_JSON_SCHEMA = {
-  type: 'object',
-  properties: {
-    rounds: { type: 'array', items: ROUND_SCHEMA },
-  },
-  required: ['rounds'],
-};
+export function roundsJsonSchema(count = DAILY_TASKS_PER_BATCH): Record<string, unknown> {
+  return {
+    type: 'object',
+    properties: {
+      rounds: {
+        type: 'array',
+        items: ROUND_SCHEMA,
+        minItems: count,
+        maxItems: count,
+      },
+    },
+    required: ['rounds'],
+  };
+}
+
+export const ROUNDS_JSON_SCHEMA = roundsJsonSchema();
 
 export const DAILY_JSON_SCHEMA = {
   type: 'object',
