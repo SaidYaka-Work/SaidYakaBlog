@@ -19,11 +19,13 @@ import {
   hopHeight,
   plantOnFloor,
   pushSample,
+  pushTrail,
   reconcileDriver,
   sampleBuffer,
   strideTimeScale,
   stripRootMotion,
   type PoseSample,
+  type TrailPoint,
 } from './motion';
 import {
   applyDogLook,
@@ -114,6 +116,7 @@ const DogRig = forwardRef<Group, {
   const remoteBuf = useRef<PoseSample[]>([]);
   const hopAt = useRef(0);
   const lastStick = useRef(0);
+  const trail = useRef<TrailPoint[]>([]);
   const lastOnPose = useRef(0);
   const originKey = useRef(drive?.originKey || '');
   useImperativeHandle(ref, () => group.current as Group);
@@ -193,6 +196,7 @@ const DogRig = forwardRef<Group, {
       if (control.youHold || control.localOnly) {
         if (control.originKey && control.originKey !== originKey.current) {
           originKey.current = control.originKey;
+          trail.current.length = 0;
           if (server) {
             localYard.current.pose.x = server.x;
             localYard.current.pose.z = server.z;
@@ -231,7 +235,8 @@ const DogRig = forwardRef<Group, {
             ? tickYardAi(localYard.current, now, dt)
             : stepDrive(localYard.current, control.input.ax, control.input.az, control.input.run, dt, now);
         }
-        const mixed = reconcileDriver(localYard.current.pose, server);
+        pushTrail(trail.current, now, localYard.current.pose.x, localYard.current.pose.z);
+        const mixed = reconcileDriver(localYard.current.pose, server, control.localOnly ? undefined : trail.current);
         localYard.current.pose.x = mixed.x;
         localYard.current.pose.z = mixed.z;
         localYard.current.pose.yaw = mixed.yaw;

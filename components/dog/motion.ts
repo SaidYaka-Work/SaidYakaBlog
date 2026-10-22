@@ -108,16 +108,44 @@ export function sampleBuffer(
   };
 }
 
-export function reconcileDriver(local: DogPose, server: DogPose | null): DogPose {
+export type TrailPoint = { at: number; x: number; z: number };
+
+/** Keep ~1.5 s of locally predicted positions so a lagged server echo can be matched. */
+export function pushTrail(trail: TrailPoint[], at: number, x: number, z: number, keepMs = 1500) {
+  trail.push({ at, x, z });
+  while (trail.length && at - trail[0].at > keepMs) trail.shift();
+}
+
+/**
+ * Server poses arrive one RTT plus up to one 250 ms tick late, and the Worker mostly
+ * echoes our own proposed wx/wz. Compare the server pose to where we *were* (trail),
+ * not where we are now, or every echo drags the dog backwards.
+ */
+export function reconcileDriver(local: DogPose, server: DogPose | null, trail?: TrailPoint[]): DogPose {
   if (!server) return local;
-  const drift = Math.hypot(local.x - server.x, local.z - server.z);
-  if (drift > 2) return { ...local, x: server.x, z: server.z, yaw: server.yaw };
+  let refX = local.x;
+  let refZ = local.z;
+  let drift = Math.hypot(local.x - server.x, local.z - server.z);
+  if (trail) {
+    for (const point of trail) {
+      const d = Math.hypot(point.x - server.x, point.z - server.z);
+      if (d < drift) {
+        drift = d;
+        refX = point.x;
+        refZ = point.z;
+      }
+    }
+  }
+  if (drift > 2) {
+    if (trail) trail.length = 0;
+    return { ...local, x: server.x, z: server.z, yaw: server.yaw };
+  }
   if (drift > 0.42) {
+    // Nudge by the error the server saw at that moment, not toward its stale position.
     return {
       ...local,
-      x: local.x + (server.x - local.x) * 0.12,
-      z: local.z + (server.z - local.z) * 0.12,
-      yaw: local.yaw + wrapAngle(server.yaw - local.yaw) * 0.16,
+      x: local.x + (server.x - refX) * 0.12,
+      z: local.z + (server.z - refZ) * 0.12,
     };
   }
   return local;

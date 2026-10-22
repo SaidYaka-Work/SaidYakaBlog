@@ -14,6 +14,11 @@ export const FACADE_PALETTE = [
 ] as const;
 
 export type PointXZ = { x: number; z: number };
+
+/** Snap dress queries to a 12 m cell so pose ticks do not rebuild plants every frame. */
+export function dressCell(here: PointXZ, cell = 12): PointXZ {
+  return { x: Math.round(here.x / cell) * cell, z: Math.round(here.z / cell) * cell };
+}
 export type RoadLine = { line: PointXZ[]; width: number; klass?: string };
 export type Plant = PointXZ & { s: number; kind: 'tree' | 'bush' };
 export type Crossing = { x: number; z: number; dx: number; dz: number; w: number };
