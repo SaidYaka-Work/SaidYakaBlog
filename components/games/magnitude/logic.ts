@@ -177,12 +177,15 @@ export function formatQuantity(value: number): string {
     const [coeff, exp] = value.toExponential(2).split('e');
     return `${coeff.replace(/\.?0+$/, '')}×10${toSuperscript(Number(exp))}`;
   }
+  if (Number.isInteger(value)) {
+    if (abs >= 1e9 && abs % 1e9 === 0) return `${(value / 1e9).toLocaleString('en-US')} billion`;
+    if (abs >= 1e6 && abs % 1e6 === 0) return `${(value / 1e6).toLocaleString('en-US')} million`;
+    return value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  }
   if (abs >= 1e12) return `${trimNumber(value / 1e12)} trillion`;
   if (abs >= 1e9) return `${trimNumber(value / 1e9)} billion`;
   if (abs >= 1e6) return `${trimNumber(value / 1e6)} million`;
-  if (Number.isInteger(value) || abs >= 100) {
-    return value.toLocaleString('en-US', { maximumFractionDigits: 0 });
-  }
+  if (abs >= 100) return value.toLocaleString('en-US', { maximumFractionDigits: 1 });
   if (abs >= 1) return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
   return trimNumber(value);
 }
@@ -208,8 +211,9 @@ export function parseGuess(raw: string, scale: Scale): number | null {
 
   if (scale === 'year') {
     const compact = trimmed.replace(/\s+/g, '');
-    const bce = compact.endsWith('bce') || compact.endsWith('bc');
-    const numeric = Number(compact.replace(/[^0-9.e+-]/g, ''));
+    const bce = /(?:bce|bc)$/.test(compact);
+    const stripped = compact.replace(/(?:bce|bc|ce)$/i, '');
+    const numeric = Number(stripped.replace(/[^0-9.+-]/g, ''));
     if (!Number.isFinite(numeric) || numeric === 0) return null;
     return bce ? -Math.abs(numeric) : numeric;
   }

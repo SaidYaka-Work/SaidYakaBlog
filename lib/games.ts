@@ -162,7 +162,7 @@ export const games: GameMeta[] = [
     description:
       'A daily estimation puzzle: five concrete facts, a logarithmic slider, and a score for how many powers of ten you miss by. Each answer comes with a short explanation and a source.',
     howTo:
-      'Slide, type, or use the arrow keys to place your guess on a log scale. Lock in to see the true value, how many orders of magnitude you missed by, and a one-line explanation. Five questions a day; Practice deals a random set.',
+      'Drag the log slider, type a number, or use the arrow keys. Lock in to see the true value, how many powers of ten you missed, and a short source note. Five questions a day.',
     genre: 'Estimation',
     kind: 'react',
     href: englishPath('/games/magnitude'),

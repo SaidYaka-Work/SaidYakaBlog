@@ -216,6 +216,8 @@ export default function MagnitudeGame() {
       muted={muted}
       onMute={toggleMute}
       onRestart={restart}
+      tight
+      hud="line"
       extraActions={
         <>
           {mode === 'daily' ? (
@@ -225,7 +227,7 @@ export default function MagnitudeGame() {
                 load('practice');
                 beep(480, 0.05);
               }}
-              className="pressable rounded-full border border-[var(--line)] px-5 py-2.5 text-sm text-[var(--ink)]"
+              className="pressable rounded-full border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--ink)]"
             >
               Practice
             </button>
@@ -236,7 +238,7 @@ export default function MagnitudeGame() {
                 load('daily');
                 beep(480, 0.05);
               }}
-              className="pressable rounded-full border border-[var(--line)] px-5 py-2.5 text-sm text-[var(--ink)]"
+              className="pressable rounded-full border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--ink)]"
             >
               Today’s set
             </button>
@@ -245,7 +247,7 @@ export default function MagnitudeGame() {
             <button
               type="button"
               onClick={() => void share()}
-              className="pressable rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm text-[var(--bg)]"
+              className="pressable rounded-full bg-[var(--ink)] px-3 py-1.5 text-xs text-[var(--bg)]"
             >
               {shareNote || 'Share'}
             </button>
@@ -253,10 +255,11 @@ export default function MagnitudeGame() {
         </>
       }
     >
+      <div className="overflow-hidden rounded-[1.6rem] border border-[var(--line)] bg-[var(--bg-elevated)]">
       {done ? (
         <EndScreen results={results} mode={mode} date={date} onShare={() => void share()} shareNote={shareNote} />
       ) : (
-        <div className="px-4 py-6 sm:px-7 sm:py-8">
+        <div className="px-4 py-5 sm:px-7 sm:py-7">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-xs uppercase tracking-[0.16em] text-[var(--accent)]">
               {CATEGORY_LABEL[question.category]}
@@ -291,7 +294,7 @@ export default function MagnitudeGame() {
             })}
           </ol>
 
-          <h2 className="mt-5 font-serif text-2xl leading-snug tracking-tight text-[var(--ink)] sm:text-3xl">
+          <h2 className="mt-4 font-serif text-2xl leading-snug tracking-tight text-[var(--ink)] sm:text-3xl">
             {question.prompt}
           </h2>
 
@@ -368,6 +371,7 @@ export default function MagnitudeGame() {
           </div>
         </div>
       )}
+      </div>
     </GameShell>
   );
 }
@@ -425,7 +429,7 @@ function Scale({
   );
 
   return (
-    <div className="mt-8 px-2 pb-3">
+    <div className="mt-6 px-2 pb-3">
       <div className="relative h-8">
         <div
           className="absolute -translate-x-1/2 whitespace-nowrap rounded-full bg-[var(--ink)] px-2.5 py-0.5 text-xs tabular-nums text-[var(--bg)]"
@@ -508,7 +512,7 @@ function EndScreen({
   const emojis = results.map((row) => gradeEmoji(row.grade)).join(' ');
 
   return (
-    <div className="px-4 py-6 sm:px-7 sm:py-8">
+    <div className="px-4 py-5 sm:px-7 sm:py-7">
       <p className="text-xs uppercase tracking-[0.16em] text-[var(--accent)]">
         {mode === 'daily' ? `Daily #${puzzleNumberForDate(date)}` : 'Practice round'}
       </p>
