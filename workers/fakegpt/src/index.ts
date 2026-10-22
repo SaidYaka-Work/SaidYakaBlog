@@ -197,7 +197,9 @@ export async function claimGeneration(
     await clearGenerationLock(env, date);
     return { claimed: false, attempts: latestAttempt.count, reason: 'capped' };
   }
-  if (latestAttempt.at > 0 && now - latestAttempt.at < DAILY_GENERATE_BACKOFF_MS) {
+  // Honor backoff only from a prior lock window. A burst sibling that
+  // stamped lastAttempt at this `now` must not stall the lock winner.
+  if (staleAttemptBlocksWinner(latestAttempt.at, now)) {
     await clearGenerationLock(env, date);
     return { claimed: false, attempts: latestAttempt.count, reason: 'backoff' };
   }
@@ -205,6 +207,11 @@ export async function claimGeneration(
   const next = { count: latestAttempt.count + 1, at: now };
   await kvPutJson(env.FAKEGPT, dailyAttemptKey(date), next, AI_DAILY_CACHE_TTL_SEC);
   return { claimed: true, attempts: next.count };
+}
+
+/** True when lastAttempt is from an earlier generation, not this burst. */
+export function staleAttemptBlocksWinner(attemptAt: number, now: number): boolean {
+  return attemptAt > 0 && attemptAt < now && now - attemptAt < DAILY_GENERATE_BACKOFF_MS;
 }
 
 export async function commitDailySet(env: Env, date: string, generated: DailySet): Promise<DailySet> {

@@ -37,7 +37,7 @@ export const DAILY_GENERATE_LOCK_MS = 2 * 60 * 1000;
 /** Full-day cache for a validated AI set. Fallback is cached only briefly so we retry. */
 export const AI_DAILY_CACHE_TTL_SEC = 26 * 60 * 60;
 export const FALLBACK_DAILY_CACHE_TTL_SEC = 3 * 60;
-export const DAILY_CACHE_KEY_PREFIX = 'daily:v9:';
+export const DAILY_CACHE_KEY_PREFIX = 'daily:v10:';
 
 export function dailyCacheTtlSec(source: 'ai' | 'fallback', aiCount = 0): number {
   return source === 'ai' || aiCount > 0 ? AI_DAILY_CACHE_TTL_SEC : FALLBACK_DAILY_CACHE_TTL_SEC;
@@ -133,6 +133,7 @@ const FLAVOR_ROUND_SCHEMA = {
   type: 'object',
   properties: {
     id: { type: 'string' },
+    lead: { type: 'string' },
     text: { type: 'string' },
     persona: { type: 'string' },
     vibe: { type: 'string' },
@@ -140,7 +141,7 @@ const FLAVOR_ROUND_SCHEMA = {
     good: { type: 'string' },
     bad: { type: 'string' },
   },
-  required: ['id', 'text', 'good', 'bad'],
+  required: ['id', 'lead', 'good', 'bad'],
 };
 
 export function flavorJsonSchema(count = DAILY_FLAVOR_PER_BATCH): Record<string, unknown> {

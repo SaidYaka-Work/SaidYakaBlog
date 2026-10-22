@@ -4,7 +4,9 @@ import {
   computeMathAnswer,
   computeOrderAnswer,
   computeUnitAnswer,
+  fillBlankMismatch,
   filterAiRounds,
+  hasLiteralBlank,
   hasMoreSpecificDistractor,
   isAmbiguousUnitPrompt,
   isNonsensicalPrompt,
@@ -57,7 +59,7 @@ test('translation prompts strip non-format aliases instead of dropping the round
   assert.equal(stripped.ok, true);
   if (stripped.ok) {
     assert.equal(stripped.round.aliases.includes('le chat est sombre'), false);
-    assert.ok(stripped.round.aliases.includes('le chat est noir'));
+    assert.equal(stripped.round.aliases.includes('le chat est noir'), false);
   }
   assert.equal(
     validateAiRound(
@@ -205,7 +207,34 @@ test('reply text cannot name another day persona', () => {
   assert.match(cleaned.bad, /noir/i);
 });
 
-test('filterAiRounds keeps fixable jobs and logs a drop reason', () => {
+test('fill-in-the-blank requires a literal blank and drops grammar mismatches', () => {
+  assert.equal(hasLiteralBlank('The inner ear maze is ___.'), true);
+  assert.equal(hasLiteralBlank('The inner ear maze is labyrinthine.'), false);
+  assert.equal(fillBlankMismatch('A ___ organ detects tilt.', 'vestibular'), false);
+  assert.equal(fillBlankMismatch('An ___ organ detects tilt.', 'otolith'), false);
+  assert.equal(fillBlankMismatch('A ___ organ detects tilt.', 'otolith'), true);
+  assert.equal(fillBlankMismatch('An ___ organ detects tilt.', 'labyrinthine'), true);
+  assert.equal(
+    validateAiRound(
+      round({
+        kind: 'fill',
+        text: 'the inner ear maze is called labyrinthine today',
+        answer: 'labyrinthine',
+        options: ['labyrinthine', 'vestibular', 'otolith', 'cochlea'],
+      }),
+    ).ok,
+    false,
+  );
+  const blank = validateAiRound(
+    round({
+      kind: 'fill',
+      text: 'Earth orbits the ___.',
+      answer: 'Sun',
+      options: ['Sun', 'Moon', 'Mars', 'Venus'],
+    }),
+  );
+  assert.equal(blank.ok, true);
+}
   const lines: string[] = [];
   const orig = console.log;
   console.log = (...args: unknown[]) => {

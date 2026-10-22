@@ -4,7 +4,6 @@ import { fallbackDailySet } from '../src/fallback.ts';
 import {
   filterAliases,
   isFormatAlias,
-  isSpacingAlias,
   parseChatRequest,
   parseDailyRound,
   parseGradeRequest,
@@ -76,7 +75,7 @@ function twenty() {
     typed({ id: 'l', category: 'words', kind: 'unscramble', text: 'unscramble pplea it is a fruit', answer: 'apple' }),
     typed({ id: 'm', category: 'units', kind: 'unit', text: 'how many minutes are in one hour', answer: '60' }),
     typed({ id: 'n', category: 'calendar', kind: 'weekday', text: 'what day of the week was 1 january 2024', answer: 'Monday' }),
-    typed({ id: 'o', category: 'fill', kind: 'fill', text: 'earth orbits which star in our sky', answer: 'Sun' }),
+    typed({ id: 'o', category: 'fill', kind: 'fill', text: 'earth orbits the ___ in our sky', answer: 'Sun' }),
     mc({
       id: 'p',
       category: 'tone',
@@ -183,7 +182,7 @@ test('translate aliases drop source-language words', () => {
   const text = 'please translate hello to Spanish for me now';
   assert.ok(translateSourceTerms(text).includes('hello'));
   const aliases = filterAliases('translate', text, 'hola', ['hi', 'hello', 'hey', 'hola']);
-  assert.deepEqual(aliases, ['hola']);
+  assert.deepEqual(aliases, []);
   const hola = parseDailyRound({
     id: 'tr-hello',
     kind: 'translate',
@@ -196,10 +195,10 @@ test('translate aliases drop source-language words', () => {
     bad: 'nope',
   });
   assert.ok(hola);
-  assert.deepEqual(hola.aliases, ['hola']);
+  assert.deepEqual(hola.aliases, []);
 });
 
-test('fact aliases reject nicknames and keep format variants', () => {
+test('fact aliases reject nicknames and drop repeats of the answer', () => {
   assert.equal(isFormatAlias('City of Love', 'Paris'), false);
   assert.equal(isFormatAlias('paris', 'Paris'), true);
   assert.equal(isFormatAlias('Tokio', 'Tokyo'), true);
@@ -209,17 +208,32 @@ test('fact aliases reject nicknames and keep format variants', () => {
     text: 'what city is the capital of france today',
     persona: 'Dana',
     answer: 'Paris',
-    aliases: ['City of Love', 'paris', 'PARIS'],
+    aliases: ['City of Love', 'paris', 'PARIS', 'Tokio'],
     nudges: ['hello??'],
     good: 'ok',
     bad: 'nope',
   });
   assert.ok(paris);
   assert.equal(paris.aliases.includes('City of Love'), false);
-  assert.ok(paris.aliases.includes('paris'));
+  assert.equal(paris.aliases.includes('paris'), false);
+  assert.equal(paris.aliases.includes('PARIS'), false);
+  const tokyo = parseDailyRound({
+    id: 'geo-tokyo',
+    kind: 'typed',
+    text: 'what city is the capital of japan today',
+    persona: 'Dana',
+    answer: 'Tokyo',
+    aliases: ['Tokio', 'tokyo'],
+    nudges: ['hello??'],
+    good: 'ok',
+    bad: 'nope',
+  });
+  assert.ok(tokyo);
+  assert.ok(tokyo.aliases.includes('Tokio'));
+  assert.equal(tokyo.aliases.includes('tokyo'), false);
 });
 
-test('order aliases keep only case and spacing variants', () => {
+test('order aliases drop repeats and wrong permutations', () => {
   const order = parseDailyRound({
     id: 'or-alpha',
     kind: 'order',
@@ -233,7 +247,8 @@ test('order aliases keep only case and spacing variants', () => {
     bad: 'nope',
   });
   assert.ok(order);
-  assert.ok(order.aliases.every((alias) => isSpacingAlias(alias, order.answer)));
+  assert.equal(order.aliases.includes('ant cat dog eel'), false);
+  assert.equal(order.aliases.includes('ant, cat, dog, eel'), false);
   assert.equal(order.aliases.includes('eel, dog, cat, ant'), false);
 });
 

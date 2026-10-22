@@ -86,6 +86,26 @@ const TIME_SEC: Record<string, number> = {
 
 export type RoundCheck = { ok: true; round: DailyRound } | { ok: false; reason: string };
 
+export function hasLiteralBlank(text: string): boolean {
+  return /_{3,}/.test(text);
+}
+
+const FILL_ARTICLE = /\b(a|an)\s+_{3,}/i;
+
+/** Conservative: drop only when the key clearly cannot fill the blank. */
+export function fillBlankMismatch(text: string, answer: string): boolean {
+  if (!hasLiteralBlank(text)) return true;
+  const word = String(answer || '').trim();
+  if (!word) return true;
+  const article = text.match(FILL_ARTICLE);
+  if (article) {
+    const vowel = /^[aeiou]/i.test(word);
+    if (article[1].toLowerCase() === 'a' && vowel) return true;
+    if (article[1].toLowerCase() === 'an' && !vowel) return true;
+  }
+  return false;
+}
+
 export function namesTargetLanguage(text: string): boolean {
   return TARGET_LANGUAGE.test(text);
 }
@@ -250,8 +270,15 @@ export function validateAiRound(round: DailyRound): RoundCheck {
     return { ok: false, reason: 'specific-distractor' };
   }
 
+  if (round.kind === 'fill') {
+    if (!hasLiteralBlank(round.text)) return { ok: false, reason: 'fill-blank' };
+    if (fillBlankMismatch(round.text, round.answer)) return { ok: false, reason: 'fill-grammar' };
+  }
+
   if (round.kind === 'translate') {
-    const aliases = round.aliases.filter((alias) => isFormatAlias(alias, round.answer));
+    const aliases = round.aliases.filter(
+      (alias) => isFormatAlias(alias, round.answer) && normalizeAnswer(alias) !== normalizeAnswer(round.answer),
+    );
     return { ok: true, round: { ...round, aliases } };
   }
 

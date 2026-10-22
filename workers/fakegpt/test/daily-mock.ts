@@ -29,7 +29,8 @@ export function harvestTrivia(valid: DailySet, count = 10): DailySet['rounds'] {
 export function flavorRoundsFor(date: string) {
   return buildDayPuzzles(date).map((puzzle) => ({
     id: puzzle.id,
-    text: `${puzzle.prompt} please go`,
+    lead: 'ugh hurry up',
+    text: 'ugh hurry up',
     persona: 'Dana',
     vibe: 'late but funny',
     good: 'ok the model remembered a fact. rare.',
@@ -39,7 +40,7 @@ export function flavorRoundsFor(date: string) {
 }
 
 export function isFlavorInput(input: Record<string, unknown>): boolean {
-  return /flavor batch|Rewrite exactly|id=pz-/i.test(userText(input));
+  return /flavor batch|lead-in for exactly|id=pz-/i.test(userText(input));
 }
 
 export function isTriviaInput(input: Record<string, unknown>): boolean {

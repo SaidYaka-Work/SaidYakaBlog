@@ -1,4 +1,5 @@
 import { mulberry32 } from '../../../components/games/fakegpt/logic';
+import { normalizeAnswer } from '../../../components/games/fakegpt/match';
 import { dateSeed, type DailyRound, type PromptKind } from './schema';
 
 export const CODE_KEY_KINDS = ['math', 'unit', 'weekday', 'order', 'unscramble', 'spell'] as const;
@@ -16,6 +17,11 @@ export function isAiKeyKind(kind: string): boolean {
 export type PuzzleSpec = {
   id: string;
   kind: CodeKeyKind;
+  /** Code-written in-character fallback prepended when the model lead-in leaks. */
+  lead: string;
+  /** Puzzle line with the numbers or words. Code always owns this. */
+  question: string;
+  /** Same as `question` — kept so math/unit validators can read the fact line. */
   prompt: string;
   answer: string;
   aliases: string[];
@@ -23,6 +29,81 @@ export type PuzzleSpec = {
   category: string;
   difficulty: 1 | 2 | 3;
 };
+
+const DEFAULT_LEADS: Record<CodeKeyKind, readonly string[]> = {
+  math: ['quick math', 'calculator died', 'before coffee'],
+  unit: ['unit brain needed', 'convert this', 'quick conversion'],
+  weekday: ['calendar check', 'date brain please', 'quick calendar'],
+  order: ['put these in order', 'sort these', 'right sequence please'],
+  unscramble: ['word salad', 'letters got scrambled', 'unscramble this'],
+  spell: ['spelling check', 'this looks wrong', 'fix the spelling'],
+};
+
+export function assembleQuestion(lead: string, question: string): string {
+  const head = String(lead || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const body = String(question || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!head) return body;
+  if (!body) return head;
+  return `${head} ${body}`;
+}
+
+export function containsNormalizedToken(haystack: string, needle: string): boolean {
+  const h = normalizeAnswer(haystack);
+  const n = normalizeAnswer(needle);
+  if (!n || !h) return false;
+  if (h === n) return true;
+  const escaped = n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?:^| )${escaped}(?:$| )`).test(h);
+}
+
+export function orderItemsOf(answer: string): string[] {
+  return normalizeAnswer(answer).split(' ').filter(Boolean);
+}
+
+/** True when `text` states the key, a useful alias, or the correct-order sequence. */
+export function textLeaksKey(kind: string, text: string, answer: string, aliases: readonly string[] = []): boolean {
+  if (containsNormalizedToken(text, answer)) return true;
+  const src = normalizeAnswer(text);
+  const key = normalizeAnswer(answer);
+  if (key && src.includes(key) && (kind === 'order' || key.includes(' '))) return true;
+  for (const alias of aliases) {
+    const normalized = normalizeAnswer(alias);
+    if (!normalized || normalized === key) continue;
+    if (containsNormalizedToken(text, alias)) return true;
+  }
+  return false;
+}
+
+function listsOrderItems(lead: string, answer: string): boolean {
+  const items = orderItemsOf(answer);
+  if (items.length < 2) return false;
+  return items.every((item) => containsNormalizedToken(lead, item));
+}
+
+/** Reject a model lead-in that gives away the answer or restates the puzzle. */
+export function leadInLeaks(puzzle: PuzzleSpec, lead: string): boolean {
+  const trimmed = String(lead || '').replace(/\s+/g, ' ').trim();
+  if (!trimmed) return false;
+  if (trimmed.length > 90) return true;
+  if (textLeaksKey(puzzle.kind, trimmed, puzzle.answer, puzzle.aliases)) return true;
+  if (puzzle.kind === 'order' && listsOrderItems(trimmed, puzzle.answer)) return true;
+  const question = normalizeAnswer(puzzle.question || puzzle.prompt);
+  const src = normalizeAnswer(trimmed);
+  if (question && src.includes(question)) return true;
+  return false;
+}
+
+export function pickPuzzleLead(puzzle: PuzzleSpec, rawLead: string): { lead: string; flavored: boolean } {
+  const lead = String(rawLead || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (lead && !leadInLeaks(puzzle, lead)) return { lead, flavored: true };
+  return { lead: puzzle.lead, flavored: false };
+}
 
 export const DAILY_PUZZLE_COUNT = 12;
 
@@ -112,82 +193,92 @@ export function weekdayUtc(year: number, month: number, day: number): string {
   return WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
 }
 
+function finishPuzzle(
+  rng: () => number,
+  spec: Omit<PuzzleSpec, 'lead' | 'prompt'> & { lead?: string; prompt?: string },
+): PuzzleSpec {
+  const lead = spec.lead || pick(rng, DEFAULT_LEADS[spec.kind]);
+  const question = spec.question;
+  return { ...spec, lead, prompt: spec.prompt || question };
+}
+
 function makeMath(rng: () => number, index: number): PuzzleSpec {
   const makers = [
     () => {
       const a = 2 + Math.floor(rng() * 30);
       const b = 2 + Math.floor(rng() * 30);
-      return { prompt: `${a} + ${b}, I dropped my calculator`, answer: a + b };
+      return { question: `${a} + ${b}`, lead: 'I dropped my calculator', answer: a + b };
     },
     () => {
       const b = 2 + Math.floor(rng() * 20);
       const a = b + 2 + Math.floor(rng() * 30);
-      return { prompt: `${a} − ${b}, before my coffee`, answer: a - b };
+      return { question: `${a} − ${b}`, lead: 'before my coffee', answer: a - b };
     },
     () => {
       const a = 2 + Math.floor(rng() * 12);
       const b = 2 + Math.floor(rng() * 12);
-      return { prompt: `${a} × ${b}, the classic`, answer: a * b };
+      return { question: `${a} × ${b}`, lead: 'the classic', answer: a * b };
     },
     () => {
       const b = 2 + Math.floor(rng() * 12);
       const q = 2 + Math.floor(rng() * 12);
-      return { prompt: `${b * q} divided by ${b}`, answer: q };
+      return { question: `${b * q} divided by ${b}`, answer: q };
     },
     () => {
       const a = pick(rng, [2, 3, 4, 5, 6, 7, 8, 9, 10, 12]);
-      return { prompt: `${a} squared, not cubed, squared`, answer: a * a };
+      return { question: `${a} squared, not cubed`, answer: a * a };
     },
     () => {
       const percent = pick(rng, [10, 20, 25, 50]);
       const base = pick(rng, [40, 60, 80, 100, 200]);
-      return { prompt: `${percent}% of ${base}, tax brain please`, answer: (percent * base) / 100 };
+      return { question: `${percent}% of ${base}`, lead: 'tax brain please', answer: (percent * base) / 100 };
     },
   ];
   const made = pick(rng, makers)();
   const answer = formatAnswerNumber(made.answer);
-  return {
+  return finishPuzzle(rng, {
     id: `pz-math-${index}`,
     kind: 'math',
-    prompt: made.prompt,
+    lead: made.lead,
+    question: made.question,
     answer,
     aliases: [],
     options: [],
     category: 'math',
     difficulty: 1,
-  };
+  });
 }
 
 function makeUnit(rng: () => number, index: number): PuzzleSpec {
   const row = pick(rng, UNIT_ROWS);
   const amount = pick(rng, row.amounts);
   const answer = formatAnswerNumber(amount * row.factor);
-  return {
+  return finishPuzzle(rng, {
     id: `pz-unit-${index}`,
     kind: 'unit',
-    prompt: `Convert ${amount} ${row.from} to ${row.to}`,
+    question: `Convert ${amount} ${row.from} to ${row.to}`,
     answer,
     aliases: [],
     options: [],
     category: 'units',
     difficulty: 1,
-  };
+  });
 }
 
 function makeWeekday(rng: () => number, index: number): PuzzleSpec {
   if (rng() < 0.25) {
     const today = pick(rng, WEEKDAYS);
     const yesterday = WEEKDAYS[(WEEKDAYS.indexOf(today) + 6) % 7];
-    return {
+    return finishPuzzle(rng, {
       id: `pz-wd-${index}`,
       kind: 'weekday',
-      prompt: `if yesterday was ${yesterday}, today is`,
+      question: `if yesterday was ${yesterday}, today is`,
       answer: today,
       aliases: [],
       options: [],
       category: 'calendar',
       difficulty: 1,
-    };
+    });
   }
   const [year, month, day] = pick(rng, KNOWN_DATES);
   const answer = weekdayUtc(year, month, day);
@@ -197,30 +288,30 @@ function makeWeekday(rng: () => number, index: number): PuzzleSpec {
     day: 'numeric',
     timeZone: 'UTC',
   });
-  return {
+  return finishPuzzle(rng, {
     id: `pz-wd-${index}`,
     kind: 'weekday',
-    prompt: `what day of the week was ${label}`,
+    question: `what day of the week was ${label}`,
     answer,
     aliases: [],
     options: [],
     category: 'calendar',
     difficulty: 2,
-  };
+  });
 }
 
 function makeSpell(rng: () => number, index: number): PuzzleSpec {
   const [wrong, right] = pick(rng, SPELLS);
-  return {
+  return finishPuzzle(rng, {
     id: `pz-sp-${index}`,
     kind: 'spell',
-    prompt: `fix: ${wrong}`,
+    question: `fix: ${wrong}`,
     answer: right,
     aliases: [],
     options: [],
     category: 'spelling',
     difficulty: 1,
-  };
+  });
 }
 
 export function scrambleWord(word: string, rng: () => number): string {
@@ -234,16 +325,16 @@ export function scrambleWord(word: string, rng: () => number): string {
 
 function makeUnscramble(rng: () => number, index: number): PuzzleSpec {
   const word = pick(rng, WORDS);
-  return {
+  return finishPuzzle(rng, {
     id: `pz-un-${index}`,
     kind: 'unscramble',
-    prompt: `unscramble: ${scrambleWord(word, rng)}`,
+    question: `unscramble: ${scrambleWord(word, rng)}`,
     answer: word,
     aliases: [],
     options: [],
     category: 'words',
     difficulty: 1,
-  };
+  });
 }
 
 function fourPerms(rng: () => number, items: readonly string[], correct: string): string[] {
@@ -297,16 +388,23 @@ function makeOrder(rng: () => number, index: number): PuzzleSpec {
   const answer = joinItems(ordered);
   const options = fourPerms(rng, items, answer);
   if (!options.includes(answer)) options[0] = answer;
-  return {
+  let shown = joinItems(shuffle(rng, items));
+  for (let guard = 0; guard < 8 && normalizeAnswer(shown) === normalizeAnswer(answer); guard += 1) {
+    shown = joinItems(shuffle(rng, items));
+  }
+  if (normalizeAnswer(shown) === normalizeAnswer(answer) && items.length > 1) {
+    shown = joinItems([...items.slice(1), items[0]]);
+  }
+  return finishPuzzle(rng, {
     id: `pz-or-${index}`,
     kind: 'order',
-    prompt: `${rule}: ${joinItems(shuffle(rng, items))}`,
+    question: `${rule}: ${shown}`,
     answer,
-    aliases: spacingAliases(answer),
+    aliases: [],
     options,
     category: 'order',
     difficulty: 1,
-  };
+  });
 }
 
 const MAKERS = [makeMath, makeUnit, makeWeekday, makeOrder, makeUnscramble, makeSpell];
@@ -321,7 +419,10 @@ export function buildDayPuzzles(date: string, count = DAILY_PUZZLE_COUNT): Puzzl
     guard += 1;
     const puzzle = MAKERS[out.length % MAKERS.length](rng, index);
     index += 1;
-    const key = `${puzzle.kind}:${puzzle.prompt}:${puzzle.answer}`;
+    const assembled = assembleQuestion(puzzle.lead, puzzle.question);
+    if (textLeaksKey(puzzle.kind, assembled, puzzle.answer, puzzle.aliases)) continue;
+    if (textLeaksKey(puzzle.kind, puzzle.question, puzzle.answer, puzzle.aliases)) continue;
+    const key = `${puzzle.kind}:${puzzle.question}:${puzzle.answer}`;
     if (used.has(key)) continue;
     used.add(key);
     out.push(puzzle);
@@ -333,7 +434,7 @@ export function puzzleToRound(puzzle: PuzzleSpec, over: Partial<DailyRound> = {}
   return {
     id: puzzle.id,
     kind: puzzle.kind as PromptKind,
-    text: over.text || puzzle.prompt,
+    text: over.text || assembleQuestion(puzzle.lead, puzzle.question),
     persona: over.persona || 'Dana',
     vibe: over.vibe || 'impatient, funny, slightly unhinged',
     category: puzzle.category,
@@ -345,29 +446,4 @@ export function puzzleToRound(puzzle: PuzzleSpec, over: Partial<DailyRound> = {}
     good: over.good || 'ok the model remembered a fact. rare.',
     bad: over.bad || `that's a hallucination, buddy. it's ${puzzle.answer}.`,
   };
-}
-
-export function flavorPreservesFact(puzzle: PuzzleSpec, text: string): boolean {
-  const src = text.toLowerCase();
-  if (puzzle.kind === 'math' || puzzle.kind === 'unit') {
-    const nums = puzzle.prompt.match(/-?\d+(?:\.\d+)?/g) ?? [];
-    return nums.every((num) => src.includes(num));
-  }
-  if (puzzle.kind === 'spell') return src.includes(puzzle.prompt.replace(/^fix:\s*/i, '').trim().toLowerCase());
-  if (puzzle.kind === 'unscramble') {
-    return src.includes(puzzle.prompt.replace(/^unscramble:\s*/i, '').trim().toLowerCase());
-  }
-  if (puzzle.kind === 'order') {
-    return puzzle.answer
-      .split(',')
-      .map((part) => part.trim().toLowerCase())
-      .filter(Boolean)
-      .every((item) => src.includes(item));
-  }
-  if (puzzle.kind === 'weekday') {
-    return /\b(sunday|monday|tuesday|wednesday|thursday|friday|saturday|january|february|march|april|may|june|july|august|september|october|november|december|\d{4})\b/i.test(
-      text,
-    );
-  }
-  return true;
 }

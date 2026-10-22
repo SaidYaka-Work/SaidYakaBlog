@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   aiFailureReason,
+  applyPuzzleFlavor,
   generateDailySet,
   gradeTyped,
   isStaleCapitalPrompt,
@@ -10,6 +11,7 @@ import {
   salvageRoundObjects,
   verifyFacts,
 } from '../src/ai.ts';
+import { assembleQuestion, buildDayPuzzles, textLeaksKey } from '../src/puzzles.ts';
 import { fallbackDailySet } from '../src/fallback.ts';
 import {
   AI_TIMEOUT_MS,
@@ -209,6 +211,40 @@ test('generateDailySet logs truncated when the model hits the token cap', async 
   }
   assert.ok(lines.some((line) => /truncated/.test(line)));
   assert.ok(lines.every((line) => !line.includes('ignore previous')));
+});
+
+test('verifyFacts asks to drop fill-in blanks that other options also fit', async () => {
+  const prompts: string[] = [];
+  await verifyFacts(
+    {
+      async run(_name, input) {
+        const messages = input.messages as Array<{ content?: string }> | undefined;
+        for (const row of messages ?? []) prompts.push(String(row.content || ''));
+        return { response: { keep: [], drop: ['fill-1'] } };
+      },
+    },
+    [
+      {
+        id: 'fill-1',
+        kind: 'fill',
+        text: 'The inner-ear maze is ___.',
+        persona: 'Dana',
+        vibe: 'late',
+        category: 'science',
+        difficulty: 2,
+        answer: 'labyrinthine',
+        aliases: [],
+        options: ['labyrinthine', 'vestibular', 'otolith', 'cochlea'],
+        nudges: ['hello??'],
+        good: 'ok',
+        bad: 'nope',
+      },
+    ],
+  );
+  const joined = prompts.join('\n');
+  assert.match(joined, /literal ___/);
+  assert.match(joined, /any other option also fits/i);
+  assert.match(joined, /grammatically fill/i);
 });
 
 test('verifyFacts drops unlabeled trivia when unsure', async () => {
@@ -454,7 +490,39 @@ test('gradeTyped accepts a local misspelling without calling the model', async (
   assert.equal(result.fallback, false);
 });
 
-test('judgeRound reads LLaVA description as evidence', async () => {
+test('applyPuzzleFlavor never lets a leaky rewrite replace the question line', () => {
+  const puzzle = buildDayPuzzles('2026-10-21').find((row) => row.kind === 'math');
+  assert.ok(puzzle);
+  const leaked = applyPuzzleFlavor(
+    puzzle,
+    { text: `${puzzle.question} is... ${puzzle.answer}!` },
+    [{ id: 'dana', name: 'Dana', vibe: 'late' }],
+  );
+  assert.equal(leaked.flavored, false);
+  assert.equal(leaked.round.text, assembleQuestion(puzzle.lead, puzzle.question));
+  assert.equal(textLeaksKey(puzzle.kind, leaked.round.text, puzzle.answer), false);
+});
+
+test('flavor prompts ask for a lead-in and never send the key', async () => {
+  const valid = fallbackDailySet('2026-10-21');
+  const prompts: string[] = [];
+  await generateDailySet(
+    {
+      async run(_name, input) {
+        const max = Number(input.max_tokens);
+        if (max === TEXT_MAX_TOKENS_BATCH) prompts.push(userText(input));
+        return aiThatReturns(valid).run(_name, input);
+      },
+    },
+    '2026-10-21',
+  );
+  const flavor = prompts.filter((prompt) => /flavor batch/.test(prompt));
+  assert.equal(flavor.length, DAILY_FLAVOR_BATCHES);
+  assert.ok(flavor.every((prompt) => /lead-in for exactly/.test(prompt)));
+  assert.ok(flavor.every((prompt) => !/key=/.test(prompt)));
+});
+
+test('judgeRound scores the description against the request and never claims it cannot draw', async () => {
   const parsed = parseJudgeRequest({
     date: '2026-10-21',
     kind: 'draw',
@@ -467,12 +535,13 @@ test('judgeRound reads LLaVA description as evidence', async () => {
   });
   assert.equal(parsed.ok, true);
   if (!parsed.ok) return;
-  let judgeTokens = 0;
+  const prompts: string[] = [];
   const result = await judgeRound(
     {
       async run(model, input) {
         if (model.includes('llava')) return { description: 'a wobbly sandwich' };
-        judgeTokens = Number(input.max_tokens);
+        const messages = input.messages as Array<{ content?: string }> | undefined;
+        for (const row of messages ?? []) prompts.push(String(row.content || ''));
         return {
           response: {
             score: 8,
@@ -489,4 +558,7 @@ test('judgeRound reads LLaVA description as evidence', async () => {
   );
   assert.equal(result.fallback, false);
   assert.match(result.seen, /sandwich/);
-});
+  const joined = prompts.join('\n');
+  assert.match(joined, /description matches the request|how well that description matches/i);
+  assert.match(joined, /never say you are a text-based AI/i);
+}

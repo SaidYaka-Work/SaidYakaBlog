@@ -7,6 +7,7 @@ import {
   dailySet,
   generateAndCache,
   pickBetterDailySet,
+  staleAttemptBlocksWinner,
   type Env,
 } from '../src/index.ts';
 import { fallbackDailySet, fillDailySet } from '../src/fallback.ts';
@@ -78,7 +79,7 @@ test('dailyCacheTtlSec keeps AI sets for a day and fallbacks for a few minutes',
   assert.ok(FALLBACK_DAILY_CACHE_TTL_SEC <= 5 * 60);
   assert.ok(FALLBACK_DAILY_CACHE_TTL_SEC < AI_DAILY_CACHE_TTL_SEC);
   assert.equal(dailyCacheKey('2026-10-21'), `${DAILY_CACHE_KEY_PREFIX}2026-10-21`);
-  assert.match(DAILY_CACHE_KEY_PREFIX, /daily:v9:/);
+  assert.match(DAILY_CACHE_KEY_PREFIX, /daily:v10:/);
   assert.equal(dailyAttemptKey('2026-10-21'), 'lastAttempt:2026-10-21');
   assert.equal(dailyLockKey('2026-10-21'), 'genLock:2026-10-21');
 });
@@ -380,6 +381,14 @@ test('generateAndCache CAS keeps a better set written during generation', async 
   };
   const committed = await generateAndCache(env, date, 1000, { claimed: true });
   assert.ok((committed.aiCount ?? 0) >= 14);
+});
+
+test('a same-timestamp burst attempt does not stall the lock winner', () => {
+  const now = 1_700_000_000_000;
+  assert.equal(staleAttemptBlocksWinner(0, now), false);
+  assert.equal(staleAttemptBlocksWinner(now, now), false);
+  assert.equal(staleAttemptBlocksWinner(now - 10_000, now), true);
+  assert.equal(staleAttemptBlocksWinner(now - DAILY_GENERATE_BACKOFF_MS, now), false);
 });
 
 test('code puzzles never take an AI answer key', () => {

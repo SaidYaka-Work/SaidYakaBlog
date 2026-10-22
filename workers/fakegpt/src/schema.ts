@@ -260,6 +260,7 @@ export function filterAliases(kind: PromptKind, text: string, answer: string, al
   return aliases.filter((alias) => {
     const normalized = normalizeAnswer(alias);
     if (!normalized) return false;
+    if (normalized === normalizeAnswer(answer)) return false;
     if (source.includes(normalized) || cluster.has(normalized)) return false;
     if (kind === 'order' || kind === 'math' || kind === 'unit') return isSpacingAlias(alias, answer);
     if (kind === 'translate') return true;
