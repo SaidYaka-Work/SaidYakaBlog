@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
   MAX_CUSTOMERS,
@@ -138,4 +139,15 @@ test('combo, strikes, ranks, share glyphs, and desktop layouts', () => {
   assert.equal(laneLayout(3), 'plus-one');
   assert.equal(laneLayout(4), 'grid');
   assert.equal(laneLayout(5), 'three-two');
+});
+
+test('desktop CSS keeps the tab bar and a single customer panel', () => {
+  const css = readFileSync(new URL('../../../app/globals.css', import.meta.url), 'utf8');
+  const desktop = css.split('@media (min-width: 860px)')[1] ?? '';
+  assert.match(css, /\.fgpt-switcher\s*\{/);
+  assert.equal(/\.fgpt-switcher\s*\{[^}]*display:\s*none/s.test(css), false);
+  assert.equal(/\.fgpt-switcher\s*\{[^}]*display:\s*none/s.test(desktop), false);
+  assert.equal(/\.fgpt-lanes\.is-pair\s*\{[^}]*grid-template-columns:\s*1fr 1fr/s.test(desktop), false);
+  assert.match(desktop, /\.fgpt-lane:not\(\.is-focus\)\s*\{\s*display:\s*none/);
+  assert.match(desktop, /\.fgpt-tab\s*\{[^}]*min-width:\s*11rem/s);
 });
