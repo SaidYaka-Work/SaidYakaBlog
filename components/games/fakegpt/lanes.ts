@@ -106,6 +106,62 @@ export function joinNotice(name: string): string {
   return `🟢 ${firstName(name)} joined the chat`;
 }
 
+export function leaveNotice(name: string): string {
+  return `🔴 ${firstName(name)} left the chat`;
+}
+
+export function nextTabIndex(index: number, count: number, delta: number): number {
+  if (count <= 0) return 0;
+  const start = Number.isFinite(index) ? Math.trunc(index) : 0;
+  const step = Number.isFinite(delta) ? Math.trunc(delta) : 0;
+  return (((start + step) % count) + count) % count;
+}
+
+export type TabKeyLike = {
+  key: string;
+  altKey?: boolean;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  shiftKey?: boolean;
+};
+
+/** Alt/Ctrl/Meta + 1–5. Bare digits stay free for multiple-choice answers. */
+export function tabShortcutIndex(event: TabKeyLike, count: number): number | null {
+  if (count <= 0) return null;
+  const modified = Boolean(event.altKey || event.ctrlKey || event.metaKey);
+  if (!modified) return null;
+  const digit = event.key.length === 1 && event.key >= '1' && event.key <= '5' ? Number(event.key) - 1 : -1;
+  if (digit < 0 || digit >= count) return null;
+  return digit;
+}
+
+export function tabCycleDelta(event: TabKeyLike): -1 | 1 | null {
+  if ((event.ctrlKey || event.metaKey) && event.key === 'Tab') {
+    return event.shiftKey ? -1 : 1;
+  }
+  if (event.key === 'ArrowLeft' || event.key === '[') return -1;
+  if (event.key === 'ArrowRight' || event.key === ']') return 1;
+  return null;
+}
+
+export type TabTone = 'ok' | 'warn' | 'urgent' | 'unread' | 'left';
+
+export function tabTone(opts: { patience: number; unread: number; left?: boolean }): TabTone {
+  if (opts.left) return 'left';
+  if (opts.patience > 0 && opts.patience <= 0.28) return 'urgent';
+  if (opts.unread > 0) return 'unread';
+  if (opts.patience > 0 && opts.patience <= 0.5) return 'warn';
+  return 'ok';
+}
+
+export function customerTabId(id: string): string {
+  return `fgpt-tab-${id}`;
+}
+
+export function customerPanelId(id: string): string {
+  return `fgpt-panel-${id}`;
+}
+
 export function fillPersonas(incoming: readonly DailyPersona[], seed: number): DailyPersona[] {
   const picked: DailyPersona[] = [];
   const used = new Set<string>();

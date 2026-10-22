@@ -868,10 +868,14 @@ html[data-motion='on'] .fgpt-board.is-shake {
 
 .fgpt-switcher {
   display: flex;
+  flex-wrap: nowrap;
   gap: 0.4rem;
   overflow-x: auto;
+  overflow-y: hidden;
   padding: 0.55rem 0.65rem 0.4rem;
   border-bottom: 1px solid var(--line);
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
 }
 
 .fgpt-tab {
@@ -879,6 +883,7 @@ html[data-motion='on'] .fgpt-board.is-shake {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  flex: 0 0 auto;
   min-width: 7.2rem;
   padding: 0.4rem 0.55rem 0.55rem;
   border: 1px solid var(--line);
@@ -892,6 +897,14 @@ html[data-motion='on'] .fgpt-board.is-shake {
   border-color: var(--ink);
 }
 
+.fgpt-tab.is-warn {
+  border-color: color-mix(in srgb, #c9a227 60%, var(--line));
+}
+
+.fgpt-tab.is-urgent {
+  border-color: var(--accent);
+}
+
 .fgpt-tab-patience {
   position: absolute;
   left: 0.45rem;
@@ -899,8 +912,31 @@ html[data-motion='on'] .fgpt-board.is-shake {
   bottom: 0.28rem;
   height: 0.18rem;
   border-radius: 99px;
-  background: var(--accent);
+  background: #3c9a5a;
   max-width: calc(100% - 0.9rem);
+}
+
+.fgpt-tab.is-warn .fgpt-tab-patience {
+  background: #c9a227;
+}
+
+.fgpt-tab.is-urgent .fgpt-tab-patience,
+.fgpt-tab.is-unread .fgpt-tab-patience {
+  background: var(--accent);
+}
+
+.fgpt-tab.is-left .fgpt-tab-patience {
+  background: var(--faint);
+}
+
+html[data-motion='on'] .fgpt-tab.is-unread:not(.is-on),
+html[data-motion='on'] .fgpt-tab.is-urgent:not(.is-on) {
+  animation: fgpt-tab-pulse 1.15s ease-in-out infinite;
+}
+
+@keyframes fgpt-tab-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 40%, transparent); }
+  50% { box-shadow: 0 0 0 4px transparent; }
 }
 
 .fgpt-badge {
@@ -928,20 +964,13 @@ html[data-motion='on'] .fgpt-board.is-shake {
 
 .fgpt-lanes {
   display: grid;
+  grid-template-columns: 1fr;
   gap: 0.7rem;
   padding: 0.7rem;
 }
 
-.fgpt-lanes.is-solo { grid-template-columns: 1fr; }
-.fgpt-lanes.is-pair { grid-template-columns: 1fr; }
-.fgpt-lanes.is-plus-one,
-.fgpt-lanes.is-grid,
-.fgpt-lanes.is-three-two { grid-template-columns: 1fr; }
-
-@media (max-width: 859px) {
-  .fgpt-lane:not(.is-focus) {
-    display: none;
-  }
+.fgpt-lane:not(.is-focus) {
+  display: none;
 }
 
 .fgpt-lane {
@@ -971,9 +1000,18 @@ html[data-motion='on'] .fgpt-tab.is-joining {
   animation: fgpt-join 0.7s ease;
 }
 
+html[data-motion='on'] .fgpt-lane.is-leaving,
+html[data-motion='on'] .fgpt-tab.is-leaving {
+  animation: fgpt-leave 0.42s ease forwards;
+}
+
 @keyframes fgpt-join {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
+}
+
+@keyframes fgpt-leave {
+  to { opacity: 0; transform: translateY(-8px) scale(0.96); }
 }
 
 .fgpt-lane-top {
@@ -1011,8 +1049,8 @@ html[data-motion='on'] .fgpt-tab.is-joining {
 .fgpt-log {
   display: grid;
   gap: 0.65rem;
-  min-height: 6.5rem;
-  max-height: 9.5rem;
+  min-height: 12rem;
+  max-height: 22rem;
   overflow: auto;
   padding: 0.7rem 0.75rem 0.35rem;
 }
@@ -1142,31 +1180,9 @@ html[data-motion='on'] .fgpt-tab.is-joining {
 }
 
 @media (min-width: 860px) {
-  .fgpt-switcher {
-    display: none;
-  }
-
-  .fgpt-lanes.is-pair { grid-template-columns: 1fr 1fr; }
-  .fgpt-lanes.is-plus-one { grid-template-columns: 1fr 1fr; }
-  .fgpt-lanes.is-plus-one .fgpt-lane:last-child { grid-column: 1 / -1; }
-  .fgpt-lanes.is-grid { grid-template-columns: 1fr 1fr; }
-  .fgpt-lanes.is-three-two { grid-template-columns: 1fr 1fr 1fr; }
-  .fgpt-lanes.is-three-two .fgpt-lane:nth-child(4),
-  .fgpt-lanes.is-three-two .fgpt-lane:nth-child(5) { grid-column: span 1; }
-  .fgpt-lanes.is-three-two {
-    grid-template-areas:
-      "a b c"
-      "d d e";
-  }
-  .fgpt-lanes.is-three-two .fgpt-lane:nth-child(1) { grid-area: a; }
-  .fgpt-lanes.is-three-two .fgpt-lane:nth-child(2) { grid-area: b; }
-  .fgpt-lanes.is-three-two .fgpt-lane:nth-child(3) { grid-area: c; }
-  .fgpt-lanes.is-three-two .fgpt-lane:nth-child(4) { grid-area: d; }
-  .fgpt-lanes.is-three-two .fgpt-lane:nth-child(5) { grid-area: e; }
-
   .fgpt-log {
-    min-height: 7.2rem;
-    max-height: 10.5rem;
+    min-height: 14rem;
+    max-height: 26rem;
   }
 
   .fgpt-canvas {

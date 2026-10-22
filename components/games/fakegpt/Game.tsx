@@ -12,19 +12,25 @@ import {
   MAX_STRIKES,
   applyStrike,
   buildShareGrid,
+  customerPanelId,
+  customerTabId,
   customersForLevel,
+  firstName,
   isLevelComplete,
   isRunComplete,
   joinNotice,
-  laneLayout,
   levelSurviveMs,
   newlyJoined,
   nextCombo,
+  nextTabIndex,
   patienceMs,
   planRun,
   rankFor,
   shareGlyph,
   startCustomerCount,
+  tabCycleDelta,
+  tabShortcutIndex,
+  tabTone,
   tickRequest,
   type PlannedCustomer,
 } from './lanes';
@@ -56,6 +62,13 @@ type Lane = {
 
 function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 }
 
 function TypingDots() {
@@ -202,6 +215,7 @@ export default function FakeGptGame() {
   const drawRef = useRef<DrawPadHandle>(null);
   const soundRef = useRef<SoundPadHandle>(null);
   const logRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const finishingIds = useRef(new Set<string>());
   const nudgeShown = useRef<Record<string, number>>({});
   const timersRef = useRef<number[]>([]);
@@ -232,9 +246,8 @@ export default function FakeGptGame() {
   artifactsRef.current = artifacts;
   levelStartedRef.current = levelStartedAt;
 
-  const focused = lanes.find((lane) => lane.id === focusedId) ?? lanes[0];
+  const focused = lanes.find((lane) => lane.id === focusedId && !lane.left) ?? lanes.find((lane) => !lane.left) ?? lanes[0];
   const prompt = focused?.current ?? null;
-  const layout = laneLayout(lanes.length);
   const rank = rankFor(score);
   const liveCustomers = customersForLevel(level, seed);
 
@@ -566,7 +579,7 @@ export default function FakeGptGame() {
       setLanes((current) => {
         let changed = false;
         const next = current.map((lane) => {
-          if (!lane.current || finishingIds.current.has(lane.id) || lane.startedAt <= 0 || lane.totalMs <= 0) return lane;
+          if (lane.left || !lane.current || finishingIds.current.has(lane.id) || lane.startedAt <= 0 || lane.totalMs <= 0) return lane;
           const clock = tickRequest(lane.startedAt, lane.totalMs, now);
           const elapsedRatio = lane.totalMs > 0 ? 1 - clock.remainingMs / lane.totalMs : 1;
           const shown = nudgeShown.current[lane.id] ?? 0;
@@ -582,7 +595,8 @@ export default function FakeGptGame() {
           }
           if (clock.patience !== lane.patience || messages !== lane.messages) {
             changed = true;
-            return { ...lane, patience: clock.patience, messages };
+            const unread = nudge && lane.id !== focusedRef.current ? lane.unread + 1 : lane.unread;
+            return { ...lane, patience: clock.patience, messages, unread };
           }
           return lane;
         });
@@ -629,29 +643,68 @@ export default function FakeGptGame() {
     }, 360);
   }, [beep, later, level, plan, seed, showToast]);
 
-  const focusLane = useCallback((id: string) => {
+  const focusLane = useCallback((id: string, moveDomFocus = false) => {
     setFocusedId(id);
     setLanes((current) => current.map((lane) => (lane.id === id ? { ...lane, unread: 0 } : lane)));
     typedRef.current = '';
     setTyped('');
+    if (moveDomFocus) {
+      requestAnimationFrame(() => tabRefs.current[id]?.focus());
+    }
   }, []);
+
+  useEffect(() => {
+    if (!lanes.length) return;
+    const current = lanes.find((lane) => lane.id === focusedId);
+    if (current && !current.left) return;
+    const next = lanes.find((lane) => !lane.left);
+    if (next) focusLane(next.id);
+  }, [focusLane, focusedId, lanes]);
+
+  useEffect(() => {
+    if (!lanes.some((lane) => lane.left)) return;
+    const id = window.setTimeout(() => {
+      setLanes((current) => {
+        const remaining = current.filter((lane) => !lane.left);
+        return remaining.length === current.length ? current : remaining;
+      });
+    }, 420);
+    return () => window.clearTimeout(id);
+  }, [lanes]);
+
+  useEffect(() => {
+    tabRefs.current[focusedId]?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  }, [focusedId, lanes.length]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (phase !== 'playing' || !lanes.length) return;
-      if (event.key === 'ArrowLeft' || event.key === '[') {
+      const open = lanes.filter((lane) => !lane.left);
+      if (!open.length) return;
+      const shortcut = tabShortcutIndex(event, open.length);
+      if (shortcut != null) {
         event.preventDefault();
-        const index = Math.max(0, lanes.findIndex((lane) => lane.id === focusedId));
-        focusLane(lanes[(index - 1 + lanes.length) % lanes.length].id);
+        focusLane(open[shortcut].id, true);
         return;
       }
-      if (event.key === 'ArrowRight' || event.key === ']') {
+      const typing = isEditableTarget(event.target);
+      if ((event.key === 'Home' || event.key === 'End') && !typing) {
         event.preventDefault();
-        const index = Math.max(0, lanes.findIndex((lane) => lane.id === focusedId));
-        focusLane(lanes[(index + 1) % lanes.length].id);
+        focusLane((event.key === 'Home' ? open[0] : open[open.length - 1]).id, true);
+        return;
+      }
+      const delta = tabCycleDelta(event);
+      if (delta != null) {
+        const modifiedTab = event.key === 'Tab' && (event.ctrlKey || event.metaKey);
+        if (event.key === 'Tab' && !modifiedTab) return;
+        if (typing && !event.altKey && !event.ctrlKey && !event.metaKey) return;
+        event.preventDefault();
+        const index = Math.max(0, open.findIndex((lane) => lane.id === focusedId));
+        focusLane(open[nextTabIndex(index, open.length, delta)].id, true);
         return;
       }
       if (!prompt || busy) return;
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
       if (isChoiceKind(prompt.kind, prompt.options) && ['1', '2', '3', '4'].includes(event.key)) {
         const option = prompt.options[Number(event.key) - 1];
         if (option) void finishLane(focusedId, true, option);
@@ -781,7 +834,7 @@ export default function FakeGptGame() {
               Each has a queue and a patience meter. Three hallucinations and they walk.
             </p>
             <p className="fgpt-user">
-              Translate, trivia, math, spelling, tone — locally checked. Arrow keys switch lanes. 1–4 tap answers.
+              Translate, trivia, math, spelling, tone — locally checked. Tabs juggle chats. Arrow keys, [ ], or Ctrl/Alt+1–5 switch. 1–4 tap answers.
             </p>
             <button
               type="button"
@@ -796,33 +849,49 @@ export default function FakeGptGame() {
         {phase === 'playing' || phase === 'levelup' ? (
           <>
             <div className="fgpt-switcher" role="tablist" aria-label="Customers">
-              {lanes.map((lane) => (
-                <button
-                  key={lane.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={lane.id === focusedId}
-                  onClick={() => focusLane(lane.id)}
-                  className={`fgpt-tab ${lane.id === focusedId ? 'is-on' : ''} ${lane.joining ? 'is-joining' : ''}`}
-                >
-                  <span className="fgpt-face" style={{ background: `hsl(${lane.hue} 42% 42%)` }}>
-                    {lane.name.slice(0, 1).toUpperCase()}
-                  </span>
-                  <span className="min-w-0 truncate">{lane.name.split(' ')[0]}</span>
-                  <span className="fgpt-tab-patience" style={{ width: `${Math.round(lane.patience * 100)}%` }} />
-                  {lane.unread > 0 ? <span className="fgpt-badge">{lane.unread}</span> : null}
-                </button>
-              ))}
+              {lanes.map((lane) => {
+                const selected = lane.id === focusedId;
+                const tone = tabTone({ patience: lane.patience, unread: lane.unread, left: lane.left });
+                return (
+                  <button
+                    key={lane.id}
+                    id={customerTabId(lane.id)}
+                    ref={(node) => {
+                      tabRefs.current[lane.id] = node;
+                    }}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    aria-controls={customerPanelId(lane.id)}
+                    aria-label={`${lane.name}${lane.unread > 0 ? `, ${lane.unread} new` : ''}${tone === 'urgent' ? ', patience low' : ''}${lane.left ? ', left' : ''}`}
+                    tabIndex={selected ? 0 : -1}
+                    onClick={() => focusLane(lane.id)}
+                    className={`fgpt-tab is-${tone} ${selected ? 'is-on' : ''} ${lane.joining ? 'is-joining' : ''} ${lane.left ? 'is-leaving' : ''}`}
+                  >
+                    <span className="fgpt-face" style={{ background: `hsl(${lane.hue} 42% 42%)` }}>
+                      {lane.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="min-w-0 truncate">{firstName(lane.name)}</span>
+                    <span className="fgpt-tab-patience" style={{ width: `${Math.round(lane.patience * 100)}%` }} />
+                    {lane.unread > 0 ? <span className="fgpt-badge">{lane.unread}</span> : null}
+                  </button>
+                );
+              })}
             </div>
 
-            <div className={`fgpt-lanes is-${layout}`} data-count={lanes.length}>
+            <div className="fgpt-lanes" data-count={lanes.length}>
               {lanes.map((lane) => {
                 const active = lane.id === focusedId;
                 const kind = lane.current?.kind;
                 return (
                   <article
                     key={lane.id}
-                    className={`fgpt-lane ${active ? 'is-focus' : ''} ${lane.flash ? `is-${lane.flash}` : ''} ${lane.joining ? 'is-joining' : ''}`}
+                    id={customerPanelId(lane.id)}
+                    role="tabpanel"
+                    aria-labelledby={customerTabId(lane.id)}
+                    hidden={!active}
+                    inert={!active ? true : undefined}
+                    className={`fgpt-lane ${active ? 'is-focus' : ''} ${lane.flash ? `is-${lane.flash}` : ''} ${lane.joining ? 'is-joining' : ''} ${lane.left ? 'is-leaving' : ''}`}
                   >
                     <header className="fgpt-lane-top" onClick={() => focusLane(lane.id)}>
                       <span className="fgpt-face" style={{ background: `hsl(${lane.hue} 42% 42%)` }}>

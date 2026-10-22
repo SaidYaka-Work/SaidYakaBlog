@@ -11,18 +11,25 @@ import {
   fillPersonas,
   isLevelComplete,
   isRunComplete,
+  customerPanelId,
+  customerTabId,
   joinNotice,
   laneLayout,
+  leaveNotice,
   levelServeGoal,
   levelSurviveMs,
   newlyJoined,
   nextCombo,
+  nextTabIndex,
   patienceMs,
   planRun,
   rankFor,
   shareGlyph,
   spawnDelayMs,
   startCustomerCount,
+  tabCycleDelta,
+  tabShortcutIndex,
+  tabTone,
   tickRequest,
 } from '../../../components/games/fakegpt/lanes.ts';
 
@@ -86,7 +93,32 @@ test('planRun deals a queue to every future customer and names joiners', () => {
   assert.equal(joiners.length, 1);
   assert.equal(joinNotice('Dana'), '🟢 Dana joined the chat');
   assert.equal(joinNotice('the microwave'), '🟢 microwave joined the chat');
+  assert.equal(leaveNotice('Dana'), '🔴 Dana left the chat');
   assert.equal(fillPersonas([], 1).length, MAX_CUSTOMERS);
+});
+
+test('tab shortcuts cycle, skip bare digits, and colour by patience', () => {
+  assert.equal(nextTabIndex(0, 3, 1), 1);
+  assert.equal(nextTabIndex(0, 3, -1), 2);
+  assert.equal(nextTabIndex(4, 5, 1), 0);
+  assert.equal(nextTabIndex(0, 0, 1), 0);
+  assert.equal(tabShortcutIndex({ key: '2', altKey: true }, 4), 1);
+  assert.equal(tabShortcutIndex({ key: '5', ctrlKey: true }, 5), 4);
+  assert.equal(tabShortcutIndex({ key: '3', metaKey: true }, 2), null);
+  assert.equal(tabShortcutIndex({ key: '2' }, 4), null);
+  assert.equal(tabShortcutIndex({ key: '1', altKey: true }, 0), null);
+  assert.equal(tabCycleDelta({ key: 'ArrowRight' }), 1);
+  assert.equal(tabCycleDelta({ key: '[' }), -1);
+  assert.equal(tabCycleDelta({ key: 'Tab', ctrlKey: true }), 1);
+  assert.equal(tabCycleDelta({ key: 'Tab', ctrlKey: true, shiftKey: true }), -1);
+  assert.equal(tabCycleDelta({ key: 'Tab' }), null);
+  assert.equal(tabTone({ patience: 0.9, unread: 0 }), 'ok');
+  assert.equal(tabTone({ patience: 0.4, unread: 0 }), 'warn');
+  assert.equal(tabTone({ patience: 0.2, unread: 0 }), 'urgent');
+  assert.equal(tabTone({ patience: 0.9, unread: 2 }), 'unread');
+  assert.equal(tabTone({ patience: 0.2, unread: 2, left: true }), 'left');
+  assert.equal(customerTabId('kira'), 'fgpt-tab-kira');
+  assert.equal(customerPanelId('kira'), 'fgpt-panel-kira');
 });
 
 test('combo, strikes, ranks, share glyphs, and desktop layouts', () => {
