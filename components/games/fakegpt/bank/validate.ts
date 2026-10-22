@@ -63,7 +63,8 @@ export function validateQuestion(raw: unknown): BankIssue[] {
   if (typeof question.category !== 'string' || question.category.trim().length < 2) fail('category missing');
   if (question.difficulty !== 1 && question.difficulty !== 2 && question.difficulty !== 3) fail('difficulty must be 1-3');
   if (typeof question.text !== 'string' || question.text.trim().length < 8) fail('text too short');
-  if (typeof question.answer !== 'string' || !question.answer.trim()) fail('answer missing');
+  const answer = typeof question.answer === 'string' ? question.answer : '';
+  if (!answer.trim()) fail('answer missing');
   if (!Array.isArray(question.options) || question.options.length !== OPTIONS_PER_QUESTION) {
     fail(`need exactly ${OPTIONS_PER_QUESTION} options`);
     return issues;
@@ -74,14 +75,14 @@ export function validateQuestion(raw: unknown): BankIssue[] {
   if (keys.some((key) => !key)) fail('option normalizes empty');
   if (new Set(keys).size !== OPTIONS_PER_QUESTION) fail('duplicate options');
 
-  const answerKey = optionKey(question.answer);
+  const answerKey = optionKey(answer);
   const matches = question.options.filter((option) => optionKey(option) === answerKey);
   if (matches.length !== 1) fail('exactly one option must match the answer');
 
-  if (typeof question.text === 'string' && typeof question.answer === 'string' && answerLeakedInText(question.text, question.answer)) {
+  if (typeof question.text === 'string' && answer && answerLeakedInText(question.text, answer)) {
     fail('answer leaked in the prompt');
   }
-  if (typeof question.answer === 'string' && optionsOverlap(question.answer, question.options)) {
+  if (answer && optionsOverlap(answer, question.options)) {
     fail('another option overlaps the answer');
   }
   if (question.kind === 'fill' && typeof question.text === 'string' && !/_{3,}/.test(question.text)) {

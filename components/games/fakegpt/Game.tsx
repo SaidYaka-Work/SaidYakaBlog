@@ -34,8 +34,8 @@ import {
   type PlannedCustomer,
 } from './lanes';
 import { STORAGE_KEY, formatTimer, nextNudge, scoreJob } from './logic';
-import type { Artifact, ChatMessage, Prompt } from './types';
-import { dateSeed, formatUtcDate, utcDate, type DailySet } from '../../../workers/fakegpt/src/schema';
+import type { Artifact, ChatMessage, DailySet, Prompt, SynthHit } from './types';
+import { dateSeed, formatUtcDate, utcDate } from '../../../workers/fakegpt/src/schema';
 
 const meta = getGameBySlug('fakegpt')!;
 

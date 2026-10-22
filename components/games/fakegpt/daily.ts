@@ -1,4 +1,5 @@
-import { dateSeed, utcDate, type DailySet, type DailyRound } from '../../../workers/fakegpt/src/schema';
+import { dateSeed, utcDate } from '../../../workers/fakegpt/src/schema';
+import type { DailySet, Prompt } from './types';
 import { BANK } from './bank';
 import { dailyNudges, JOIN_VIBES, LATE_LINES, pickChatter, PRAISE, ROASTS } from './bank/chatter';
 import { pickDailyQuestions } from './bank/select';
@@ -12,7 +13,7 @@ export function buildDailySet(date = utcDate()): DailySet {
   const questions = pickDailyQuestions(BANK, date);
   const personas = fillPersonas(PERSONA_BANK, seed);
   const vibes = shuffle(JOIN_VIBES, random);
-  const rounds: DailyRound[] = questions.map((item, index) => {
+  const rounds: Prompt[] = questions.map((item, index) => {
     const persona = personas[index % personas.length] ?? personas[0];
     const name = persona.name;
     return {
