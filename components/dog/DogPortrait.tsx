@@ -28,6 +28,7 @@ export default function DogPortrait({
   drive = null,
   food = false,
   near = false,
+  bowl = null,
   world = null,
   onWorldColliders,
   onReady,
@@ -51,6 +52,7 @@ export default function DogPortrait({
   drive?: DriveControl | null;
   food?: boolean;
   near?: boolean;
+  bowl?: { x: number; z: number } | null;
   world?: WorldView | null;
   onWorldColliders?: (colliders: WorldColliders) => void;
   onReady?: () => void;
@@ -78,6 +80,7 @@ export default function DogPortrait({
       drive={drive}
       food={food}
       near={near}
+      bowl={bowl}
       world={world}
       onWorldColliders={onWorldColliders}
       onReady={onReady}

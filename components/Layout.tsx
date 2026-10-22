@@ -37,7 +37,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     setNavShown(true);
     const hide = window.setTimeout(() => setNavShown(false), 1800);
     const onMove = (event: PointerEvent) => {
-      setNavShown(event.clientY < 72 || open);
+      const hit = event.target;
+      const overHud =
+        hit instanceof Element &&
+        hit.closest('.dog-chip, .dog-travel, .dog-back, .dog-action, .dog-stick, button, a');
+      setNavShown((event.clientY < 8 && !overHud) || open);
     };
     window.addEventListener('pointermove', onMove);
     return () => {

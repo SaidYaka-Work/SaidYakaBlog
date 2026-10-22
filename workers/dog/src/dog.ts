@@ -17,6 +17,7 @@ import {
   originAllowed,
   parseClientMessage,
   pruneBuckets,
+  publicCompanions,
   snapshot,
   takeConnectionGap,
   takeEmoteRate,
@@ -28,9 +29,10 @@ import {
   type RateBucket,
   type RoomState,
 } from './logic';
-import { flushIfNeeded, RoomSession, scheduleAlarm, type PersistKind } from './persist';
+import { flushIfNeeded, logDogError, RoomSession, scheduleAlarm, type PersistKind } from './persist';
 import { HERE_GAP_MS } from './presence';
-import { MOVE_MIN_MS, migrateYard, releaseLeash } from './room';
+import { MOVE_MIN_MS, migrateYard, publicFeeder, publicLeash, publicPose, releaseLeash } from './room';
+import { migrateLocation, publicLocation } from './world';
 
 export interface Env {
   DOG: DurableObjectNamespace;
@@ -48,6 +50,7 @@ type SocketMeta = {
   lastAt: number;
   lastMoveAt: number;
   lastHereAt: number;
+  lastLeashErrAt: number;
   play: PlaySession | null;
   nameToken: string | null;
   clientId: string;
@@ -64,20 +67,30 @@ function corsHeaders(origin: string | null, env: Env): HeadersInit {
   };
 }
 
+function napping(origin: string | null, env: Env) {
+  return new Response('napping', { status: 503, headers: corsHeaders(origin, env) });
+}
+
 export class DogRoom {
   private session: RoomSession | null = null;
   private rates: Record<string, RateBucket> = {};
   private emoteRates: Record<string, EmoteBucket> = {};
-  private readonly ready: Promise<void>;
+  private lastPoseAt = 0;
+  private ready: Promise<void>;
 
   constructor(
     private readonly ctx: DurableObjectState,
     private readonly env: Env,
   ) {
     this.ready = this.ctx.blockConcurrencyWhile(async () => {
-      const now = Date.now();
-      this.session = await RoomSession.boot(this.storage(), now);
-      await this.safeSchedule(now);
+      try {
+        this.session = await RoomSession.boot(this.storage(), Date.now());
+      } catch (error) {
+        logDogError('boot failed', error);
+        this.session = RoomSession.degraded(Date.now());
+      }
+    }).catch((error) => {
+      logDogError('boot failed', error);
     });
   }
 
@@ -97,24 +110,37 @@ export class DogRoom {
       if (origin && !originAllowed(origin, this.env.ALLOWED_ORIGINS)) {
         return new Response('origin not allowed', { status: 403 });
       }
-      const now = Date.now();
-      const room = await this.load(now, 'read');
-      return Response.json(snapshot(room, now, this.sockets()), {
-        headers: corsHeaders(origin, this.env),
-      });
+      try {
+        const now = Date.now();
+        const room = await this.load(now, 'read');
+        if (!room) return napping(origin, this.env);
+        await this.safeSchedule(now);
+        return Response.json(snapshot(room, now, this.sockets()), {
+          headers: corsHeaders(origin, this.env),
+        });
+      } catch (error) {
+        logDogError('boot failed', error);
+        return napping(origin, this.env);
+      }
     }
 
     if (url.pathname === '/history' && request.method === 'GET') {
       if (origin && !originAllowed(origin, this.env.ALLOWED_ORIGINS)) {
         return new Response('origin not allowed', { status: 403 });
       }
-      const now = Date.now();
-      const room = await this.load(now, 'read');
-      const offset = Number(url.searchParams.get('offset') || 0);
-      const limit = Number(url.searchParams.get('limit') || HISTORY_PAGE);
-      return Response.json(listHistory(room, offset, limit), {
-        headers: corsHeaders(origin, this.env),
-      });
+      try {
+        const now = Date.now();
+        const room = await this.load(now, 'read');
+        if (!room) return napping(origin, this.env);
+        const offset = Number(url.searchParams.get('offset') || 0);
+        const limit = Number(url.searchParams.get('limit') || HISTORY_PAGE);
+        return Response.json(listHistory(room, offset, limit), {
+          headers: corsHeaders(origin, this.env),
+        });
+      } catch (error) {
+        logDogError('boot failed', error);
+        return napping(origin, this.env);
+      }
     }
 
     if (url.pathname === '/ws') {
@@ -137,24 +163,45 @@ export class DogRoom {
         '0.0.0.0';
 
       this.ctx.acceptWebSocket(server);
-      const clientId = crypto.randomUUID();
+      const requested = url.searchParams.get('clientId');
+      const clientId = requested && /^[a-f0-9-]{36}$/i.test(requested) ? requested : crypto.randomUUID();
       server.serializeAttachment({
         ip,
         lastAt: 0,
         lastMoveAt: 0,
         lastHereAt: 0,
+        lastLeashErrAt: 0,
         play: null,
         nameToken: null,
         clientId,
       } satisfies SocketMeta);
 
-      const now = Date.now();
-      const seated = welcomeCompanion(await this.load(now, 'connect'), clientId, now);
-      await this.commit(seated, now, 'connect');
-      server.send(JSON.stringify({ type: 'welcome', clientId }));
-      server.send(JSON.stringify(snapshot(seated, now, this.sockets())));
-      this.broadcastSnapshot();
-      await this.safeSchedule(now);
+      try {
+        const now = Date.now();
+        const room = await this.load(now, 'connect');
+        if (!room) {
+          try {
+            server.close(1013, 'napping');
+          } catch (error) {
+            logDogError('ws close failed', error);
+          }
+          return napping(origin, this.env);
+        }
+        const seated = welcomeCompanion(room, clientId, now);
+        await this.commit(seated, now, 'connect');
+        server.send(JSON.stringify({ type: 'welcome', clientId }));
+        server.send(JSON.stringify(snapshot(seated, now, this.sockets())));
+        this.broadcastSnapshot();
+        await this.safeSchedule(now);
+      } catch (error) {
+        logDogError('boot failed', error);
+        try {
+          server.close(1013, 'napping');
+        } catch (closeError) {
+          logDogError('ws close failed', closeError);
+        }
+        return napping(origin, this.env);
+      }
 
       return new Response(null, { status: 101, webSocket: client });
     }
@@ -163,6 +210,19 @@ export class DogRoom {
   }
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
+    try {
+      await this.handleSocketMessage(ws, message);
+    } catch (error) {
+      logDogError('ws action failed', error);
+      try {
+        ws.send(JSON.stringify({ type: 'error', code: 'asleep' }));
+      } catch (sendError) {
+        logDogError('ws send failed', sendError);
+      }
+    }
+  }
+
+  private async handleSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
     if (typeof message !== 'string') {
       ws.send(JSON.stringify({ type: 'error', code: 'invalid' }));
       return;
@@ -176,8 +236,35 @@ export class DogRoom {
       return;
     }
 
+    const awake = await this.ensure(now);
+    if (!awake.mayPersist || !awake.room) {
+      ws.send(JSON.stringify({ type: 'error', code: 'asleep' }));
+      return;
+    }
+
     if (parsed.kind === 'hello') {
-      ws.send(JSON.stringify(snapshot(await this.load(now, 'read'), now, this.sockets())));
+      if (parsed.clientId) {
+        const current = (ws.deserializeAttachment() as SocketMeta | null) ?? {
+          ip: '0.0.0.0',
+          lastAt: 0,
+          lastMoveAt: 0,
+          lastHereAt: 0,
+          lastLeashErrAt: 0,
+          play: null,
+          nameToken: null,
+          clientId: parsed.clientId,
+        };
+        const previousId = current.clientId;
+        ws.serializeAttachment({ ...current, clientId: parsed.clientId } satisfies SocketMeta);
+        ws.send(JSON.stringify({ type: 'welcome', clientId: parsed.clientId }));
+        if (previousId !== parsed.clientId) {
+          const room = await this.mustLoad(now, 'connect');
+          const dropped = previousId ? forgetVisitor(room, previousId, now, this.peerClientIds(ws)) : room;
+          const seated = welcomeCompanion(dropped, parsed.clientId, now);
+          await this.commit(seated, now, 'connect');
+        }
+      }
+      ws.send(JSON.stringify(snapshot(await this.mustLoad(now, 'read'), now, this.sockets())));
       return;
     }
 
@@ -186,6 +273,7 @@ export class DogRoom {
       lastAt: 0,
       lastMoveAt: 0,
       lastHereAt: 0,
+      lastLeashErrAt: 0,
       play: null,
       nameToken: null,
       clientId: crypto.randomUUID(),
@@ -193,18 +281,29 @@ export class DogRoom {
 
     if (parsed.kind === 'move') {
       const wait = meta.lastMoveAt + MOVE_MIN_MS - now;
-      if (wait > 0) return;
+      if (wait > 0) {
+        if (Math.hypot(parsed.ax, parsed.az) > 0.08 && this.session?.mayPersist) {
+          this.session.touchHold(meta.clientId, now);
+        }
+        return;
+      }
       const dt = meta.lastMoveAt ? Math.min(0.18, (now - meta.lastMoveAt) / 1000) : 0.08;
       const proposed =
         parsed.wx !== undefined && parsed.wz !== undefined ? { x: parsed.wx, z: parsed.wz } : null;
       const session = await this.ensure(now);
+      if (!session.mayPersist || !session.room) {
+        ws.send(JSON.stringify({ type: 'error', code: 'asleep' }));
+        return;
+      }
       const moved = session.move(meta.clientId, meta.ip, parsed.ax, parsed.az, parsed.run, dt, now, proposed);
       await this.flush(session, moved, now);
-      ws.serializeAttachment({ ...meta, lastMoveAt: now } satisfies SocketMeta);
-      if (!moved.acquired && moved.code) {
+      let leashTold = meta.lastLeashErrAt;
+      if (!moved.acquired && moved.code && now - meta.lastLeashErrAt > 2500) {
+        leashTold = now;
         ws.send(JSON.stringify({ type: 'error', code: moved.code, retryAfterMs: moved.retryAfterMs }));
       }
-      this.broadcastPose(session.room, now);
+      ws.serializeAttachment({ ...meta, lastMoveAt: now, lastLeashErrAt: leashTold } satisfies SocketMeta);
+      this.emitPose(session.room, now);
       if (moved.walk && moved.walk.ok) {
         this.broadcast(snapshot(session.room, now, this.sockets()));
         this.broadcast({ type: 'event', text: moved.walk.event.text, at: moved.walk.event.at });
@@ -218,10 +317,10 @@ export class DogRoom {
         ws.send(JSON.stringify({ type: 'error', code: 'rate_limited', retryAfterMs: wait }));
         return;
       }
-      const next = applyCompanionHere(await this.load(now, 'action'), meta.clientId, parsed.x, parsed.z, now);
+      const next = applyCompanionHere(await this.mustLoad(now, 'action'), meta.clientId, parsed.x, parsed.z, now);
       ws.serializeAttachment({ ...meta, lastHereAt: now } satisfies SocketMeta);
       await this.commit(next, now, 'action');
-      this.broadcastPose(next, now);
+      this.emitPose(next, now);
       return;
     }
 
@@ -232,16 +331,16 @@ export class DogRoom {
         return;
       }
       this.emoteRates[meta.clientId] = taken.bucket;
-      const next = applyCompanionEmote(await this.load(now, 'action'), meta.clientId, parsed.emote, now);
+      const next = applyCompanionEmote(await this.mustLoad(now, 'action'), meta.clientId, parsed.emote, now);
       await this.commit(next, now, 'action');
-      this.broadcastPose(next, now);
+      this.emitPose(next, now, true);
       return;
     }
 
     if (parsed.kind === 'leave' || parsed.kind === 'home' || parsed.kind === 'travel') {
       const gatedTravel = this.gate(ws, meta, now);
       if (!gatedTravel) return;
-      const room = await this.load(now, 'action');
+      const room = await this.mustLoad(now, 'action');
       const result = applyWorldAction(
         room,
         meta.clientId,
@@ -249,6 +348,7 @@ export class DogRoom {
         now,
         parsed.kind,
         parsed.kind === 'travel' ? parsed.placeId : undefined,
+        this.peerClientIds(ws),
       );
       await this.commit(result.room, now, 'action');
       if (!result.acquired && result.code) {
@@ -263,11 +363,11 @@ export class DogRoom {
     if (parsed.kind === 'bowl') {
       const gatedBowl = this.gate(ws, meta, now);
       if (!gatedBowl) return;
-      const result = applyBowlAction(await this.load(now, 'action'), now);
+      const result = applyBowlAction(await this.mustLoad(now, 'action'), now);
       await this.commit(result.room, now, 'action');
       if (result.code === 'too_far') {
         ws.send(JSON.stringify({ type: 'error', code: 'too_far', text: 'Walk him to the feeder.' }));
-        this.broadcastPose(result.room, now);
+        this.emitPose(result.room, now, true);
         return;
       }
       if (result.fed && !result.fed.ok) {
@@ -289,7 +389,7 @@ export class DogRoom {
     }
 
     if (parsed.kind === 'name') {
-      const result = applyName(await this.load(now, 'action'), parsed.nameId, meta.nameToken, now);
+      const result = applyName(await this.mustLoad(now, 'action'), parsed.nameId, meta.nameToken, now);
       await this.commit(result.room, now, 'action');
       if (!result.ok) {
         ws.send(
@@ -316,7 +416,7 @@ export class DogRoom {
     }
 
     if (parsed.kind === 'start') {
-      const room = await this.load(now, 'read');
+      const room = await this.mustLoad(now, 'read');
       const allowed =
         parsed.game === 'catch' ? canStartCatch(room, now) : canStartCare(room, parsed.game, now);
       if (!allowed.ok) {
@@ -343,7 +443,7 @@ export class DogRoom {
     if (!gated) return;
 
     if (parsed.kind === 'pet') {
-      const result = applyPet(await this.load(now, 'action'), now);
+      const result = applyPet(await this.mustLoad(now, 'action'), now);
       await this.commit(result.room, now, 'action');
       if (!result.ok) {
         ws.send(JSON.stringify({ type: 'error', code: result.code, retryAfterMs: result.retryAfterMs }));
@@ -368,7 +468,7 @@ export class DogRoom {
       return;
     }
 
-    const room = await this.load(now, 'action');
+    const room = await this.mustLoad(now, 'action');
     const result =
       meta.play.game === 'catch'
         ? applyCatch(room, parsed.score, now)
@@ -409,23 +509,31 @@ export class DogRoom {
   }
 
   async alarm() {
-    const now = Date.now();
-    const session = await this.ensure(now);
-    const sockets = this.sockets();
-    const ticked = session.tick(now, sockets);
-    await this.flush(session, ticked, now);
-    if (sockets > 0) {
-      this.broadcastPose(session.room, now);
-      if (ticked.fed && ticked.fed.ok) {
-        this.broadcast(snapshot(session.room, now, sockets));
-        this.broadcast({ type: 'event', text: ticked.fed.event.text, at: ticked.fed.event.at });
+    try {
+      const now = Date.now();
+      const session = await this.ensure(now);
+      if (!session.mayPersist || !session.room) {
+        await this.safeSchedule(now);
+        return;
       }
-      if (now - session.lastFullSnapAt >= PERSIST_BROADCAST_MS) {
-        this.broadcast(snapshot(session.room, now, sockets));
-        session.lastFullSnapAt = now;
+      const sockets = this.sockets();
+      const ticked = session.tick(now, sockets);
+      await this.flush(session, ticked, now);
+      if (sockets > 0) {
+        this.emitPose(session.room, now);
+        if (ticked.fed && ticked.fed.ok) {
+          this.broadcast(snapshot(session.room, now, sockets));
+          this.broadcast({ type: 'event', text: ticked.fed.event.text, at: ticked.fed.event.at });
+        }
+        if (now - session.lastFullSnapAt >= PERSIST_BROADCAST_MS) {
+          this.broadcast(snapshot(session.room, now, sockets));
+          session.lastFullSnapAt = now;
+        }
       }
+      await this.safeSchedule(now);
+    } catch (error) {
+      logDogError('alarm failed', error);
     }
-    await this.safeSchedule(now);
   }
 
   private liveIds(except?: string) {
@@ -435,22 +543,41 @@ export class DogRoom {
       .filter((id): id is string => Boolean(id) && id !== except);
   }
 
+  private peerClientIds(except?: WebSocket) {
+    return this.ctx
+      .getWebSockets()
+      .filter((socket) => socket !== except)
+      .map((socket) => (socket.deserializeAttachment() as SocketMeta | null)?.clientId)
+      .filter((id): id is string => Boolean(id));
+  }
+
   private async releaseIfHolder(ws: WebSocket) {
     const meta = ws.deserializeAttachment() as SocketMeta | null;
     if (!meta?.clientId) return;
-    const now = Date.now();
-    const room = await this.load(now, 'action');
-    const yard = migrateYard(room.yard, now);
-    if (yard.leash.holderId !== meta.clientId) return;
-    await this.commit({ ...room, yard: releaseLeash(yard, now, this.liveIds(meta.clientId)) }, now, 'action');
+    try {
+      const now = Date.now();
+      const room = await this.load(now, 'action');
+      if (!room) return;
+      const yard = migrateYard(room.yard, now);
+      if (yard.leash.holderId !== meta.clientId) return;
+      if (this.peerClientIds(ws).includes(meta.clientId)) return;
+      await this.commit({ ...room, yard: releaseLeash(yard, now, this.liveIds(meta.clientId), 'idle') }, now, 'action');
+    } catch (error) {
+      logDogError('leash release failed', error);
+    }
   }
 
   private async forgetSocket(ws: WebSocket) {
     const meta = ws.deserializeAttachment() as SocketMeta | null;
     if (!meta?.clientId) return;
-    const now = Date.now();
-    const room = await this.load(now, 'action');
-    await this.commit(forgetVisitor(room, meta.clientId, now, this.liveIds(meta.clientId)), now, 'action');
+    try {
+      const now = Date.now();
+      const room = await this.load(now, 'action');
+      if (!room) return;
+      await this.commit(forgetVisitor(room, meta.clientId, now, this.peerClientIds(ws)), now, 'action');
+    } catch (error) {
+      logDogError('socket forget failed', error);
+    }
   }
 
   private gate(ws: WebSocket, meta: SocketMeta, now: number): SocketMeta | null {
@@ -473,31 +600,48 @@ export class DogRoom {
 
   private async load(now: number, kind: PersistKind) {
     const session = await this.ensure(now);
+    if (!session.mayPersist || !session.room) return null;
     const decision = session.decay(now, kind);
     await this.flush(session, decision, now);
     return session.room;
   }
 
+  private async mustLoad(now: number, kind: PersistKind) {
+    const room = await this.load(now, kind);
+    if (!room) throw new Error('napping');
+    return room;
+  }
+
   private async commit(room: RoomState, now: number, kind: PersistKind) {
     const session = await this.ensure(now);
+    if (!session.mayPersist) return null;
     const decision = session.adopt(room, now, kind);
     await this.flush(session, decision, now);
     return session.room;
   }
 
   private async flush(session: RoomSession, decision: { wrote: boolean }, now: number) {
+    if (!session.mayPersist || !session.room) return;
     try {
       await flushIfNeeded(this.storage(), session, decision);
-    } catch {
+    } catch (error) {
+      logDogError('persist failed', error);
       session.lastPersistAt = Math.min(session.lastPersistAt, now - 1);
       session.dirty = true;
     }
   }
 
   private async ensure(now: number) {
-    await this.ready;
+    try {
+      await this.ready;
+    } catch (error) {
+      logDogError('boot failed', error);
+      this.ready = Promise.resolve();
+    }
     if (!this.session) {
       this.session = await RoomSession.boot(this.storage(), now);
+    } else if (!this.session.mayPersist) {
+      await this.session.retryLoad(this.storage(), now);
     }
     return this.session;
   }
@@ -518,8 +662,8 @@ export class DogRoom {
   private async safeSchedule(now: number) {
     try {
       await scheduleAlarm(this.storage(), now, this.sockets());
-    } catch {
-      // quota or transient alarm failure — next request retries
+    } catch (error) {
+      logDogError('alarm schedule failed', error);
     }
   }
 
@@ -529,20 +673,28 @@ export class DogRoom {
 
   private broadcastSnapshot() {
     const now = Date.now();
-    void this.load(now, 'read').then((room) => {
-      this.broadcast(snapshot(room, now, this.sockets()));
-    });
+    void this.load(now, 'read')
+      .then((room) => {
+        if (!room) return;
+        this.broadcast(snapshot(room, now, this.sockets()));
+      })
+      .catch((error) => {
+        logDogError('snapshot failed', error);
+      });
   }
 
-  private broadcastPose(room: RoomState, now: number) {
-    const snap = snapshot(room, now, this.sockets());
+  private emitPose(room: RoomState | null, now: number, force = false) {
+    if (!room) return;
+    if (!force && now - this.lastPoseAt < POSE_BROADCAST_MS) return;
+    this.lastPoseAt = now;
+    const yard = migrateYard(room.yard, now);
     this.broadcast({
       type: 'pose',
-      pose: snap.pose,
-      leash: snap.leash,
-      feeder: snap.feeder,
-      location: snap.location,
-      companions: snap.companions,
+      pose: publicPose(yard.pose),
+      leash: publicLeash(yard.leash, now),
+      feeder: publicFeeder(yard.feeder, yard.pose, now),
+      location: publicLocation(migrateLocation(yard.location, now)),
+      companions: publicCompanions(room.companions, yard.pose, now),
     });
   }
 
@@ -563,3 +715,4 @@ export class DogRoom {
 }
 
 const PERSIST_BROADCAST_MS = 60_000;
+const POSE_BROADCAST_MS = 80;

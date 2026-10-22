@@ -19,23 +19,32 @@ import {
   WALK_CAP_SESSION_M,
   WALK_SPEED,
   YAW_TURN,
-  applyDrive,
   clamp,
   gaitFromSpeed,
   headingYaw,
   normalizeInput,
+  placeFeeder,
   wrapAngle,
+  type Gait,
   type Pose,
   type YardState,
 } from './room';
 
 export const WORLD_TILE_ZOOM = 14;
 export const TRAVEL_COOLDOWN_MS = 25_000;
-export const WORLD_IDLE_HOME_MS = 90_000;
 export const WORLD_WANDER_M = 80;
 export const METERS_PER_DEG = 111_320;
 export const TILEJSON_URL = 'https://tiles.openfreemap.org/planet';
+/** OpenFreeMap's unversioned `/planet/{z}/{x}/{y}.pbf` now returns an empty 200 wildcard. */
+export const TILE_PLANET_BUILD = '20261018_080001_pt';
+export const TILEJSON_PINNED_URL = `https://tiles.openfreemap.org/planet/${TILE_PLANET_BUILD}`;
+export const TILE_TEMPLATE_FALLBACK = `https://tiles.openfreemap.org/planet/${TILE_PLANET_BUILD}/{z}/{x}/{y}.pbf`;
 export const ATTRIBUTION = '© OpenStreetMap contributors · © OpenMapTiles · OpenFreeMap';
+
+export function resolveTileTemplate(raw?: string | null) {
+  if (typeof raw === 'string' && raw.includes('{z}') && /\/planet\/20\d{6}_/.test(raw)) return raw;
+  return TILE_TEMPLATE_FALLBACK;
+}
 
 export type Place = {
   id: string;
@@ -83,7 +92,7 @@ export const PLACES: Place[] = [
 export const HOME_PLACE_ID = 'wsp';
 export const HOME_PLACE = PLACES[0];
 
-export type LocationMode = 'home' | 'world';
+export type LocationMode = 'world';
 
 /** Shared "where is Biscuit". Additive: weather, stamps, events can join later without breaking pose. */
 export type Location = {
@@ -113,13 +122,48 @@ export type PublicLocation = {
 
 export type Ring = { x: number; z: number }[];
 
+const FAKE_PLACE = /times square buildings|washington square buildings|avenue-row/i;
+
+export function formatPlaceLine(streetName?: string | null, placeName?: string | null) {
+  const street = (streetName || '').trim();
+  const place = (placeName || '').replace(/,\s*.*$/, '').trim();
+  const streetOk =
+    Boolean(street) &&
+    street.length <= 32 &&
+    !FAKE_PLACE.test(street) &&
+    !/subway|interchange|transfer|entrance|underground/i.test(street);
+  const placeOk = place && !FAKE_PLACE.test(place);
+  if (
+    streetOk &&
+    placeOk &&
+    street.toLowerCase() !== place.toLowerCase() &&
+    !place.toLowerCase().includes(street.toLowerCase())
+  ) {
+    return `${street} · near ${place}`;
+  }
+  return streetOk ? street : placeOk ? place : '';
+}
+
+export function nearestPlace(lat: number, lng: number): Place {
+  let best = HOME_PLACE;
+  let bestD = Infinity;
+  for (const place of PLACES) {
+    const d = (place.lat - lat) ** 2 + (place.lng - lng) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = place;
+    }
+  }
+  return best;
+}
+
 export function placeById(id: string): Place | undefined {
   return PLACES.find((place) => place.id === id);
 }
 
-export function createLocation(now: number, place: Place = HOME_PLACE, mode: LocationMode = 'home'): Location {
+export function createLocation(now: number, place: Place = HOME_PLACE, _mode: LocationMode | 'home' | 'yard' = 'world'): Location {
   return {
-    mode,
+    mode: 'world',
     lat: place.lat,
     lng: place.lng,
     heading: 0,
@@ -131,16 +175,37 @@ export function createLocation(now: number, place: Place = HOME_PLACE, mode: Loc
   };
 }
 
+export function isLegacyIndoorMode(mode: unknown) {
+  return mode === 'home' || mode === 'yard';
+}
+
 export function migrateLocation(value: Location | undefined, now: number): Location {
   if (!value || !Number.isFinite(value.lat) || !Number.isFinite(value.lng)) return createLocation(now);
   const place = placeById(value.placeId) ?? HOME_PLACE;
   return {
-    ...createLocation(now, place, value.mode === 'world' ? 'world' : 'home'),
+    ...createLocation(now, place),
     ...value,
+    mode: 'world',
     placeId: place.id,
+    heading: Number.isFinite(value.heading) ? value.heading : 0,
     originLat: Number.isFinite(value.originLat) ? value.originLat : place.lat,
     originLng: Number.isFinite(value.originLng) ? value.originLng : place.lng,
   };
+}
+
+/** Align a yard that still thinks it is indoors onto its last geo (or WSP). */
+export function settleWorldYard(yard: YardState, now: number): YardState {
+  const poseIn = yard.pose ?? { x: 0, z: 0, yaw: 0.55, vx: 0, vz: 0, gait: 'idle' as const };
+  const feederIn = yard.feeder ?? { hasFood: false, filledAt: 0, eatingUntil: 0, ...placeFeeder(poseIn) };
+  const priorMode = yard.location?.mode;
+  const location = migrateLocation(yard.location, now);
+  const parked = lngLatToLocal(location.lat, location.lng, location.originLat, location.originLng);
+  const pose = isLegacyIndoorMode(priorMode)
+    ? { ...poseIn, x: parked.x, z: parked.z, yaw: location.heading, vx: 0, vz: 0 }
+    : poseIn;
+  const bowl =
+    Number.isFinite(feederIn.x) && Number.isFinite(feederIn.z) ? feederIn : { ...feederIn, ...placeFeeder(pose) };
+  return { ...yard, pose, location, feeder: bowl };
 }
 
 export function publicLocation(location: Location): PublicLocation {
@@ -263,6 +328,191 @@ function closestOnSegment(x: number, z: number, ax: number, az: number, bx: numb
   return { x: ax + dx * t, z: az + dz * t };
 }
 
+export const FOOTPRINT_CELL = 24;
+
+export type FootprintGrid = {
+  cell: number;
+  cells: Map<string, Ring[]>;
+};
+
+export function emptyFootprintGrid(cell = FOOTPRINT_CELL): FootprintGrid {
+  return { cell, cells: new Map() };
+}
+
+export function isFootprintGrid(value: unknown): value is FootprintGrid {
+  return Boolean(value && typeof value === 'object' && 'cells' in value && 'cell' in value);
+}
+
+function insertRing(grid: FootprintGrid, ring: Ring) {
+  if (ring.length < 2) return;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const point of ring) {
+    if (point.x < minX) minX = point.x;
+    if (point.x > maxX) maxX = point.x;
+    if (point.z < minZ) minZ = point.z;
+    if (point.z > maxZ) maxZ = point.z;
+  }
+  if (!Number.isFinite(minX)) return;
+  const x0 = Math.floor(minX / grid.cell);
+  const x1 = Math.floor(maxX / grid.cell);
+  const z0 = Math.floor(minZ / grid.cell);
+  const z1 = Math.floor(maxZ / grid.cell);
+  for (let z = z0; z <= z1; z += 1) {
+    for (let x = x0; x <= x1; x += 1) {
+      const key = `${x}:${z}`;
+      const bucket = grid.cells.get(key);
+      if (bucket) bucket.push(ring);
+      else grid.cells.set(key, [ring]);
+    }
+  }
+}
+
+export function buildFootprintGrid(rings: Ring[], cell = FOOTPRINT_CELL): FootprintGrid {
+  const grid = emptyFootprintGrid(cell);
+  for (const ring of rings) insertRing(grid, ring);
+  return grid;
+}
+
+const EMPTY_GRID = emptyFootprintGrid();
+
+export function asFootprintGrid(value: Ring[] | FootprintGrid | unknown): FootprintGrid {
+  if (isFootprintGrid(value)) return value;
+  if (!Array.isArray(value) || value.length === 0) return EMPTY_GRID;
+  return buildFootprintGrid(value);
+}
+
+export function queryFootprints(grid: FootprintGrid, x: number, z: number, radius = 6): Ring[] {
+  const seen = new Set<Ring>();
+  const out: Ring[] = [];
+  const pad = Math.max(1, Math.ceil(radius / grid.cell));
+  const cx = Math.floor(x / grid.cell);
+  const cz = Math.floor(z / grid.cell);
+  for (let dz = -pad; dz <= pad; dz += 1) {
+    for (let dx = -pad; dx <= pad; dx += 1) {
+      const bucket = grid.cells.get(`${cx + dx}:${cz + dz}`);
+      if (!bucket) continue;
+      for (const ring of bucket) {
+        if (seen.has(ring)) continue;
+        seen.add(ring);
+        out.push(ring);
+      }
+    }
+  }
+  return out;
+}
+
+export function ringClearance(x: number, z: number, ring: Ring) {
+  if (ring.length < 3) return Infinity;
+  const inside = pointInRing(x, z, ring);
+  let best = Infinity;
+  for (let a = 0, b = ring.length - 1; a < ring.length; b = a, a += 1) {
+    const hit = closestOnSegment(x, z, ring[b].x, ring[b].z, ring[a].x, ring[a].z);
+    const d = Math.hypot(x - hit.x, z - hit.z);
+    if (d < best) best = d;
+  }
+  return inside ? -best : best;
+}
+
+export function footprintClearance(x: number, z: number, grid: FootprintGrid, pad = 8) {
+  const nearby = queryFootprints(grid, x, z, pad);
+  let best = Infinity;
+  for (const ring of nearby) {
+    const d = ringClearance(x, z, ring);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+function blockedAt(x: number, z: number, radius: number, grid: FootprintGrid) {
+  return footprintClearance(x, z, grid, radius + 6) < radius;
+}
+
+/** 2D spherecast from (ox,oz) toward (dx,dz). Returns t in [0,1] of how far is clear. */
+export function cameraRayHitT(
+  ox: number,
+  oz: number,
+  dx: number,
+  dz: number,
+  radius: number,
+  grid: FootprintGrid,
+): number {
+  const vx = dx - ox;
+  const vz = dz - oz;
+  const len = Math.hypot(vx, vz);
+  if (len < 1e-4) return blockedAt(ox, oz, radius, grid) ? 0 : 1;
+  const steps = Math.max(10, Math.min(56, Math.ceil(len / 0.45)));
+  let lastClear = blockedAt(ox, oz, radius, grid) ? -1 : 0;
+  for (let i = 1; i <= steps; i += 1) {
+    const t = i / steps;
+    if (blockedAt(ox + vx * t, oz + vz * t, radius, grid)) {
+      return lastClear < 0 ? 0 : lastClear;
+    }
+    lastClear = t;
+  }
+  return 1;
+}
+
+function pullToward(
+  x: number,
+  z: number,
+  ox: number,
+  oz: number,
+  need: number,
+  grid: FootprintGrid,
+) {
+  let px = x;
+  let pz = z;
+  for (let i = 0; i < 10; i += 1) {
+    if (footprintClearance(px, pz, grid) >= need) return { x: px, z: pz };
+    px = px + (ox - px) * 0.34;
+    pz = pz + (oz - pz) * 0.34;
+  }
+  return { x: px, z: pz };
+}
+
+/** Keep the camera outside every footprint, including courtyards and after a lerp. */
+export function resolveCameraXZ(
+  ox: number,
+  oz: number,
+  dx: number,
+  dz: number,
+  radius: number,
+  grid: FootprintGrid,
+) {
+  const need = Math.max(radius, 0.5);
+  const hitT = cameraRayHitT(ox, oz, dx, dz, need, grid);
+  let x = ox + (dx - ox) * hitT;
+  let z = oz + (dz - oz) * hitT;
+  if (footprintClearance(x, z, grid) < need) {
+    let lo = 0;
+    let hi = Math.max(hitT, 0.02);
+    for (let i = 0; i < 10; i += 1) {
+      const mid = (lo + hi) / 2;
+      const mx = ox + (dx - ox) * mid;
+      const mz = oz + (dz - oz) * mid;
+      if (footprintClearance(mx, mz, grid) < need) hi = mid;
+      else lo = mid;
+    }
+    x = ox + (dx - ox) * lo;
+    z = oz + (dz - oz) * lo;
+  }
+  if (footprintClearance(x, z, grid) < 0) {
+    const pushed = pushCircleOut(x, z, need, queryFootprints(grid, x, z, 18));
+    x = pushed.x;
+    z = pushed.z;
+  }
+  if (footprintClearance(x, z, grid) < need) {
+    const pulled = pullToward(x, z, ox, oz, need, grid);
+    x = pulled.x;
+    z = pulled.z;
+  }
+  const clear = footprintClearance(x, z, grid);
+  return { x, z, t: hitT, inside: clear < 0, clear };
+}
+
 function ringCentroid(ring: Ring) {
   let x = 0;
   let z = 0;
@@ -342,12 +592,21 @@ function creditWalk(yard: YardState, meters: number, moving: boolean, now: numbe
     ...yard,
     leash: {
       ...yard.leash,
-      lastInputAt: moving ? now : yard.leash.lastInputAt,
+      lastInputAt: moving && yard.leash.holderId ? now : yard.leash.lastInputAt,
       sessionMeters,
       hourMeters,
       hourStartedAt,
     },
   };
+}
+
+export function stayOnPavement(x: number, z: number, roads: Ring[], parks: Ring[] = [], maxDist = 5.4) {
+  if (parks.some((ring) => ring.length >= 3 && pointInRing(x, z, ring))) return { x, z };
+  if (!roads.length) return { x, z };
+  const near = nearestOnLines(x, z, roads);
+  if (!Number.isFinite(near.dist) || near.dist > maxDist || near.dist < 0.85) return { x, z };
+  const t = 0.14;
+  return { x: x + (near.x - x) * t, z: z + (near.z - z) * t };
 }
 
 export function applyWorldDrive(
@@ -358,18 +617,31 @@ export function applyWorldDrive(
   dt: number,
   now: number,
   proposed?: { x: number; z: number } | null,
-  buildings: Ring[] = [],
+  buildings: Ring[] | FootprintGrid = [],
+  roads: Ring[] | FootprintGrid = [],
+  parks: Ring[] = [],
 ): YardState {
   const location = migrateLocation(yard.location, now);
-  const stepped = integrateOpen(yard.pose, ax, az, run, clamp(dt, 0, MOVE_DT_MAX), (_x, _z, nx, nz) =>
-    pushCircleOut(nx, nz, DOG_RADIUS, buildings),
-  );
+  const walls = asFootprintGrid(buildings);
+  const pavement = asFootprintGrid(roads);
+  const stepped = integrateOpen(yard.pose, ax, az, run, clamp(dt, 0, MOVE_DT_MAX), (x, z, nx, nz) => {
+    const nearby = queryFootprints(walls, nx, nz, DOG_RADIUS + 4);
+    const roadNear = queryFootprints(pavement, nx, nz, 8);
+    const slid = pushCircleOut(nx, nz, DOG_RADIUS, nearby);
+    if (Math.hypot(slid.x - x, slid.z - z) < 1e-4 && (Math.abs(nx - x) > 1e-5 || Math.abs(nz - z) > 1e-5)) {
+      const alongX = pushCircleOut(nx, z, DOG_RADIUS, nearby);
+      if (Math.hypot(alongX.x - x, alongX.z - z) > 1e-4) return stayOnPavement(alongX.x, alongX.z, roadNear, parks);
+      const alongZ = pushCircleOut(x, nz, DOG_RADIUS, nearby);
+      if (Math.hypot(alongZ.x - x, alongZ.z - z) > 1e-4) return stayOnPavement(alongZ.x, alongZ.z, roadNear, parks);
+    }
+    return stayOnPavement(slid.x, slid.z, roadNear, parks);
+  });
   let pose = stepped.pose;
   if (proposed && Number.isFinite(proposed.x) && Number.isFinite(proposed.z)) {
     const jump = Math.hypot(proposed.x - yard.pose.x, proposed.z - yard.pose.z);
     const cap = RUN_SPEED * Math.max(dt, MOVE_DT_MAX) + 0.85;
     if (jump <= cap) {
-      const safe = pushCircleOut(proposed.x, proposed.z, DOG_RADIUS, buildings);
+      const safe = pushCircleOut(proposed.x, proposed.z, DOG_RADIUS, queryFootprints(walls, proposed.x, proposed.z, DOG_RADIUS + 4));
       pose = { ...pose, x: safe.x, z: safe.z };
     }
   }
@@ -380,29 +652,13 @@ export function applyWorldDrive(
   };
 }
 
+/** Old clients still send leave/home. Stay parked in the world. */
 export function applyLeaveWorld(yard: YardState, now: number): YardState {
-  const pose: Pose = { x: 0, z: 4, yaw: Math.PI, vx: 0, vz: 0, gait: 'walk' };
-  const prior = migrateLocation(yard.location, now);
-  const location = syncLocationFromPose(
-    { ...createLocation(now, HOME_PLACE, 'world'), lastTravelAt: prior.lastTravelAt, lastWorldInputAt: now },
-    pose,
-  );
-  return {
-    ...yard,
-    pose,
-    location,
-    ai: { mode: 'wander', until: now + 4_000, tx: 0, tz: 8 },
-  };
+  return settleWorldYard(yard, now);
 }
 
 export function applyGoHome(yard: YardState, now: number): YardState {
-  const home = HOME_PLACE;
-  return {
-    ...yard,
-    pose: { x: 0, z: -2.2, yaw: 0, vx: 0, vz: 0, gait: 'idle' },
-    location: { ...createLocation(now, home, 'home'), lastTravelAt: now, lastWorldInputAt: now },
-    ai: { mode: 'idle', until: now + 2_400, tx: 0, tz: 0 },
-  };
+  return settleWorldYard(yard, now);
 }
 
 export function applyTravel(yard: YardState, placeId: string, now: number): { ok: true; yard: YardState } | { ok: false; code: 'invalid' | 'too_soon' } {
@@ -415,13 +671,15 @@ export function applyTravel(yard: YardState, placeId: string, now: number): { ok
     lastTravelAt: now,
     lastWorldInputAt: now,
   };
+  const pose: Pose = { x: 0, z: 0, yaw: Math.PI, vx: 0, vz: 0, gait: 'idle' };
   return {
     ok: true,
     yard: {
       ...yard,
-      pose: { x: 0, z: 0, yaw: Math.PI, vx: 0, vz: 0, gait: 'idle' },
+      pose,
       location: next,
-      ai: { mode: 'wander', until: now + 3_600, tx: 6, tz: 4 },
+      feeder: { ...yard.feeder, ...placeFeeder(pose) },
+      ai: { mode: 'idle', until: now + 3_600, tx: 0, tz: 0 },
     },
   };
 }
@@ -435,54 +693,34 @@ export function applyHomeOrWorldDrive(
   now: number,
   proposed?: { x: number; z: number } | null,
 ): YardState {
-  const location = migrateLocation(yard.location, now);
-  if (location.mode !== 'world') {
-    return { ...applyDrive(yard, ax, az, run, dt, now), location };
-  }
-  return applyWorldDrive({ ...yard, location }, ax, az, run, dt, now, proposed);
+  const settled = settleWorldYard(yard, now);
+  return applyWorldDrive(settled, ax, az, run, dt, now, proposed);
 }
 
 export function tickWorldAi(
   yard: YardState,
   now: number,
-  dt: number,
-  opts: { hungry?: boolean; buildings?: Ring[]; roads?: Ring[]; parks?: Ring[] } = {},
+  _dt: number,
+  _opts: { hungry?: boolean; buildings?: Ring[]; roads?: Ring[]; parks?: Ring[] } = {},
 ): YardState {
-  const location = migrateLocation(yard.location, now);
-  if (location.mode !== 'world') return { ...yard, location };
-  if (yard.leash.holderId) return { ...yard, location };
-  if (opts.hungry || now - location.lastWorldInputAt > WORLD_IDLE_HOME_MS) {
-    return applyGoHome(yard, now);
-  }
-  let { tx, tz, until, mode } = yard.ai;
+  const settled = settleWorldYard(yard, now);
+  if (settled.leash.holderId) return settled;
+  let { until, mode } = settled.ai;
+  let gait: Gait = settled.pose.gait === 'run' || settled.pose.gait === 'walk' ? 'idle' : settled.pose.gait;
   if (now >= until) {
-    const angle = ((now / 900) % 360) * 0.017453;
-    const radius = 18 + (now % 37);
-    tx = Math.sin(angle) * radius;
-    tz = Math.cos(angle) * radius;
-    if (opts.roads && opts.roads.length) {
-      const road = nearestOnLines(tx, tz, opts.roads);
-      if (road.dist < 40) {
-        tx = road.x;
-        tz = road.z;
-      }
-    } else if (opts.parks && opts.parks.length) {
-      const park = opts.parks[now % opts.parks.length];
-      if (park[0]) {
-        tx = park[0].x;
-        tz = park[0].z;
-      }
-    }
-    until = now + 3_400;
-    mode = 'wander';
+    const cycle = ['idle', 'sniff', 'sit', 'idle'] as const;
+    const pick = cycle[Math.floor(now / 3_200) % cycle.length];
+    mode = pick;
+    gait = pick;
+    until = now + 2_800 + (now % 900);
   }
-  const steerX = tx - yard.pose.x;
-  const steerZ = tz - yard.pose.z;
-  const mag = Math.hypot(steerX, steerZ);
-  const ax = mag < 0.4 ? 0 : steerX / mag;
-  const az = mag < 0.4 ? 0 : steerZ / mag;
-  const next = applyWorldDrive({ ...yard, ai: { mode, until, tx, tz }, location }, ax, az, false, dt, now, null, opts.buildings ?? []);
-  return { ...next, location: { ...next.location!, lastWorldInputAt: location.lastWorldInputAt } };
+  const pose = { ...settled.pose, vx: 0, vz: 0, gait };
+  return {
+    ...settled,
+    pose,
+    location: syncLocationFromPose(settled.location!, pose),
+    ai: { mode, until, tx: pose.x, tz: pose.z },
+  };
 }
 
 /** Cheap local solar vector so Phase 3 can swap in a fuller model without changing the scene. */

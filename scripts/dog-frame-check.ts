@@ -3,12 +3,16 @@ import {
   BOWL,
   EAT_STAND,
   EAT_YAW,
+  ORBIT_PITCH_MAX,
+  ORBIT_PITCH_MIN,
+  clampOrbitPitchOffset,
   followYardCamera,
   frameCamera,
   groundToFloor,
   meshBounds,
   projectMeshBounds,
   SLEEP_ROLL,
+  worldOrbitPitch,
   YARD_FRAC,
   YARD_SAFE,
 } from '../components/dog/frame.ts';
@@ -82,5 +86,12 @@ assert(yardProj && yardProj.minX > YARD_SAFE.minX - 0.02 && yardProj.maxX < YARD
 assert(yardProj && yardProj.height >= 1 / 6 && yardProj.height <= 0.7, `puppy should stay about a fifth of the view, height ${yardProj?.height}`);
 assert(YARD_FRAC.puppy >= 1 / 6 && YARD_FRAC.puppy <= 1 / 4, 'puppy target is between 1/6 and 1/4');
 assert(YARD_FRAC.adult > YARD_FRAC.puppy, 'adults occupy more of the frame than puppies');
+
+assert(ORBIT_PITCH_MIN > 0.17 && ORBIT_PITCH_MAX < 1.06, 'orbit pitch stays about 10–60°');
+const up = clampOrbitPitchOffset(250 * 0.0035);
+const down = clampOrbitPitchOffset(-250 * 0.0035);
+assert(Math.abs(worldOrbitPitch(up) - worldOrbitPitch(down)) > 0.45, 'a 250px vertical drag must change pitch');
+assert(worldOrbitPitch(up) <= ORBIT_PITCH_MAX + 1e-6, 'pitch stays under 60°');
+assert(worldOrbitPitch(down) >= ORBIT_PITCH_MIN - 1e-6, 'pitch stays above 10°');
 
 console.log('dog-frame-check ok');

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { applyBowlAction, applyVisitorMove, createRoom, parseClientMessage } from '../src/logic.ts';
+import { applyBowlAction, applyVisitorMove, applyWorldAction, createRoom, forgetVisitor, parseClientMessage } from '../src/logic.ts';
 import {
   BED,
   BLOCKERS,
@@ -102,11 +102,13 @@ test('feeder only counts as in-radius when the dog is next to the bowl', () => {
   assert.equal(far.room.yard?.feeder.hasFood, true);
   assert.equal(far.fed, undefined);
 
+  const yard = createYard(T0);
+  const bowl = yard.feeder;
   const nearRoom = {
     ...room,
     yard: {
-      ...createYard(T0),
-      pose: { x: FEEDER.x + 0.2, z: FEEDER.z, yaw: 0, vx: 0, vz: 0, gait: 'idle' as const },
+      ...yard,
+      pose: { x: (bowl.x ?? 0) + 0.2, z: bowl.z ?? 0, yaw: 0, vx: 0, vz: 0, gait: 'idle' as const },
     },
   };
   nearRoom.dog = { ...room.dog, lastFedAt: T0 - 20 * 60 * 1000 };
@@ -184,6 +186,113 @@ test('unleashed dog wanders toward the bed when tired and the feeder when hungry
 
   const stocked = fillAndTick();
   assert.equal(stocked.ai.mode === 'feeder' || stocked.pose.gait === 'eat', true);
+});
+
+test('continuous walking past the old max hold keeps the leash; idle is what expires it', () => {
+  const room = createRoom(T0);
+  let current = applyVisitorMove(room, 'alice', '10.0.0.1', 1, 0, false, 0.1, T0).room;
+  assert.equal(current.yard?.leash.holderId, 'alice');
+  let now = T0;
+  for (let i = 0; i < 110; i += 1) {
+    now += 1_000;
+    current = applyVisitorMove(current, 'alice', '10.0.0.1', 0.8, 0.2, false, 0.1, now).room;
+  }
+  assert.ok(now - T0 > LEASH_MAX_MS, 'walked longer than the old max hold');
+  assert.equal(current.yard?.leash.holderId, 'alice', 'movement refreshes the hold');
+  const stealDuringWalk = applyVisitorMove(current, 'bob', '10.0.0.2', 1, 0, false, 0.1, now + 200);
+  assert.equal(stealDuringWalk.acquired, false);
+  assert.equal(stealDuringWalk.room.yard?.leash.holderId, 'alice');
+
+  const afterIdle = applyVisitorMove(current, 'bob', '10.0.0.2', 1, 0, false, 0.1, now + LEASH_IDLE_MS);
+  assert.equal(afterIdle.acquired, true);
+  assert.equal(afterIdle.room.yard?.leash.holderId, 'bob');
+});
+
+test('zero-input heartbeat from the holder does not refresh lastInputAt', () => {
+  const held = tryAcquireLeash(createYard(T0), 'alice', '10.0.0.1', T0);
+  assert.equal(held.ok, true);
+  if (!held.ok) throw new Error('expected acquire');
+  const beat = applyDrive(held.yard, 0, 0, false, 0.08, T0 + 4_000);
+  assert.equal(beat.leash.lastInputAt, T0);
+  assert.equal(beat.leash.holderId, 'alice');
+  const stillHeld = tryAcquireLeash(beat, 'bob', '10.0.0.2', T0 + 4_000);
+  assert.equal(stillHeld.ok, false);
+  const afterIdle = applyVisitorMove(beat, 'bob', '10.0.0.2', 1, 0, false, 0.1, T0 + LEASH_IDLE_MS);
+  assert.equal(afterIdle.acquired, true);
+  assert.equal(afterIdle.room.yard?.leash.holderId, 'bob');
+});
+
+test('simulated 120s of 80ms moves keeps the leash; idle then releases; retake is immediate', () => {
+  const room = createRoom(T0);
+  let current = applyVisitorMove(room, 'alice', '10.0.0.1', 1, 0, false, 0.08, T0).room;
+  assert.equal(current.yard?.leash.holderId, 'alice');
+  let now = T0;
+  const steps = Math.ceil(120_000 / 80);
+  for (let i = 0; i < steps; i += 1) {
+    now += 80;
+    current = applyVisitorMove(current, 'alice', '10.0.0.1', 0.8, 0.1, false, 0.08, now).room;
+  }
+  assert.ok(now - T0 >= 120_000);
+  assert.equal(current.yard?.leash.holderId, 'alice', 'moves every 80ms keep the hold past 120s');
+  assert.ok((current.yard?.leash.lastInputAt ?? 0) >= now - 80);
+
+  let parked = current;
+  for (let t = 2_000; t < LEASH_IDLE_MS; t += 2_000) {
+    parked = applyVisitorMove(parked, 'alice', '10.0.0.1', 0, 0, false, 0.08, now + t).room;
+    assert.equal(parked.yard?.leash.holderId, 'alice', 'zero-input must not steal or refresh');
+    assert.equal(parked.yard?.leash.lastInputAt, current.yard?.leash.lastInputAt);
+  }
+
+  const stealEarly = applyVisitorMove(parked, 'bob', '10.0.0.2', 1, 0, false, 0.08, now + 200);
+  assert.equal(stealEarly.acquired, false);
+
+  const released = applyVisitorMove(parked, 'alice', '10.0.0.1', 0, 0, false, 0.08, now + LEASH_IDLE_MS);
+  assert.equal(released.room.yard?.leash.holderId, null, 'idle after last real move releases');
+
+  const again = applyVisitorMove(released.room, 'alice', '10.0.0.1', 0, 0.18, false, 0.08, now + LEASH_IDLE_MS + 20);
+  assert.equal(again.acquired, true, 're-take after idle release succeeds immediately');
+  assert.equal(again.room.yard?.leash.holderId, 'alice');
+});
+
+test('leave or disconnect while holding releases without cooldown; same client reclaims immediately', () => {
+  let room = createRoom(T0);
+  room = applyVisitorMove(room, 'alice', '10.0.0.1', 1, 0, false, 0.08, T0).room;
+  assert.equal(room.yard?.leash.holderId, 'alice');
+  const left = applyWorldAction(room, 'alice', '10.0.0.1', T0 + 400, 'leave');
+  assert.equal(left.room.yard?.leash.holderId, null, 'leave drops the hold');
+  const again = tryAcquireLeash(left.room.yard!, 'alice', '10.0.0.1', T0 + 420);
+  assert.equal(again.ok, true, 'same client reclaims after leave without the 20s cooldown');
+
+  let held = applyVisitorMove(createRoom(T0), 'alice', '10.0.0.1', 1, 0, false, 0.08, T0).room;
+  const gone = forgetVisitor(held, 'alice', T0 + 500);
+  assert.equal(gone.yard?.leash.holderId, null, 'disconnect drops the hold');
+  const reclaim = tryAcquireLeash(gone.yard!, 'alice', '10.0.0.1', T0 + 520);
+  assert.equal(reclaim.ok, true, 'same client id reclaims after a pagehide disconnect');
+});
+
+test('same clientId keeps the leash when an old leave or disconnect is still in flight', () => {
+  let room = createRoom(T0);
+  room = applyVisitorMove(room, 'alice', '10.0.0.1', 1, 0, false, 0.08, T0).room;
+  assert.equal(room.yard?.leash.holderId, 'alice');
+  const lateLeave = applyWorldAction(room, 'alice', '10.0.0.1', T0 + 200, 'leave', undefined, ['alice']);
+  assert.equal(lateLeave.room.yard?.leash.holderId, 'alice', 'leave is ignored while another socket still has that clientId');
+  const join = tryAcquireLeash(lateLeave.room.yard!, 'alice', '10.0.0.1', T0 + 220);
+  assert.equal(join.ok, true, 'join from the same clientId reclaims while the old socket is still listed');
+  assert.equal(join.yard.leash.holderId, 'alice');
+  const staleForget = forgetVisitor(lateLeave.room, 'alice', T0 + 240, ['alice']);
+  assert.equal(staleForget.yard?.leash.holderId, 'alice', 'old-socket forget does not drop a reclaimed hold');
+});
+
+test('after an idle drop the same walker can take the leash again without cooldown', () => {
+  const held = tryAcquireLeash(createYard(T0), 'alice', '10.0.0.1', T0);
+  assert.equal(held.ok, true);
+  if (!held.ok) throw new Error('expected acquire');
+  const dropped = releaseLeash(held.yard, T0 + LEASH_IDLE_MS, undefined, 'idle');
+  assert.equal(dropped.leash.holderId, null);
+  const again = tryAcquireLeash(dropped, 'alice', '10.0.0.1', T0 + LEASH_IDLE_MS + 20);
+  assert.equal(again.ok, true, 'idle expiry must not put the walker on cooldown');
+  if (!again.ok) throw new Error('expected retake');
+  assert.equal(again.yard.leash.holderId, 'alice');
 });
 
 function fillAndTick() {

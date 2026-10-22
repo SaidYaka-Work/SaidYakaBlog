@@ -10,6 +10,22 @@ const _size = new Vector3();
 
 export const THREE_QUARTER_YAW = 0.55;
 export const CAMERA_YAW = 0.32;
+/** World-follow orbit. Vertical drag should move between these, not sit still. */
+export const ORBIT_PITCH_MIN = (10 * Math.PI) / 180;
+export const ORBIT_PITCH_MAX = (60 * Math.PI) / 180;
+export const ORBIT_PITCH_BASE = 0.5;
+export const ORBIT_PITCH_SENS = 0.0035;
+
+export function clampOrbitPitchOffset(offset: number) {
+  return Math.max(ORBIT_PITCH_MIN - ORBIT_PITCH_BASE, Math.min(ORBIT_PITCH_MAX - ORBIT_PITCH_BASE, offset));
+}
+
+export function worldOrbitPitch(offset: number, flight = 0) {
+  const pitch = ORBIT_PITCH_BASE + offset + flight * 0.7;
+  const lo = ORBIT_PITCH_MIN;
+  const hi = ORBIT_PITCH_MAX + flight * 0.7;
+  return Math.max(lo, Math.min(hi, pitch));
+}
 export const SLEEP_ROLL = Math.PI / 2;
 export const SLEEP_YAW = Math.PI / 2;
 export const BOWL = { x: -1.62, y: 0.07, z: 1.38 };

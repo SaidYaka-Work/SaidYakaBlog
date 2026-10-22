@@ -65,6 +65,12 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon.png' },
+    ],
+  },
 };
 
 const themeBoot = `

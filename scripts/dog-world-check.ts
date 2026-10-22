@@ -5,15 +5,21 @@ import {
   applyLeaveWorld,
   applyTravel,
   applyWorldDrive,
+  buildFootprintGrid,
+  cameraRayHitT,
+  footprintClearance,
+  formatPlaceLine,
   haversineMeters,
+  resolveCameraXZ,
   lngLatToLocal,
   localToLngLat,
   pointInRing,
   pushCircleOut,
+  queryFootprints,
   sunDirection,
   tileXY,
 } from '../workers/dog/src/world.ts';
-import { RUN_SPEED, createYard, nearGate } from '../workers/dog/src/room.ts';
+import { RUN_SPEED, createYard } from '../workers/dog/src/room.ts';
 import { FACADE_PALETTE, crossingsAtIntersections, dressPlants, facadeTint, isMajorRoad, lampsAlongRoads, plantsInParks, streetTreesAlongRoads, treesInParks } from '../components/dog/world/dress.ts';
 
 function assert(cond: unknown, message: string) {
@@ -56,8 +62,8 @@ if (trip.ok) {
 }
 
 const left = applyLeaveWorld(createYard(T0), T0);
-assert(left.location?.mode === 'world', 'leave walks out the gate');
-assert(left.location?.placeId === HOME_PLACE.id, 'the gate opens onto the public home park');
+assert(left.location?.mode === 'world', 'leave stays in the world');
+assert(left.location?.placeId === HOME_PLACE.id, 'default park is Washington Square');
 const stepped = applyWorldDrive(left, 0, -1, true, 0.1, T0 + 80);
 const moved = haversineMeters(left.location!.lat, left.location!.lng, stepped.location!.lat, stepped.location!.lng);
 assert(moved <= RUN_SPEED * 0.1 + 1.6, `world step ${moved} exceeded the cap`);
@@ -66,8 +72,8 @@ const jump = Math.hypot(tele.pose.x - stepped.pose.x, tele.pose.z - stepped.pose
 assert(jump < 3, `proposed teleport slipped through (${jump})`);
 
 const home = applyGoHome(left, T0 + 10);
-assert(home.location?.mode === 'home', 'Home returns to the porch');
-assert(nearGate(0, -3.05), 'the far fence is the gate');
+assert(home.location?.mode === 'world', 'old Home messages stay in the world');
+assert(home.location?.placeId === HOME_PLACE.id, 'Home does not teleport to a room');
 
 const square = [
   { x: -1, z: -1 },
@@ -78,6 +84,63 @@ const square = [
 assert(pointInRing(0, 0, square), 'centroid starts inside');
 const out = pushCircleOut(0, 0, 0.3, [square]);
 assert(!pointInRing(out.x, out.z, square), 'buildings push the dog out');
+
+const wall = [
+  { x: 2, z: -8 },
+  { x: 6, z: -8 },
+  { x: 6, z: 8 },
+  { x: 2, z: 8 },
+];
+const grid = buildFootprintGrid([wall]);
+assert(queryFootprints(grid, 1.7, 0, 4).length === 1, 'spatial grid finds the nearby wall');
+assert(queryFootprints(grid, 80, 80, 4).length === 0, 'spatial grid ignores far walls');
+let sliding = { ...left, pose: { ...left.pose, x: 1.2, z: 0, yaw: Math.PI / 2, vx: 0, vz: 0 } };
+const beforeZ = sliding.pose.z;
+for (let i = 0; i < 8; i += 1) {
+  sliding = applyWorldDrive(sliding, 1, 0.85, true, 0.08, T0 + 240 + i * 80, null, grid, [], []);
+}
+assert(sliding.pose.x < 2.2, 'wall collision does not walk through the building');
+assert(Math.abs(sliding.pose.z - beforeZ) > 0.08, 'dog slides along the wall instead of stopping dead');
+const hit = cameraRayHitT(0, 0, 8, 0, 0.8, grid);
+assert(hit < 0.55, `camera spherecast must pull up before the wall (t=${hit})`);
+const clear = cameraRayHitT(0, 0, -8, 0, 0.8, grid);
+assert(clear > 0.95, 'open camera path stays at full distance');
+
+const court = buildFootprintGrid([
+  [
+    { x: -10, z: -10 },
+    { x: 10, z: -10 },
+    { x: 10, z: -6 },
+    { x: -10, z: -6 },
+  ],
+  [
+    { x: -10, z: 6 },
+    { x: 10, z: 6 },
+    { x: 10, z: 10 },
+    { x: -10, z: 10 },
+  ],
+  [
+    { x: -10, z: -6 },
+    { x: -6, z: -6 },
+    { x: -6, z: 6 },
+    { x: -10, z: 6 },
+  ],
+  [
+    { x: 6, z: -6 },
+    { x: 10, z: -6 },
+    { x: 10, z: 6 },
+    { x: 6, z: 6 },
+  ],
+]);
+const through = resolveCameraXZ(0, 0, 0, -16, 0.8, court);
+assert(through.z > -6.5, `courtyard camera must stop before the rear wall (z=${through.z})`);
+assert(through.clear >= 0.5, `camera needs 0.5m clearance, got ${through.clear}`);
+assert(!through.inside, 'resolved camera must not sit inside a footprint');
+const tight = resolveCameraXZ(0, -5.2, 0, -16, 0.8, court);
+assert(tight.z > -6.5, 'min-distance must not punch through a nearby facade');
+assert(footprintClearance(tight.x, tight.z, court) >= 0.45, 'tight pull still stays outside');
+const lerpInside = resolveCameraXZ(0, 0, 0, -8, 0.5, court);
+assert(lerpInside.z > -6.5 && !lerpInside.inside, 'lerp destination inside a wall is pulled back');
 
 const noon = sunDirection(origin.lat, origin.lng, Date.parse('2026-06-21T16:00:00Z'));
 const midnight = sunDirection(origin.lat, origin.lng, Date.parse('2026-06-21T04:00:00Z'));
@@ -121,5 +184,7 @@ const marks = crossingsAtIntersections(
   4,
 );
 assert(marks.length >= 1, 'major intersections get crosswalks');
+assert(formatPlaceLine('', 'Times Square buildings') === '', 'spawn labels never leak into the place pill');
+assert(formatPlaceLine('Broadway', 'Times Square, New York') === 'Broadway · near Times Square', 'OSM names stay');
 
 console.log('dog-world-check ok');

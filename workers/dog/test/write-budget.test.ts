@@ -155,7 +155,11 @@ test('moves, ticks, and connects stay in memory; feed/pet/catch/name/travel pers
     : null;
   session.room.yard = {
     ...session.room.yard!,
-    pose: { ...session.room.yard!.pose, x: -1.5, z: 1.38 },
+    pose: {
+      ...session.room.yard!.pose,
+      x: session.room.yard!.feeder.x ?? 0,
+      z: session.room.yard!.feeder.z ?? 0,
+    },
   };
   const bowl = applyBowlAction(session.room, T0 + 6_000);
   const bowlWrite = session.adopt(bowl.room, T0 + 6_000, 'action');
@@ -169,10 +173,15 @@ test('moves, ticks, and connects stay in memory; feed/pet/catch/name/travel pers
   assert.equal(travelWrite.reason, 'travel');
   assert.equal(storage.rows, 4);
 
-  const home = applyWorldAction(session.room, 'aaa', '1.1.1.1', T0 + 40_000, 'home');
-  const homeWrite = session.adopt(home.room, T0 + 40_000, 'action');
-  await flushIfNeeded(storage, session, homeWrite);
-  assert.equal(homeWrite.reason, 'home');
+  const held = session.room;
+  assert.ok(held.yard?.leash.holderId);
+  const parked = {
+    ...held,
+    yard: { ...held.yard!, leash: { ...held.yard!.leash, holderId: null, holderIp: null } },
+  };
+  const parkWrite = session.adopt(parked, T0 + 40_000, 'action');
+  await flushIfNeeded(storage, session, parkWrite);
+  assert.equal(parkWrite.reason, 'park');
   assert.equal(storage.rows, 5);
 
   const empty = {

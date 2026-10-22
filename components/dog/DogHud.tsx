@@ -5,6 +5,7 @@ import { useRef, type CSSProperties, type PointerEvent } from 'react';
 import { englishPath } from '@/lib/site';
 import type { DogEmote } from '@/lib/dog';
 import { EMOTE_SET } from './emotes';
+import { formatPlaceLine } from '../../workers/dog/src/world';
 
 export type Toast = { id: number; emote: string; text: string };
 
@@ -25,7 +26,6 @@ export default function DogHud({
   hint,
   touch,
   near,
-  inWorld,
   placeName,
   streetName,
   worldReady,
@@ -38,7 +38,6 @@ export default function DogHud({
   onHall,
   onCatch,
   onStick,
-  onHome,
   onTravel,
   onToggleTravel,
   thoughtAnchor = null,
@@ -46,6 +45,12 @@ export default function DogHud({
   youNext = false,
   queueAhead = 0,
   neighborCount = 0,
+  youHold = false,
+  flying = false,
+  leashWaitMs = 0,
+  leashTaking = false,
+  onTakeLeash,
+  compact = false,
 }: {
   name: string;
   stageLabel: string;
@@ -63,7 +68,6 @@ export default function DogHud({
   hint?: boolean;
   touch?: boolean;
   near?: boolean;
-  inWorld?: boolean;
   placeName?: string;
   streetName?: string;
   worldReady?: boolean;
@@ -76,7 +80,6 @@ export default function DogHud({
   onHall: () => void;
   onCatch: () => void;
   onStick?: (ax: number, az: number) => void;
-  onHome?: () => void;
   onTravel?: (placeId: string) => void;
   onToggleTravel?: () => void;
   thoughtAnchor?: { x: number; y: number } | null;
@@ -84,7 +87,47 @@ export default function DogHud({
   youNext?: boolean;
   queueAhead?: number;
   neighborCount?: number;
+  youHold?: boolean;
+  flying?: boolean;
+  leashWaitMs?: number;
+  leashTaking?: boolean;
+  onTakeLeash?: () => void;
+  compact?: boolean;
 }) {
+  const leashPill =
+    !empty && !flying ? (
+      <p className={`dog-leash${youHold || youNext ? ' is-next' : ''}`} role="status">
+        {youHold
+          ? 'You have the leash'
+          : leashTaking
+            ? 'Taking the leash…'
+            : leashWaitMs > 0
+              ? `Give him a moment · ${Math.max(1, Math.ceil(leashWaitMs / 1000))}s`
+              : youNext
+                ? "You're next · ~20s"
+                : queueAhead > 0
+                  ? `You're ${ordinal(queueAhead + 1)} · ~${(queueAhead + 1) * 20}s`
+                  : visitorWalking
+                    ? `A visitor is walking ${name}`
+                    : `${name} is waiting`}
+        {!youHold && onTakeLeash && (
+          <button type="button" className="dog-leash-take" onClick={onTakeLeash} disabled={leashWaitMs > 0 || leashTaking}>
+            {leashTaking
+              ? 'Taking…'
+              : leashWaitMs > 0
+                ? `Wait ${Math.max(1, Math.ceil(leashWaitMs / 1000))}s`
+                : youNext || queueAhead > 0 || visitorWalking
+                  ? 'Join queue'
+                  : 'Take the leash'}
+          </button>
+        )}
+      </p>
+    ) : flying ? (
+      <p className="dog-leash" role="status">
+        Landing…
+      </p>
+    ) : null;
+
   return (
     <div className={`dog-hud ${touch ? 'is-touch' : ''}`}>
       <Link href={englishPath('/')} className="dog-back">
@@ -103,15 +146,33 @@ export default function DogHud({
             <Meter icon="🐾" label="Energy" value={energy} />
           </div>
         )}
+        {compact ? leashPill : null}
       </div>
 
       <div className="dog-chips">
-        <span className="dog-chip" title="Neighbors on the porch">
+        <span className="dog-chip" title="Neighbors nearby">
           👥 {Math.max(presence, neighborCount)}
         </span>
-        {worldReady && inWorld && (
-          <button type="button" className="dog-chip" onClick={onHome}>
-            Home
+        {!empty && onTakeLeash && (
+          <button
+            type="button"
+            className={`dog-chip${youHold || youNext ? ' is-leash' : ''}`}
+            onClick={onTakeLeash}
+            aria-pressed={youHold}
+          >
+            {youHold
+              ? 'Leash yours'
+              : leashTaking
+                ? 'Taking the leash…'
+                : leashWaitMs > 0
+                  ? `Wait ${Math.max(1, Math.ceil(leashWaitMs / 1000))}s`
+                  : youNext
+                    ? "You're next"
+                    : queueAhead > 0
+                      ? `You're ${ordinal(queueAhead + 1)}`
+                      : visitorWalking
+                        ? 'Join queue'
+                        : 'Take the leash'}
           </button>
         )}
         {worldReady && (
@@ -127,21 +188,7 @@ export default function DogHud({
         </button>
       </div>
 
-      {youNext && (
-        <p className="dog-leash is-next" role="status">
-          You&apos;re next
-        </p>
-      )}
-      {!youNext && queueAhead > 0 && (
-        <p className="dog-leash" role="status">
-          Waiting · {queueAhead} ahead
-        </p>
-      )}
-      {visitorWalking && !youNext && (
-        <p className="dog-leash" role="status">
-          🐾 a visitor is walking {name}
-        </p>
-      )}
+      {compact ? null : leashPill}
       {onEmote && !empty && (
         <div className="dog-emotes" role="group" aria-label="Emotes">
           {EMOTE_SET.map((item) => (
@@ -179,10 +226,10 @@ export default function DogHud({
         ))}
       </div>
 
-      {inWorld && (placeName || streetName) && (
+      {(placeName || streetName) && (
         <p className="dog-place" role="status">
           <span aria-hidden="true">N</span>
-          {streetCaption(streetName, placeName)}
+          {formatPlaceLine(streetName, placeName)}
         </p>
       )}
 
@@ -197,14 +244,11 @@ export default function DogHud({
         </div>
       )}
 
-      {hint && !empty && !near && !inWorld && (
-        <p className="dog-hint">{touch ? 'Joystick to walk · Feed at the bowl' : 'WASD to walk · through the gate for the world'}</p>
-      )}
-      {hint && !empty && inWorld && (
-        <p className="dog-hint">{touch ? 'Joystick to walk · Home to return' : 'WASD to walk · Home or Travel'}</p>
+      {hint && !empty && !near && (
+        <p className="dog-hint">{touch ? 'Drag to walk · Feed at the bowl' : 'WASD to walk · Travel to a park'}</p>
       )}
 
-      {attribution && inWorld && <p className="dog-attrib">{attribution}</p>}
+      {attribution && <p className="dog-attrib">{attribution}</p>}
 
       {near && !empty && (
         <p className="dog-prompt" role="status">
@@ -212,7 +256,7 @@ export default function DogHud({
         </p>
       )}
 
-      {touch && !empty && onStick && <Joystick onStick={onStick} />}
+      {!empty && onStick && <Joystick onStick={onStick} />}
 
       <div className="dog-actions">
         {empty ? (
@@ -234,12 +278,10 @@ export default function DogHud({
   );
 }
 
-function streetCaption(streetName?: string, placeName?: string) {
-  if (!streetName) return placeName;
-  if (streetName.length > 32 || /subway|interchange|transfer|entrance|underground/i.test(streetName)) {
-    return placeName || streetName;
-  }
-  return streetName;
+function ordinal(n: number) {
+  if (n === 2) return '2nd';
+  if (n === 3) return '3rd';
+  return `${n}th`;
 }
 
 function Meter({ icon, label, value }: { icon: string; label: string; value: number }) {
@@ -273,12 +315,22 @@ function Joystick({ onStick }: { onStick: (ax: number, az: number) => void }) {
     const max = box.width * 0.36;
     const mag = Math.hypot(dx, dy);
     const scale = mag > max ? max / mag : 1;
-    const x = (dx * scale) / max;
-    const y = (dy * scale) / max;
+    const nx = (dx * scale) / max;
+    const ny = (dy * scale) / max;
+    const raw = Math.hypot(nx, ny);
+    const dead = 0.08;
+    let ax = 0;
+    let az = 0;
+    if (raw > dead) {
+      const t = (raw - dead) / (1 - dead);
+      const eased = t * t * (3 - 2 * t);
+      ax = (nx / raw) * eased;
+      az = (ny / raw) * eased;
+    }
     if (knob.current) {
       knob.current.style.transform = `translate(${dx * scale}px, ${dy * scale}px)`;
     }
-    onStick(x, y);
+    onStick(ax, az);
   }
 
   return (
@@ -286,12 +338,15 @@ function Joystick({ onStick }: { onStick: (ax: number, az: number) => void }) {
       ref={pad}
       className="dog-stick"
       onPointerDown={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
         pointer.current = event.pointerId;
         event.currentTarget.setPointerCapture(event.pointerId);
         point(event);
       }}
       onPointerMove={(event) => {
         if (pointer.current !== event.pointerId) return;
+        event.preventDefault();
         point(event);
       }}
       onPointerUp={(event) => {

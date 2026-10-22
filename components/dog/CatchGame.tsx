@@ -75,7 +75,7 @@ export default function CatchGame({ onDone }: { onDone: (score: number, duration
       });
       ctx.fillStyle = '#a8a198';
       ctx.font = '12px ui-sans-serif, system-ui';
-      ctx.fillText('Tap when the stray is in the porch light.', 12, 20);
+      ctx.fillText('Tap when the stray is in the streetlight.', 12, 20);
 
       frame = requestAnimationFrame(loop);
     };

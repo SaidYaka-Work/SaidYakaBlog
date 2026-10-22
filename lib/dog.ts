@@ -19,11 +19,14 @@ export function dogWorkerUrl() {
   return (fromEnv || PRODUCTION_DOG_WORKER_URL).replace(/\/$/, '');
 }
 
-export function dogWsUrl() {
+const CLIENT_ID_RE = /^[a-f0-9-]{36}$/i;
+
+export function dogWsUrl(clientId?: string | null) {
   const http = dogWorkerUrl();
   if (!http) return '';
   const url = new URL('/ws', http);
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  if (clientId && CLIENT_ID_RE.test(clientId)) url.searchParams.set('clientId', clientId);
   return url.toString();
 }
 
@@ -147,10 +150,12 @@ export type DogFeeder = {
   hasFood: boolean;
   eating: boolean;
   near: boolean;
+  x?: number;
+  z?: number;
 };
 
 export type DogLocation = {
-  mode: 'home' | 'world';
+  mode: 'world' | 'home';
   lat: number;
   lng: number;
   heading: number;

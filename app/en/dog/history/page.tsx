@@ -3,7 +3,7 @@ import DogPlayer from '@/components/dog/DogPlayer';
 import { SOCIAL, defaultOgImage, englishUrl } from '@/lib/site';
 
 const title = 'Past dogs';
-const description = 'The hall of dogs who lived on the saidyaka.com porch: how far they grew, how long they stayed.';
+const description = 'The hall of dogs who lived out in the saidyaka.com city: how far they grew, how long they stayed.';
 const url = englishUrl('/dog/history');
 
 export const metadata: Metadata = {

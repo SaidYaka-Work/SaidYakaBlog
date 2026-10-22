@@ -4,7 +4,7 @@ import { SOCIAL, defaultOgImage, englishUrl } from '@/lib/site';
 
 const title = 'Biscuit, the internet’s dog';
 const description =
-  'One shared dog for everyone on saidyaka.com. Walk him through the gate into a real city, then travel the world together.';
+  'One shared dog for everyone on saidyaka.com. He lives in a real city. Walk him, feed him, then travel the world together.';
 const url = englishUrl('/dog');
 
 export const metadata: Metadata = {

@@ -104,7 +104,7 @@ export const CARE_BY_STAGE: Record<LifeStage, StageCare> = {
     goodGrowth: 1.15,
     neglectGrowth: 0.65,
     walkHint: 'Adults want a proper walk, not a sprint.',
-    mealHint: 'Dinner on the hour keeps the porch civil.',
+    mealHint: 'Dinner on the hour keeps him civil.',
     ageNote: 'Adults want a proper walk and a steady dinner hour.',
     walkCaption: 'A proper walk around the block.',
     label: 'Adult',

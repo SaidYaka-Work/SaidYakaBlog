@@ -4,13 +4,13 @@ export const ROOM_HALF = 3.05;
 export const DOG_RADIUS = 0.28;
 export const WALK_SPEED = 1.35;
 export const RUN_SPEED = 2.6;
-export const ACCEL = 7.2;
-export const DECEL = 9.5;
-export const YAW_TURN = 4.6;
+export const ACCEL = 5.2;
+export const DECEL = 6.4;
+export const YAW_TURN = 3.4;
 export const TURN_ALIGN = 0.18;
 export const MOVE_MIN_MS = 70;
 export const MOVE_DT_MAX = 0.18;
-export const LEASH_IDLE_MS = 5_000;
+export const LEASH_IDLE_MS = 12_000;
 export const LEASH_MAX_MS = 90_000;
 export const LEASH_COOLDOWN_MS = 20_000;
 export const FEEDER = { x: -1.62, y: 0.07, z: 1.38, radius: 0.74 };
@@ -55,6 +55,9 @@ export type FeederState = {
   hasFood: boolean;
   filledAt: number;
   eatingUntil: number;
+  /** Local-space bowl. Missing on older rooms; migrate places it near the dog. */
+  x?: number;
+  z?: number;
 };
 
 export type AiMode = 'idle' | 'wander' | 'sniff' | 'sit' | 'bed' | 'feeder';
@@ -99,10 +102,26 @@ export function headingYaw(dx: number, dz: number) {
   return Math.atan2(dx, dz);
 }
 
-export function eatStand(): { x: number; z: number; yaw: number } {
-  const x = FEEDER.x + 0.62;
-  const z = FEEDER.z;
-  return { x, z, yaw: headingYaw(FEEDER.x - x, FEEDER.z - z) };
+export function feederSpot(feeder?: Pick<FeederState, 'x' | 'z'> | null) {
+  return {
+    x: Number.isFinite(feeder?.x) ? feeder!.x! : FEEDER.x,
+    z: Number.isFinite(feeder?.z) ? feeder!.z! : FEEDER.z,
+    radius: FEEDER.radius,
+  };
+}
+
+/** Portable bowl to the dog's right so dinner is a short walk, not a room prop. */
+export function placeFeeder(pose: Pick<Pose, 'x' | 'z' | 'yaw'>): { x: number; z: number } {
+  const rightX = Math.cos(pose.yaw) * 1.25;
+  const rightZ = -Math.sin(pose.yaw) * 1.25;
+  return { x: pose.x + rightX, z: pose.z + rightZ };
+}
+
+export function eatStand(feeder?: Pick<FeederState, 'x' | 'z'> | null): { x: number; z: number; yaw: number } {
+  const bowl = feederSpot(feeder);
+  const x = bowl.x + 0.62;
+  const z = bowl.z;
+  return { x, z, yaw: headingYaw(bowl.x - x, bowl.z - z) };
 }
 
 export function createYard(now: number): YardState {
@@ -120,7 +139,7 @@ export function createYard(now: number): YardState {
       cooldownUntil: {},
       queue: [],
     },
-    feeder: { hasFood: false, filledAt: 0, eatingUntil: 0 },
+    feeder: { hasFood: false, filledAt: 0, eatingUntil: 0, ...placeFeeder({ x: 0, z: 0, yaw: 0.55 }) },
     ai: { mode: 'idle', until: now + 2_400, tx: 0, tz: 0 },
   };
 }
@@ -184,8 +203,9 @@ export function slide(ox: number, oz: number, nx: number, nz: number) {
   return collide(ox, oz);
 }
 
-export function nearFeeder(x: number, z: number) {
-  return Math.hypot(x - FEEDER.x, z - FEEDER.z) <= FEEDER.radius;
+export function nearFeeder(x: number, z: number, feeder?: Pick<FeederState, 'x' | 'z'> | null) {
+  const bowl = feederSpot(feeder);
+  return Math.hypot(x - bowl.x, z - bowl.z) <= bowl.radius;
 }
 
 export function nearBed(x: number, z: number) {
@@ -318,15 +338,18 @@ export function pruneCooldowns(map: Record<string, number>, now: number) {
 
 export function leashExpired(leash: Leash, now: number) {
   if (!leash.holderId) return false;
-  if (now - leash.lastInputAt >= LEASH_IDLE_MS) return true;
-  if (now - leash.since >= LEASH_MAX_MS) return true;
-  return false;
+  return now - leash.lastInputAt >= LEASH_IDLE_MS;
 }
 
-export function releaseLeash(yard: YardState, now: number, liveIds?: Iterable<string>): YardState {
+export function releaseLeash(
+  yard: YardState,
+  now: number,
+  liveIds?: Iterable<string>,
+  reason: 'idle' | 'leave' = 'leave',
+): YardState {
   const leash = yard.leash;
   const cooldownUntil = { ...pruneCooldowns(leash.cooldownUntil, now) };
-  if (leash.holderIp) cooldownUntil[leash.holderIp] = now + LEASH_COOLDOWN_MS;
+  if (reason !== 'idle' && leash.holderIp) cooldownUntil[leash.holderIp] = now + LEASH_COOLDOWN_MS;
   const live = liveIds ? new Set(liveIds) : null;
   const waiting = migrateQueue(leash.queue).filter(
     (wait) => wait.id && wait.id !== leash.holderId && (!live || live.has(wait.id)),
@@ -371,6 +394,7 @@ export function releaseLeash(yard: YardState, now: number, liveIds?: Iterable<st
       queue: waiting,
     },
     ai: { mode: 'idle', until: now + 1_200, tx: yard.pose.x, tz: yard.pose.z },
+    feeder: { ...yard.feeder, ...placeFeeder(idlePose) },
   };
 }
 
@@ -382,7 +406,7 @@ export function tryAcquireLeash(
 ): { ok: true; yard: YardState } | { ok: false; code: 'busy' | 'cooldown'; retryAfterMs: number; yard: YardState } {
   let current = migrateYard(yard, now);
   if (current.leash.holderId && current.leash.holderId !== clientId && leashExpired(current.leash, now)) {
-    current = releaseLeash(current, now);
+    current = releaseLeash(current, now, undefined, 'idle');
   }
   if (current.leash.holderId === clientId) {
     return {
@@ -391,7 +415,6 @@ export function tryAcquireLeash(
         ...current,
         leash: {
           ...current.leash,
-          lastInputAt: now,
           queue: (current.leash.queue ?? []).filter((wait) => wait.id !== clientId),
         },
       },
@@ -476,7 +499,7 @@ export function applyDrive(
     pose: stepped.pose,
     leash: {
       ...current.leash,
-      lastInputAt: moving ? now : current.leash.lastInputAt,
+      lastInputAt: moving && current.leash.holderId ? now : current.leash.lastInputAt,
       sessionMeters,
       hourMeters,
       hourStartedAt,
@@ -508,11 +531,11 @@ export function fillFeeder(yard: YardState, now: number): YardState {
 }
 
 export function startEating(yard: YardState, now: number): YardState {
-  const stand = eatStand();
+  const stand = eatStand(yard.feeder);
   return {
     ...yard,
     pose: { x: stand.x, z: stand.z, yaw: stand.yaw, vx: 0, vz: 0, gait: 'eat' },
-    feeder: { hasFood: false, filledAt: yard.feeder.filledAt, eatingUntil: now + EAT_MS },
+    feeder: { ...yard.feeder, hasFood: false, filledAt: yard.feeder.filledAt, eatingUntil: now + EAT_MS },
     ai: { mode: 'idle', until: now + EAT_MS + 400, tx: stand.x, tz: stand.z },
   };
 }
@@ -536,7 +559,7 @@ export function tickYardAi(
 ): YardState {
   let current = migrateYard(yard, now);
   if (current.leash.holderId) {
-    if (leashExpired(current.leash, now)) current = releaseLeash(current, now);
+    if (leashExpired(current.leash, now)) current = releaseLeash(current, now, undefined, 'idle');
     else return current;
   }
   if (current.feeder.eatingUntil > now) {
@@ -602,7 +625,7 @@ export function tickYardAi(
     const sprint = mode === 'wander' && dist > 1.6 && Math.floor(until / 1800) % 9 === 0;
     const stepped = integratePose(pose, steer.ax, steer.az, sprint, clamp(dt, 0, 0.25));
     pose = stepped.pose;
-  } else if (mode === 'feeder' && (arrive || nearFeeder(pose.x, pose.z))) {
+  } else if (mode === 'feeder' && (arrive || nearFeeder(pose.x, pose.z, current.feeder))) {
     current = startEating(current, now);
     pose = current.pose;
     feeder = current.feeder;
@@ -655,9 +678,12 @@ export function publicLeash(leash: Leash, now: number) {
 }
 
 export function publicFeeder(feeder: FeederState, pose: Pose, now: number) {
+  const bowl = feederSpot(feeder);
   return {
     hasFood: feeder.hasFood || feeder.eatingUntil > now,
     eating: feeder.eatingUntil > now,
-    near: nearFeeder(pose.x, pose.z),
+    near: nearFeeder(pose.x, pose.z, feeder),
+    x: Math.round(bowl.x * 1000) / 1000,
+    z: Math.round(bowl.z * 1000) / 1000,
   };
 }

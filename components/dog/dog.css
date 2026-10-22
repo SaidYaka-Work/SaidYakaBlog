@@ -26,6 +26,12 @@
   border-radius: 0;
 }
 
+.biscuit-scene,
+.biscuit-scene canvas {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
 .biscuit-scene canvas {
   display: block;
   width: 100% !important;
@@ -129,7 +135,11 @@
   min-height: 100dvh;
   height: 100dvh;
   overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
   background: linear-gradient(180deg, #eef3f8 0%, #f7f1e6 46%, #f3d2b0 100%);
+  container-type: inline-size;
+  container-name: dog;
 }
 
 .dog-game > .biscuit-scene,
@@ -320,6 +330,10 @@
   color: var(--ink);
 }
 
+.dog-chip.is-leash {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+}
+
 .dog-meters {
   display: flex;
   flex-direction: column;
@@ -394,8 +408,9 @@
 }
 
 .dog-thought.is-anchored {
-  left: clamp(11.2rem, var(--thought-x, 50%), calc(100% - 5.5rem));
-  top: clamp(calc(9.6rem + env(safe-area-inset-top)), var(--thought-y, 42%), calc(100% - 7.5rem));
+  left: clamp(12.4rem, var(--thought-x, 50%), calc(100% - 5.5rem));
+  top: clamp(calc(10.8rem + env(safe-area-inset-top)), var(--thought-y, 42%), calc(100% - 8rem));
+  transform: none;
 }
 
 .dog-thought span + span::before {
@@ -406,13 +421,14 @@
 
 .dog-toasts {
   left: 50%;
-  top: calc(14px + env(safe-area-inset-top));
+  top: calc(92px + env(safe-area-inset-top));
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
   width: min(22rem, calc(100vw - 10rem));
   pointer-events: none;
+  z-index: 5;
 }
 
 .dog-toast {
@@ -431,7 +447,7 @@
 .dog-leash {
   position: absolute;
   left: 50%;
-  top: calc(52px + env(safe-area-inset-top));
+  top: calc(128px + env(safe-area-inset-top));
   transform: translateX(-50%);
   margin: 0;
   padding: 0.4rem 0.75rem;
@@ -446,6 +462,51 @@
 .dog-leash.is-next {
   color: var(--ink);
   border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+}
+
+.dog-leash-take {
+  margin-left: 0.55rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+  font-size: 0.72rem;
+  color: var(--ink);
+}
+
+.dog-debug {
+  position: absolute;
+  left: 50%;
+  right: auto;
+  top: auto;
+  bottom: calc(92px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 4;
+  pointer-events: none;
+  max-width: min(28rem, calc(100% - 7.6rem));
+  padding: 0.22rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(12, 10, 8, 0.62);
+  color: #e8f4c8;
+  font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.01em;
+}
+
+.dog-tile-warn {
+  position: absolute;
+  left: 50%;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 5;
+  pointer-events: none;
+  margin: 0;
+  max-width: min(22rem, 88vw);
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+  background: rgba(12, 10, 8, 0.72);
+  color: #f3e6c8;
+  font-size: 0.78rem;
+  text-align: center;
 }
 
 .dog-emotes {
@@ -557,6 +618,12 @@
   background: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
   backdrop-filter: blur(8px);
   touch-action: none;
+}
+
+@media (pointer: fine) and (min-width: 720px) {
+  .dog-hud:not(.is-touch) .dog-stick {
+    display: none;
+  }
 }
 
 .dog-stick-knob {
@@ -768,6 +835,94 @@
   }
 }
 
+@media (max-width: 360px), (max-height: 420px) {
+  .dog-id strong {
+    font-size: 1.2rem;
+  }
+
+  .dog-left {
+    top: calc(44px + env(safe-area-inset-top));
+    width: min(7.6rem, 40vw);
+    gap: 0.4rem;
+  }
+
+  .dog-meters {
+    gap: 0.28rem;
+  }
+
+  .dog-meter em {
+    display: none;
+  }
+
+  .dog-chips {
+    max-width: min(14rem, 54vw);
+    gap: 0.28rem;
+  }
+
+  .dog-leash {
+    top: calc(86px + env(safe-area-inset-top));
+    bottom: auto;
+    left: 50%;
+    max-width: min(11rem, 52vw);
+    white-space: normal;
+    text-align: center;
+    z-index: 5;
+  }
+
+  .dog-place {
+    display: none;
+  }
+
+  .dog-toasts {
+    left: 8px;
+    right: auto;
+    transform: none;
+    top: calc(128px + env(safe-area-inset-top));
+    width: min(11.5rem, 48vw);
+    z-index: 5;
+  }
+
+  .dog-attrib,
+  .dog-credit,
+  .dog-hint {
+    display: none;
+  }
+
+  .dog-debug {
+    top: auto;
+    left: 8px;
+    transform: none;
+    bottom: calc(98px + env(safe-area-inset-bottom));
+    max-width: min(10.8rem, 46vw);
+    z-index: 3;
+  }
+
+  .dog-emotes {
+    right: 8px;
+    bottom: calc(62px + env(safe-area-inset-bottom));
+    transform: scale(0.78);
+    transform-origin: bottom right;
+    z-index: 5;
+  }
+
+  .dog-stick {
+    width: 80px;
+    height: 80px;
+    left: 10px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .dog-actions {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .dog-action {
+    min-width: 4.8rem;
+    min-height: 44px;
+    font-size: 0.88rem;
+  }
+}
+
 @media (max-width: 640px) {
   .dog-left {
     width: min(10.5rem, 48vw);
@@ -780,10 +935,10 @@
 
   .dog-toasts {
     top: calc(52px + env(safe-area-inset-top));
+    width: min(22rem, calc(100vw - 2rem));
   }
 
   .dog-leash {
-    top: calc(88px + env(safe-area-inset-top));
     font-size: 0.72rem;
   }
 
@@ -813,6 +968,79 @@
   }
 }
 
+@media (max-width: 640px) and (min-width: 401px) {
+  .dog-leash {
+    top: calc(88px + env(safe-area-inset-top));
+  }
+}
+
+@media (max-width: 400px) {
+  .dog-place {
+    display: none !important;
+  }
+
+  .dog-meter em {
+    display: none;
+  }
+
+  .dog-left {
+    width: min(14rem, 72vw);
+  }
+
+  .dog-left .dog-leash {
+    position: static !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    transform: none !important;
+    align-self: flex-start;
+    max-width: 100%;
+    white-space: normal;
+    text-align: left;
+    z-index: 5;
+  }
+
+  .dog-toasts {
+    left: 8px;
+    right: auto;
+    transform: none;
+    top: calc(168px + env(safe-area-inset-top));
+    width: min(12rem, 50%);
+  }
+
+  .dog-debug {
+    top: auto;
+    left: 8px;
+    right: auto;
+    transform: none;
+    bottom: calc(98px + env(safe-area-inset-bottom));
+    max-width: min(11.2rem, 48%);
+    font-size: 10px;
+    line-height: 1.25;
+    z-index: 4;
+  }
+
+  .dog-emotes {
+    right: 8px;
+    left: auto;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    transform: scale(0.74);
+    transform-origin: bottom right;
+    z-index: 5;
+  }
+
+  .dog-stick {
+    width: 76px;
+    height: 76px;
+    left: 8px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .dog-chips {
+    max-width: min(13rem, 52%);
+  }
+}
+
 @keyframes hint-fade {
   0%,
   55% {
@@ -831,4 +1059,173 @@
     animation: none !important;
     transition: none !important;
   }
+}
+
+@container dog (max-width: 400px) {
+  .dog-place {
+    display: none !important;
+  }
+
+  .dog-meter em {
+    display: none;
+  }
+
+  .dog-left {
+    width: min(14rem, 72vw);
+  }
+
+  .dog-left .dog-leash {
+    position: static !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    transform: none !important;
+    align-self: flex-start;
+    max-width: 100%;
+    white-space: normal;
+    text-align: left;
+    z-index: 5;
+  }
+
+  .dog-toasts {
+    left: 8px;
+    right: auto;
+    transform: none;
+    top: calc(168px + env(safe-area-inset-top));
+    width: min(12rem, 50%);
+  }
+
+  .dog-debug {
+    top: auto;
+    left: 8px;
+    right: auto;
+    transform: none;
+    bottom: calc(98px + env(safe-area-inset-bottom));
+    max-width: min(11.2rem, 48%);
+    font-size: 10px;
+    line-height: 1.25;
+    z-index: 4;
+  }
+
+  .dog-emotes {
+    right: 8px;
+    left: auto;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    transform: scale(0.74);
+    transform-origin: bottom right;
+    z-index: 5;
+  }
+
+  .dog-stick {
+    width: 76px;
+    height: 76px;
+    left: 8px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .dog-chips {
+    max-width: min(13rem, 52%);
+  }
+}
+
+.dog-game.is-compact .dog-place {
+  display: none !important;
+}
+
+.dog-game.is-compact .dog-meter em {
+  display: none;
+}
+
+.dog-game.is-compact .dog-left {
+  top: calc(88px + env(safe-area-inset-top));
+  width: min(11rem, 64vw);
+}
+
+.dog-game.is-compact .dog-id strong {
+  font-size: 1.15rem;
+}
+
+.dog-game.is-compact .dog-left .dog-leash {
+  position: static !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  align-self: flex-start;
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+  z-index: 5;
+}
+
+.dog-game.is-compact .dog-toasts {
+  left: 8px;
+  right: auto;
+  transform: none;
+  top: calc(168px + env(safe-area-inset-top));
+  width: min(12rem, 50%);
+}
+
+.dog-game.is-compact .dog-debug {
+  top: auto;
+  left: 8px;
+  right: auto;
+  transform: none;
+  bottom: calc(98px + env(safe-area-inset-bottom));
+  max-width: min(16rem, calc(100% - 16px));
+  font-size: 10px;
+  line-height: 1.25;
+  z-index: 4;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.dog-game.is-compact .dog-emotes {
+  right: 8px;
+  left: auto;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  transform: scale(0.74);
+  transform-origin: bottom right;
+  z-index: 5;
+}
+
+.dog-game.is-compact .dog-stick {
+  width: 76px;
+  height: 76px;
+  left: 8px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+}
+
+.dog-game.is-compact .dog-chips {
+  max-width: min(13rem, 52%);
+}
+
+.dog-game.is-compact .dog-thought,
+.dog-game.is-compact .dog-thought.is-anchored {
+  left: max(12.4rem, 46%);
+  right: 12px;
+  top: calc(104px + env(safe-area-inset-top));
+  transform: none;
+  max-width: min(11rem, calc(100% - 13.6rem));
+}
+
+.dog-game.is-compact .dog-attrib {
+  left: 8px;
+  right: auto;
+  bottom: calc(140px + env(safe-area-inset-bottom));
+  max-width: min(11rem, 42vw);
+  font-size: 0.52rem;
+  z-index: 3;
+}
+
+.dog-game.is-compact .dog-credit {
+  left: 8px;
+  right: auto;
+  bottom: calc(162px + env(safe-area-inset-bottom));
+  max-width: min(12rem, 46vw);
+  font-size: 0.56rem;
+  z-index: 3;
 }

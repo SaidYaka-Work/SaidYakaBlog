@@ -8,6 +8,7 @@ import {
   generateGenome,
   type DogCompanion,
   type DogEmote,
+  type DogPose,
   type DogSnapshot,
 } from '@/lib/dog';
 import { reactionFromEvent } from './look';
@@ -18,15 +19,31 @@ import DogStudio from './DogStudio';
 import FeedGame from './FeedGame';
 import NamePicker from './NamePicker';
 import WalkGame from './WalkGame';
-import { playDogSfx } from './dogSound';
+import { playDogSfx, warmDogAudio } from './dogSound';
 import useDogDrive from './useDogDrive';
-import { nearFeeder, nearGate } from '../../workers/dog/src/room';
-import { ATTRIBUTION, HOME_PLACE, PLACES, placeById, sunDirection } from '../../workers/dog/src/world';
+import { nearFeeder } from '../../workers/dog/src/room';
+import { parseDebugSpawn, type DebugSpawn } from './debugSpawn';
+import { ATTRIBUTION, HOME_PLACE, PLACES, formatPlaceLine, nearestPlace, placeById, sunDirection } from '../../workers/dog/src/world';
 import type { WorldView } from './DogCanvas';
 import type { WorldColliders } from './world/useWorldTiles';
+import { emptyFootprintGrid } from '../../workers/dog/src/world';
 import './dog.css';
 
 const HistoryBoard = dynamic(() => import('./HistoryBoard'), { ssr: false });
+
+const CLIENT_ID_RE = /^[a-f0-9-]{36}$/i;
+
+function readStoredClientId() {
+  try {
+    const existing = sessionStorage.getItem('biscuit-client');
+    if (existing && CLIENT_ID_RE.test(existing)) return existing;
+    const next = crypto.randomUUID();
+    sessionStorage.setItem('biscuit-client', next);
+    return next;
+  } catch {
+    return null;
+  }
+}
 
 type PlayKind = 'feed' | 'walk' | 'catch' | null;
 type Reaction = 'idle' | 'pet' | 'walk' | 'feed' | 'sleep';
@@ -41,17 +58,17 @@ const PREVIEW_VISITORS: DogCompanion[] = [
 
 const ERRORS: Record<string, string> = {
   cooldown: 'Give him a moment.',
-  rate_limited: 'The porch is busy. Try again shortly.',
+  rate_limited: 'The city is busy. Try again shortly.',
   asleep: 'He is asleep. Let him dream.',
   too_tired: 'He is too tired for that.',
   too_soon: 'Give him a moment.',
   gone: 'Nobody is on the rug right now.',
-  too_far: 'Feed him at the home feeder.',
+  too_far: 'Walk him to the bowl.',
   busy: 'A visitor already has the leash. You are in line.',
-  home: 'A dog is already home.',
+  home: 'A dog is already out in the city.',
   missed: 'The stray slipped past. Try again.',
   invalid: 'Pick a name from the list.',
-  porch_busy: 'Too many neighbors on the porch.',
+  porch_busy: 'Too many neighbors nearby.',
   not_catcher: 'Only the catcher can pick the name.',
   too_late: 'The naming window closed.',
   named: 'This dog already has a name.',
@@ -83,9 +100,11 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const [panel, setPanel] = useState<Panel>(initialPanel);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [clientId, setClientId] = useState<string | null>(null);
+  const clientIdRef = useRef<string | null>(null);
+  const [compactHud, setCompactHud] = useState(false);
+  const gameRef = useRef<HTMLDivElement>(null);
   const [hint, setHint] = useState(true);
   const [nearBowl, setNearBowl] = useState(false);
-  const [localWorld, setLocalWorld] = useState(false);
   const [localPlaceId, setLocalPlaceId] = useState(HOME_PLACE.id);
   const [travelOpen, setTravelOpen] = useState(false);
   const [flight, setFlight] = useState(0);
@@ -94,14 +113,31 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const [thoughtAnchor, setThoughtAnchor] = useState<{ x: number; y: number } | null>(null);
   const [localEmote, setLocalEmote] = useState<DogEmote | null>(null);
   const [selfHere, setSelfHere] = useState({ x: 0.95, z: -0.55 });
-  const colliders = useRef<WorldColliders>({ buildings: [], roads: [], parks: [], label: '' });
-  const leftGate = useRef(false);
+  const [debugSpawn, setDebugSpawn] = useState<DebugSpawn | null>(null);
+  const [leashWaitMs, setLeashWaitMs] = useState(0);
+  const [leashTaking, setLeashTaking] = useState(false);
+  const colliders = useRef<WorldColliders>({
+    buildings: [],
+    roads: [],
+    parks: [],
+    buildingGrid: emptyFootprintGrid(),
+    roadGrid: emptyFootprintGrid(),
+    label: '',
+  });
   const localPose = useRef<{ x: number; z: number } | null>(null);
+  const poseRef = useRef<DogPose | null>(null);
+  const lastHudAt = useRef(0);
+  const lastSelfHud = useRef(0);
+  const lastToast = useRef({ text: '', at: 0 });
+  const lastIntent = useRef<'feed' | 'pet' | 'move' | 'other'>('other');
   const feedRef = useRef<() => void>(() => undefined);
   const socket = useRef<WebSocket | null>(null);
   const toastId = useRef(1);
   const lastMove = useRef(0);
   const lastHere = useRef(0);
+  const inputRef = useRef({ ax: 0, az: 0, run: false });
+  const youHoldRef = useRef(false);
+  const spawnRef = useRef<DebugSpawn | null>(null);
   const mine = useRef({ x: 1.15, z: 0.85 });
   const wasNext = useRef(false);
   const mutedRef = useRef(muted);
@@ -140,13 +176,14 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       if (next === 'sleep') setReaction('sleep');
       if (next === 'eat') setReaction('feed');
       if (next === 'pose-walk') setReaction('walk');
-      if (next === 'world' || next === 'travel') setLocalWorld(true);
       if (next === 'world' || next === 'travel' || next === 'leash') setReaction(next === 'leash' ? 'idle' : 'walk');
       if (next === 'room' || next === 'gate' || next === 'presence') setReaction('idle');
       if (next === 'travel') {
         setLocalPlaceId('shibuya');
         setFlight(1);
       }
+      const place = params.get('place');
+      if (place && placeById(place)) setLocalPlaceId(place);
     } else if (initialPanel === 'hall') {
       setPlaying(true);
       setPanel('hall');
@@ -156,7 +193,11 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
     const place = params.get('place');
     if (place && placeById(place)) {
       setLocalPlaceId(place);
-      if (next === 'world' || next === 'travel' || !next) setLocalWorld(true);
+    }
+    const spawn = parseDebugSpawn(window.location.search);
+    if (spawn) {
+      setDebugSpawn(spawn);
+      setPlaying(true);
     }
     try {
       const stored = localStorage.getItem('biscuit-muted');
@@ -187,6 +228,9 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   }, []);
 
   const pushToast = useCallback((text: string) => {
+    const now = Date.now();
+    if (text === lastToast.current.text && now - lastToast.current.at < 2200) return;
+    lastToast.current = { text, at: now };
     const id = toastId.current++;
     setToasts((current) => [...current.slice(-2), { id, ...toastFromText(text) }]);
     window.setTimeout(() => {
@@ -195,6 +239,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   }, []);
 
   const apply = useCallback((data: DogSnapshot) => {
+    if (data.pose) poseRef.current = data.pose;
+    lastHudAt.current = Date.now();
     setSnapshot(data);
     setReach('up');
     setProgress((value) => Math.max(value, 78));
@@ -229,13 +275,32 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
     };
 
     const open = () => {
+      if (closed) return;
       void pullState();
-      const ws = new WebSocket(dogWsUrl());
+      const storedId = clientIdRef.current || readStoredClientId();
+      if (storedId) {
+        clientIdRef.current = storedId;
+        setClientId(storedId);
+      }
+      const ws = new WebSocket(dogWsUrl(storedId));
       socket.current = ws;
       ws.onopen = () => {
+        if (closed || socket.current !== ws) {
+          try {
+            ws.close();
+          } catch {
+            // ignore
+          }
+          return;
+        }
         wsPause = 800;
         setReach('up');
-        ws.send(JSON.stringify({ type: 'hello' }));
+        const storedId = clientIdRef.current || readStoredClientId();
+        if (storedId) {
+          clientIdRef.current = storedId;
+          setClientId(storedId);
+        }
+        ws.send(JSON.stringify(storedId ? { type: 'hello', clientId: storedId } : { type: 'hello' }));
       };
       ws.onmessage = (event) => {
         let message:
@@ -253,23 +318,38 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           return;
         }
         if (message.type === 'welcome') {
-          setClientId(message.clientId);
+          const kept = clientIdRef.current || readStoredClientId() || message.clientId;
+          clientIdRef.current = kept;
+          setClientId(kept);
+          try {
+            if (!sessionStorage.getItem('biscuit-client')) sessionStorage.setItem('biscuit-client', kept);
+          } catch {
+            // ignore
+          }
         }
         if (message.type === 'pose') {
           const pose = message;
           setReach('up');
-          setSnapshot((current) =>
-            current
-              ? {
-                  ...current,
-                  pose: pose.pose ?? current.pose,
-                  leash: pose.leash ?? current.leash,
-                  feeder: pose.feeder ?? current.feeder,
-                  location: pose.location ?? current.location,
-                  companions: pose.companions ?? current.companions,
-                }
-              : current,
-          );
+          setSnapshot((current) => {
+            if (!current) return current;
+            const next = {
+              ...current,
+              pose: pose.pose ?? current.pose,
+              leash: pose.leash ?? current.leash,
+              feeder: pose.feeder ?? current.feeder,
+              location: pose.location ?? current.location,
+              companions: pose.companions ?? current.companions,
+            };
+            if (next.pose) poseRef.current = next.pose;
+            const leashChanged =
+              next.leash?.holderId !== current.leash?.holderId ||
+              next.leash?.nextId !== current.leash?.nextId ||
+              (next.companions?.length ?? 0) !== (current.companions?.length ?? 0);
+            const now = Date.now();
+            if (!leashChanged && now - lastHudAt.current < 200) return current;
+            lastHudAt.current = now;
+            return next;
+          });
         }
         if (message.type === 'state') {
           apply(message);
@@ -290,7 +370,18 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           setPanel('name');
         }
         if (message.type === 'error') {
-          const text = message.text || ERRORS[message.code] || 'Not just now.';
+          const wait = Number((message as { retryAfterMs?: number }).retryAfterMs) || 0;
+          if ((message.code === 'cooldown' || message.code === 'busy') && wait > 0) {
+            setLeashWaitMs(wait);
+          }
+          const text =
+            message.code === 'too_soon' && lastIntent.current === 'feed'
+              ? 'Biscuit is full.'
+              : message.code === 'too_soon' && lastIntent.current === 'pet'
+                ? 'Biscuit has had enough pets for now.'
+                : message.code === 'cooldown'
+                  ? `Give him a moment · ${Math.max(1, Math.ceil(wait / 1000))}s`
+                  : message.text || ERRORS[message.code] || 'Not just now.';
           pushToast(text);
           if (message.code === 'invalid' || message.code === 'not_catcher') setNameStatus(text);
         }
@@ -310,24 +401,65 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         setReach('down');
       };
       ws.onclose = () => {
+        if (socket.current !== ws) return;
         setReach('down');
         if (closed) return;
         window.setTimeout(open, wsPause);
         wsPause = Math.min(8_000, Math.round(wsPause * 1.6));
       };
     };
+    const dropHold = () => {
+      const live = socket.current;
+      if (live?.readyState !== WebSocket.OPEN) return;
+      try {
+        live.send(JSON.stringify({ type: 'leave' }));
+      } catch {
+        // ignore
+      }
+      try {
+        live.close();
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('pagehide', dropHold);
+    window.addEventListener('beforeunload', dropHold);
     open();
     return () => {
+      window.removeEventListener('pagehide', dropHold);
+      window.removeEventListener('beforeunload', dropHold);
       closed = true;
       window.clearTimeout(stateTimer);
-      socket.current?.close();
+      const ws = socket.current;
+      socket.current = null;
+      if (!ws) return;
+      ws.onclose = null;
+      ws.onerror = null;
+      ws.onmessage = null;
+      if (ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(JSON.stringify({ type: 'leave' }));
+        } catch {
+          // ignore
+        }
+        ws.close();
+      } else if (ws.readyState === WebSocket.CONNECTING) {
+        ws.onopen = () => {
+          try {
+            ws.onerror = null;
+            ws.close();
+          } catch {
+            // ignore
+          }
+        };
+      }
     };
   }, [apply, pushToast, worker]);
 
   function send(payload: object) {
-    if (socket.current?.readyState === WebSocket.OPEN) {
-      socket.current.send(JSON.stringify(payload));
-    }
+    if (socket.current?.readyState !== WebSocket.OPEN) return false;
+    socket.current.send(JSON.stringify(payload));
+    return true;
   }
 
   function start(game: Exclude<PlayKind, null>) {
@@ -405,13 +537,17 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         : preview === 'sleep'
           ? 'sleep'
           : 'idle';
-  const yardNight = lightOverride === 'night' || (lightOverride !== 'day' && Boolean(dog?.night));
   const worldNightHint =
     lightOverride === 'night' ? true : lightOverride === 'day' ? false : undefined;
   const overlay = play || (awaitingName && canName) || panel;
   const canTap = ready || progress >= 88 || napping;
   const shared = Boolean(snapshot?.pose);
-  const youHold = Boolean(snapshot?.leash?.held && snapshot.leash.holderId && snapshot.leash.holderId === clientId);
+  const youHold = Boolean(
+    snapshot?.leash?.held &&
+      snapshot.leash.holderId &&
+      (snapshot.leash.holderId === clientId || snapshot.leash.holderId === clientIdRef.current),
+  );
+  youHoldRef.current = youHold;
   const leashQueue = snapshot?.leash?.queue ?? [];
   const nextId = snapshot?.leash?.nextId ?? leashQueue[0] ?? null;
   const youNext = preview === 'presence' || Boolean(nextId && clientId && nextId === clientId && !youHold);
@@ -433,43 +569,29 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const hideDrive = preview === 'eat' || preview === 'sleep' || preview === 'pose-walk';
   const inRange = preview === 'eat' || Boolean(snapshot?.feeder?.near) || nearBowl;
   const worldReady = Boolean(snapshot?.location) || previewing || !worker;
-  const serverWorld = snapshot?.location?.mode === 'world';
-  const inWorld = serverWorld || localWorld || preview === 'world' || preview === 'travel';
   const activePlace = placeById((previewing && localPlaceId) || snapshot?.location?.placeId || localPlaceId) ?? HOME_PLACE;
-  const worldView: WorldView | null = inWorld
-    ? {
-        originLat: previewing ? activePlace.lat : snapshot?.location?.originLat ?? activePlace.lat,
-        originLng: previewing ? activePlace.lng : snapshot?.location?.originLng ?? activePlace.lng,
-        lat: previewing ? activePlace.lat : snapshot?.location?.lat ?? activePlace.lat,
-        lng: previewing ? activePlace.lng : snapshot?.location?.lng ?? activePlace.lng,
-        flight,
-        nightHint: worldNightHint,
-      }
-    : null;
-
-  const goHome = useCallback(() => {
-    if (snapshot?.location) send({ type: 'home' });
-    leftGate.current = false;
-    setLocalWorld(false);
-    setLocalPlaceId(HOME_PLACE.id);
-    setTravelOpen(false);
-    setFlight(0.85);
-    pushToast('Back on the porch.');
-  }, [pushToast, snapshot?.location]);
+  const pillPlace = debugSpawn ? nearestPlace(debugSpawn.lat, debugSpawn.lng) : activePlace;
+  const worldView: WorldView = {
+    originLat: debugSpawn?.lat ?? (previewing ? activePlace.lat : snapshot?.location?.originLat ?? activePlace.lat),
+    originLng: debugSpawn?.lng ?? (previewing ? activePlace.lng : snapshot?.location?.originLng ?? activePlace.lng),
+    lat: debugSpawn?.lat ?? (previewing ? activePlace.lat : snapshot?.location?.lat ?? activePlace.lat),
+    lng: debugSpawn?.lng ?? (previewing ? activePlace.lng : snapshot?.location?.lng ?? activePlace.lng),
+    flight,
+    nightHint: worldNightHint,
+  };
 
   const goTravel = useCallback(
     (placeId: string) => {
       const place = placeById(placeId);
-      if (snapshot?.location) send({ type: 'travel', placeId });
+      if (snapshot?.location && !debugSpawn) send({ type: 'travel', placeId });
       else {
         setLocalPlaceId(placeId);
-        setLocalWorld(true);
       }
       setTravelOpen(false);
       setFlight(1);
       if (place) pushToast(`Off to ${place.name}.`);
     },
-    [pushToast, snapshot?.location],
+    [debugSpawn, pushToast, snapshot?.location],
   );
 
   const onWorldColliders = useCallback((next: WorldColliders) => {
@@ -494,52 +616,85 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
 
   function feedHim() {
     hideHint();
-    if (inWorld) {
-      pushToast('Dinner is at home. Walk him back through the gate, or tap Home.');
+    lastIntent.current = 'feed';
+    if (shared && (snapshot?.dog?.fullness ?? 0) >= 86) {
+      pushToast('Biscuit is full.');
       return;
     }
     if (shared) {
       send({ type: 'bowl' });
+      if ((snapshot?.dog?.fullness ?? 0) < 86) pushToast('Biscuit is eating.');
       return;
     }
     start('feed');
   }
   feedRef.current = feedHim;
 
+  function takeLeash() {
+    hideHint();
+    lastIntent.current = 'move';
+    if (leashWaitMs > 0) {
+      pushToast(`Give him a moment · ${Math.max(1, Math.ceil(leashWaitMs / 1000))}s`);
+      return;
+    }
+    if (youHoldRef.current) return;
+    setLeashTaking(true);
+    pushToast('Taking the leash…');
+    window.setTimeout(() => setLeashTaking(false), 4000);
+    if (!send({ type: 'move', ax: 0, az: 0.18, run: false })) {
+      pushToast('Give him a moment · reconnecting');
+    }
+  }
+
+  inputRef.current = input;
+  spawnRef.current = debugSpawn;
+
   useEffect(() => {
     if (!playing || overlay || !shared) return;
-    const moving = Math.hypot(input.ax, input.az) > 0.12;
-    if (!moving) return;
-    const now = performance.now();
-    if (now - lastMove.current < 80) return;
-    lastMove.current = now;
-    send({
-      type: 'move',
-      ax: input.ax,
-      az: input.az,
-      run: input.run,
-      ...(snapshot?.location && inWorld && localPose.current
-        ? { wx: localPose.current.x, wz: localPose.current.z }
-        : {}),
-    });
-  }, [inWorld, input, overlay, playing, shared, snapshot?.location]);
+    const tick = () => {
+      const current = inputRef.current;
+      const moving = Math.hypot(current.ax, current.az) > 0.12;
+      const now = performance.now();
+      if (moving) {
+        if (now - lastMove.current < 80) return;
+        lastIntent.current = 'move';
+        const sent = send({
+          type: 'move',
+          ax: current.ax,
+          az: current.az,
+          run: current.run,
+          ...(localPose.current && !spawnRef.current
+            ? { wx: localPose.current.x, wz: localPose.current.z }
+            : {}),
+        });
+        if (sent) lastMove.current = now;
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, 80);
+    return () => window.clearInterval(id);
+  }, [overlay, playing, shared]);
 
   useEffect(() => {
     if (!playing || overlay || !shared || previewing || youHold) return;
     const moving = Math.hypot(input.ax, input.az) > 0.12;
     if (!moving) return;
     const now = performance.now();
-    if (now - lastHere.current < 130) return;
+    if (now - lastHere.current < 150) return;
     lastHere.current = now;
     mine.current = {
       x: mine.current.x + input.ax * 0.18,
       z: mine.current.z + input.az * 0.18,
     };
-    setSelfHere({ ...mine.current });
+    if (now - lastSelfHud.current >= 200) {
+      lastSelfHud.current = now;
+      setSelfHere({ ...mine.current });
+    }
     send({ type: 'here', x: mine.current.x, z: mine.current.z });
   }, [input, overlay, playing, previewing, shared, youHold]);
 
   useEffect(() => {
+    if (youHold) setLeashTaking(false);
     if (wasNext.current && youHold) pushToast('The leash is yours.');
     wasNext.current = youNext;
   }, [pushToast, youHold, youNext]);
@@ -547,19 +702,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   useEffect(() => {
     if (previewRef.current) return;
     if (!snapshot?.location) return;
-    if (snapshot.location.mode === 'world') {
-      setLocalWorld(true);
-      setLocalPlaceId(snapshot.location.placeId);
-      return;
-    }
-    setLocalWorld(false);
-    leftGate.current = false;
-    setLocalPlaceId(HOME_PLACE.id);
+    setLocalPlaceId(snapshot.location.placeId);
   }, [snapshot?.location]);
-
-  useEffect(() => {
-    if (!inWorld) setStreetName('');
-  }, [inWorld]);
 
   const flying = flight > 0;
   useEffect(() => {
@@ -600,51 +744,87 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
     if (ready) setProgress(100);
   }, [ready]);
 
+  useEffect(() => {
+    if (leashWaitMs <= 0) return;
+    const id = window.setTimeout(() => setLeashWaitMs((ms) => Math.max(0, ms - 1000)), 1000);
+    return () => window.clearTimeout(id);
+  }, [leashWaitMs]);
+
+  useEffect(() => {
+    const id = readStoredClientId();
+    if (!id) return;
+    clientIdRef.current = id;
+    setClientId(id);
+  }, []);
+
+  useEffect(() => {
+    const node = gameRef.current;
+    if (!node) return;
+    const sync = () => {
+      const visual = window.visualViewport?.width ?? Number.POSITIVE_INFINITY;
+      setCompactHud(node.clientWidth <= 400 || window.innerWidth <= 400 || visual <= 400);
+    };
+    sync();
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(sync);
+    ro?.observe(node);
+    window.addEventListener('resize', sync);
+    window.visualViewport?.addEventListener('resize', sync);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', sync);
+      window.visualViewport?.removeEventListener('resize', sync);
+    };
+  }, [playing]);
+
+  useEffect(() => {
+    if (!playing) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    return () => {
+      html.style.overflow = prevHtml;
+      body.style.overflow = prevBody;
+    };
+  }, [playing]);
+
   const handlePose = useCallback(
     (pose: { x: number; z: number }) => {
       localPose.current = pose;
-      if (inWorld) {
-        setNearBowl(false);
-        return;
-      }
-      const bowl = nearFeeder(pose.x, pose.z);
+      const bowl = nearFeeder(pose.x, pose.z, snapshot?.feeder);
       setNearBowl((current) => (current === bowl ? current : bowl));
-      if (!worldReady || !nearGate(pose.x, pose.z) || leftGate.current) return;
-      leftGate.current = true;
-      if (snapshot?.location) send({ type: 'leave' });
-      setLocalWorld(true);
-      setLocalPlaceId(HOME_PLACE.id);
-      setFlight(0.12);
-      pushToast('Out into the city.');
     },
-    [inWorld, pushToast, snapshot?.location, worldReady],
+    [snapshot?.feeder],
   );
 
   const drive = hideDrive
     ? null
     : {
         input,
-        server: previewing ? null : snapshot?.pose ?? null,
-        youHold: previewing || youHold,
-        localOnly: previewing || !shared,
-        realm: inWorld ? ('world' as const) : ('home' as const),
-        originKey: inWorld ? `${activePlace.id}:${worldView?.originLat},${worldView?.originLng}` : 'home',
-        buildings: inWorld ? colliders.current.buildings : undefined,
-        roads: inWorld ? colliders.current.roads : undefined,
-        parks: inWorld ? colliders.current.parks : undefined,
+        server: previewing || debugSpawn ? null : snapshot?.pose ?? null,
+        serverRef: previewing || debugSpawn ? undefined : poseRef,
+        youHold: previewing || youHold || Boolean(debugSpawn),
+        localOnly: previewing || !shared || Boolean(debugSpawn),
+        realm: 'world' as const,
+        originKey: `${activePlace.id}:${worldView.originLat},${worldView.originLng}`,
+        buildings: colliders.current.buildingGrid,
+        roads: colliders.current.roadGrid,
+        parks: colliders.current.parks,
         onPose: handlePose,
       };
 
   if (studio) return <DogStudio />;
 
   return (
-    <div className="dog-game">
+    <div ref={gameRef} className={`dog-game${compactHud ? ' is-compact' : ''}`}>
       {dog ? (
         <DogPortrait
           genome={dog.genome}
           asleep={poseAsleep}
           reaction={poseReaction}
-          night={inWorld ? (worldNightHint ?? sunDirection(worldView!.lat, worldView!.lng, Date.now()).night) : yardNight}
+          night={worldNightHint ?? sunDirection(worldView.lat, worldView.lng, Date.now()).night}
           stage={dog.stage}
           happiness={dog.happiness}
           hungry={hungry}
@@ -653,6 +833,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           fill
           food={Boolean(snapshot?.feeder?.hasFood || snapshot?.feeder?.eating)}
           near={inRange}
+          bowl={snapshot?.feeder && Number.isFinite(snapshot.feeder.x) ? { x: snapshot.feeder.x!, z: snapshot.feeder.z! } : { x: 1.15, z: 0.55 }}
           world={worldView}
           drive={drive}
           onWorldColliders={onWorldColliders}
@@ -667,7 +848,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           genome={generateGenome(previewing ? 'biscuit-porch-1' : 'napping-biscuit')}
           asleep={fallbackAsleep}
           reaction={fallbackReaction}
-          night={inWorld ? (worldNightHint ?? sunDirection(worldView!.lat, worldView!.lng, Date.now()).night) : yardNight}
+          night={worldNightHint ?? sunDirection(worldView.lat, worldView.lng, Date.now()).night}
           stage="puppy"
           happiness={72}
           hungry={hungry}
@@ -677,6 +858,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           empty={!napping && !previewing && awaitingCatch}
           food={preview === 'eat'}
           near={inRange}
+          bowl={{ x: 1.15, z: 0.55 }}
           world={worldView}
           drive={previewing ? drive : null}
           onWorldColliders={onWorldColliders}
@@ -690,6 +872,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
 
       {playing && (
         <DogHud
+          compact={compactHud}
           name={shownName}
           stageLabel={dog?.stageLabel || (awaitingName ? 'new' : napping ? 'napping' : 'away')}
           presence={preview === 'presence' ? 4 : snapshot?.presence ?? 0}
@@ -706,8 +889,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           hint={hint}
           touch={touch}
           near={inRange}
-          inWorld={inWorld}
-          placeName={inWorld ? `${activePlace.name}, ${activePlace.city}` : undefined}
+          placeName={`${pillPlace.name}, ${pillPlace.city}`}
           streetName={streetName}
           worldReady={worldReady}
           travelOpen={travelOpen}
@@ -715,11 +897,15 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           attribution={ATTRIBUTION}
           onMute={toggleMute}
           onPet={() => {
+            lastIntent.current = 'pet';
             send({ type: 'action', action: 'pet' });
             setReaction('pet');
             playDogSfx('bark', muted);
+            pushToast('Biscuit leans into the scratch.');
             window.setTimeout(() => setReaction('idle'), 900);
           }}
+          leashWaitMs={leashWaitMs}
+          leashTaking={leashTaking}
           onFeed={feedHim}
           onHall={() => setPanel('hall')}
           onCatch={() => {
@@ -727,7 +913,6 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
             start('catch');
           }}
           onStick={setStick}
-          onHome={goHome}
           onTravel={goTravel}
           onToggleTravel={() => setTravelOpen((open) => !open)}
           thoughtAnchor={thoughtAnchor}
@@ -743,17 +928,30 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           youNext={youNext}
           queueAhead={queueAhead}
           neighborCount={guests.length + (clientId ? 1 : 0)}
+          youHold={youHold}
+          flying={flying}
+          onTakeLeash={takeLeash}
         />
       )}
 
       {!playing && (
         <div className="dog-start">
-          <p className="dog-start-kicker">the porch</p>
+          <p className="dog-start-kicker">
+            {formatPlaceLine(
+              streetName,
+              snapshot?.location
+                ? nearestPlace(snapshot.location.lat, snapshot.location.lng).name
+                : activePlace.name,
+            )}
+          </p>
           <p className="dog-start-title">{shownName}</p>
           <div className="dog-start-bar" aria-hidden="true">
             <i style={{ width: `${Math.min(100, progress)}%` }} />
           </div>
-          <button type="button" className="dog-start-play" disabled={!canTap && preview !== 'start'} onClick={() => setPlaying(true)}>
+          <button type="button" className="dog-start-play" disabled={!canTap && preview !== 'start'} onClick={() => {
+            warmDogAudio();
+            setPlaying(true);
+          }}>
             {canTap ? 'Tap to play' : 'Loading…'}
           </button>
         </div>
@@ -789,7 +987,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
               <h2>Biscuit is napping</h2>
             </div>
             <div className="dog-modal-body">
-              <p>back soon</p>
+              <p>out in the city · back soon</p>
             </div>
           </div>
         </div>

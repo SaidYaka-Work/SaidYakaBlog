@@ -11,6 +11,14 @@ function audio() {
   return ctx;
 }
 
+export function warmDogAudio() {
+  try {
+    audio();
+  } catch {
+    // autoplay lock — first tap to play already counts as a gesture
+  }
+}
+
 export function playDogSfx(kind: Sfx, muted: boolean) {
   if (muted) return;
   try {

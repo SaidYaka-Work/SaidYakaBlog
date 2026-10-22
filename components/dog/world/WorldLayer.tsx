@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import WorldScene from './WorldScene';
-import useWorldTiles, { type WorldColliders } from './useWorldTiles';
+import useWorldTiles, { type TileStatus, type WorldColliders } from './useWorldTiles';
 
 export default function WorldLayer({
   originLat,
@@ -11,6 +11,7 @@ export default function WorldLayer({
   lng,
   night,
   onColliders,
+  onStatus,
 }: {
   originLat: number;
   originLng: number;
@@ -18,19 +19,25 @@ export default function WorldLayer({
   lng: number;
   night?: boolean;
   onColliders?: (colliders: WorldColliders) => void;
+  onStatus?: (status: TileStatus) => void;
 }) {
-  const { tiles, colliders } = useWorldTiles(originLat, originLng, lat, lng, true);
+  const { tiles, warmTiles, colliders, status } = useWorldTiles(originLat, originLng, lat, lng, true);
   useEffect(() => {
     onColliders?.(colliders);
   }, [colliders, onColliders]);
+  useEffect(() => {
+    onStatus?.(status);
+  }, [onStatus, status]);
   return (
     <WorldScene
       tiles={tiles}
+      warmTiles={warmTiles}
       lat={lat}
       lng={lng}
       originLat={originLat}
       originLng={originLng}
       nightHint={night}
+      failed={status === 'failed'}
     />
   );
 }

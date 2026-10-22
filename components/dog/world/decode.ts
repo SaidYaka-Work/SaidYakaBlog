@@ -1,7 +1,9 @@
 import { PbfReader } from 'pbf';
 import { VectorTile } from '@mapbox/vector-tile';
 import { lngLatToLocal, type Ring } from '../../../workers/dog/src/world';
+import type { PackedTile } from './packTile';
 
+export type TileBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
 export type BuildingFeat = { ring: Ring; height: number; min: number; area: number };
 export type RoadFeat = { line: Ring; width: number; klass: string };
 export type WorldTileData = {
@@ -11,7 +13,17 @@ export type WorldTileData = {
   water: Ring[];
   parks: Ring[];
   labels: { x: number; z: number; name: string }[];
+  bounds?: TileBounds;
+  /** Local point the near/far trim was made for. */
+  focus?: { x: number; z: number };
+  packed?: PackedTile;
 };
+
+export const NEAR_BUILDING_M = 220;
+export const MAX_BUILDINGS = 160;
+export const MAX_FAR_BUILDINGS = 40;
+export const NEAR_ROAD_M = 240;
+export const MAX_ROADS = 280;
 
 const ROAD_WIDTH: Record<string, number> = {
   motorway: 12,
@@ -51,6 +63,84 @@ function simplify(ring: Ring, min = 8) {
   return next;
 }
 
+function ringCentroid(ring: Ring) {
+  let x = 0;
+  let z = 0;
+  for (const p of ring) {
+    x += p.x;
+    z += p.z;
+  }
+  return { x: x / Math.max(1, ring.length), z: z / Math.max(1, ring.length) };
+}
+
+export function buildingDistance(building: BuildingFeat, focus: { x: number; z: number }) {
+  const mid = ringCentroid(building.ring);
+  return Math.hypot(mid.x - focus.x, mid.z - focus.z);
+}
+
+export function roadDistance(road: RoadFeat, focus: { x: number; z: number }) {
+  let best = Infinity;
+  for (const p of road.line) {
+    best = Math.min(best, Math.hypot(p.x - focus.x, p.z - focus.z));
+  }
+  return best;
+}
+
+/** Keep every building near Biscuit; only the far remainder is capped. */
+export function keepNearBuildings(
+  buildings: BuildingFeat[],
+  focus: { x: number; z: number },
+  nearM = NEAR_BUILDING_M,
+  maxFar = MAX_FAR_BUILDINGS,
+) {
+  const near: BuildingFeat[] = [];
+  const far: BuildingFeat[] = [];
+  for (const building of buildings) {
+    if (buildingDistance(building, focus) <= nearM) near.push(building);
+    else far.push(building);
+  }
+  near.sort((a, b) => buildingDistance(a, focus) - buildingDistance(b, focus));
+  far.sort((a, b) => buildingDistance(a, focus) - buildingDistance(b, focus));
+  return [...near, ...far.slice(0, maxFar)];
+}
+
+/** Keep every road near Biscuit; fill the remaining cap with the nearest far roads. */
+export function keepNearRoads(
+  roads: RoadFeat[],
+  focus: { x: number; z: number },
+  nearM = NEAR_ROAD_M,
+  maxTotal = MAX_ROADS,
+) {
+  const near: RoadFeat[] = [];
+  const far: RoadFeat[] = [];
+  for (const road of roads) {
+    if (roadDistance(road, focus) <= nearM) near.push(road);
+    else far.push(road);
+  }
+  near.sort((a, b) => roadDistance(a, focus) - roadDistance(b, focus));
+  far.sort((a, b) => roadDistance(a, focus) - roadDistance(b, focus));
+  return [...near, ...far.slice(0, Math.max(0, maxTotal - near.length))];
+}
+
+function tileBoundsLocal(
+  z: number,
+  x: number,
+  y: number,
+  originLat: number,
+  originLng: number,
+): TileBounds {
+  const nw = tileToLngLat(z, x, y, 0, 0, 1);
+  const se = tileToLngLat(z, x + 1, y + 1, 0, 0, 1);
+  const a = lngLatToLocal(nw.lat, nw.lng, originLat, originLng);
+  const b = lngLatToLocal(se.lat, se.lng, originLat, originLng);
+  return {
+    minX: Math.min(a.x, b.x),
+    maxX: Math.max(a.x, b.x),
+    minZ: Math.min(a.z, b.z),
+    maxZ: Math.max(a.z, b.z),
+  };
+}
+
 function toLocal(
   rings: { x: number; y: number }[][],
   z: number,
@@ -77,6 +167,8 @@ export function decodeTile(
   y: number,
   originLat: number,
   originLng: number,
+  focusLat = originLat,
+  focusLng = originLng,
 ): WorldTileData {
   const tile = new VectorTile(new PbfReader(new Uint8Array(buffer)));
   const buildings: BuildingFeat[] = [];
@@ -84,28 +176,29 @@ export function decodeTile(
   const water: Ring[] = [];
   const parks: Ring[] = [];
   const labels: WorldTileData['labels'] = [];
+  const focus = lngLatToLocal(focusLat, focusLng, originLat, originLng);
+  const bounds = tileBoundsLocal(z, x, y, originLat, originLng);
 
   const building = tile.layers.building;
   if (building) {
     for (let i = 0; i < building.length; i += 1) {
       const feat = building.feature(i);
-      const rings = toLocal(feat.loadGeometry(), z, x, y, building.extent, originLat, originLng);
+      const rings = toLocal(feat.loadGeometry(), z, x, y, building.extent, originLat, originLng).filter(
+        (ring) => ring.length >= 3 && ringArea(ring) >= 10,
+      );
       const props = feat.properties as { render_height?: number; render_min_height?: number; hide_3d?: boolean };
-      if (props.hide_3d) continue;
-      for (const ring of rings) {
-        if (ring.length < 3) continue;
-        const area = ringArea(ring);
-        if (area < 10) continue;
-        buildings.push({
-          ring,
-          height: Math.min(140, Math.max(4.2, Number(props.render_height) || 9)),
-          min: Math.max(0, Number(props.render_min_height) || 0),
-          area,
-        });
-      }
+      if (props.hide_3d || !rings.length) continue;
+      const outer = rings[0];
+      buildings.push({
+        ring: outer,
+        height: Math.min(140, Math.max(4.2, Number(props.render_height) || 9)),
+        min: Math.max(0, Number(props.render_min_height) || 0),
+        area: ringArea(outer),
+      });
     }
-    buildings.sort((a, b) => b.area - a.area);
-    buildings.splice(240);
+    const kept = keepNearBuildings(buildings, focus);
+    buildings.length = 0;
+    buildings.push(...kept);
   }
 
   const transport = tile.layers.transportation;
@@ -119,7 +212,9 @@ export function decodeTile(
         if (line.length >= 2) roads.push({ line, width, klass });
       }
     }
-    if (roads.length > 420) roads.length = 420;
+    const keptRoads = keepNearRoads(roads, focus);
+    roads.length = 0;
+    roads.push(...keptRoads);
   }
 
   for (const name of ['water', 'park', 'landcover', 'landuse'] as const) {
@@ -152,5 +247,5 @@ export function decodeTile(
     }
   }
 
-  return { key: `${z}/${x}/${y}`, buildings, roads, water, parks, labels };
+  return { key: `${z}/${x}/${y}`, buildings, roads, water, parks, labels, bounds, focus };
 }
