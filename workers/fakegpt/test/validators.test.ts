@@ -234,7 +234,9 @@ test('fill-in-the-blank requires a literal blank and drops grammar mismatches', 
     }),
   );
   assert.equal(blank.ok, true);
-}
+});
+
+test('filterAiRounds keeps fixable jobs and logs a drop reason', () => {
   const lines: string[] = [];
   const orig = console.log;
   console.log = (...args: unknown[]) => {

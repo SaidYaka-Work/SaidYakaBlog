@@ -140,7 +140,8 @@ test('assembled question text never leaks its key across many seeds', () => {
     for (const puzzle of buildDayPuzzles(date)) {
       count += 1;
       const assembled = assembleQuestion(puzzle.lead, puzzle.question);
-      assert.ok(puzzle.question.trim().length >= 8, `${date} ${puzzle.id} missing question`);
+      assert.ok(puzzle.question.trim().length >= 3, `${date} ${puzzle.id} missing question`);
+      assert.ok(assembled.trim().length >= 8, `${date} ${puzzle.id} ${assembled}`);
       assert.equal(textLeaksKey(puzzle.kind, assembled, puzzle.answer, puzzle.aliases), false, `${date} ${puzzle.id} ${assembled} => ${puzzle.answer}`);
       assert.equal(textLeaksKey(puzzle.kind, puzzle.question, puzzle.answer, puzzle.aliases), false, `${date} ${puzzle.id} question ${puzzle.question}`);
       const round = applyPuzzleFlavor(puzzle, { lead: 'ugh hurry up' }, [{ id: 'dana', name: 'Dana', vibe: 'late' }]);

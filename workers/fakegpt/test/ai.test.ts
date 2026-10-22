@@ -561,4 +561,4 @@ test('judgeRound scores the description against the request and never claims it 
   const joined = prompts.join('\n');
   assert.match(joined, /description matches the request|how well that description matches/i);
   assert.match(joined, /never say you are a text-based AI/i);
-}
+});
