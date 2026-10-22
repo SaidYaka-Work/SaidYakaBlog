@@ -1180,6 +1180,38 @@ html[data-motion='on'] .fgpt-tab.is-leaving {
 }
 
 @media (min-width: 860px) {
+  .fgpt-switcher {
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.7rem 0.9rem 0.55rem;
+  }
+
+  .fgpt-tab {
+    min-width: 11rem;
+    padding: 0.5rem 0.8rem 0.7rem;
+    font-size: 0.86rem;
+    border-radius: 1rem;
+  }
+
+  .fgpt-face {
+    width: 1.75rem;
+    height: 1.75rem;
+    font-size: 0.8rem;
+  }
+
+  .fgpt-lanes,
+  .fgpt-lanes.is-solo,
+  .fgpt-lanes.is-pair,
+  .fgpt-lanes.is-plus-one,
+  .fgpt-lanes.is-grid,
+  .fgpt-lanes.is-three-two {
+    grid-template-columns: 1fr;
+  }
+
+  .fgpt-lane:not(.is-focus) {
+    display: none;
+  }
+
   .fgpt-log {
     min-height: 14rem;
     max-height: 26rem;
