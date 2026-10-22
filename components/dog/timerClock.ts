@@ -1,11 +1,10 @@
 /**
- * R3F constructs THREE.Clock on Canvas mount. Clock has been deprecated since
- * r183 in favor of Timer. Swap the constructor so Fiber never touches Clock.
+ * Clock has been deprecated since r183. THREE.Clock is a read-only export, so
+ * R3F still constructs one; we replace state.clock with this Timer-backed stand-in.
  */
-import * as THREE from 'three';
 import { Timer } from 'three';
 
-class TimerClock {
+export class TimerClock {
   autoStart: boolean;
   running = false;
   startTime = 0;
@@ -51,5 +50,6 @@ class TimerClock {
   }
 }
 
-const three = THREE as typeof THREE & { Clock: typeof TimerClock };
-three.Clock = TimerClock;
+export function installTimerClock(set: (partial: { clock: TimerClock }) => void) {
+  set({ clock: new TimerClock() });
+}

@@ -7,7 +7,7 @@ import type { DogCompanion, DogGenome, LifeStage } from '@/lib/dog';
 import Companions from './Companions';
 import type { PortraitReaction } from './look';
 import { CAMERA_YAW, clampOrbitPitchOffset, frameCamera, followYardCamera, worldOrbitPitch } from './frame';
-import './timerClock';
+import { installTimerClock } from './timerClock';
 import DogRig, { type DriveControl } from './DogRig';
 import WorldBowl from './WorldBowl';
 import { asFootprintGrid, footprintClearance, resolveCameraXZ, HOME_PLACE } from '../../workers/dog/src/world';
@@ -521,7 +521,8 @@ export default function DogCanvas({
           powerPreference: 'high-performance',
           stencil: false,
         }}
-        onCreated={({ gl }) => {
+        onCreated={({ gl, set }) => {
+          installTimerClock(set);
           gl.toneMapping = ACESFilmicToneMapping;
           gl.outputColorSpace = SRGBColorSpace;
           gl.toneMappingExposure = night ? 1.16 : 0.92;
