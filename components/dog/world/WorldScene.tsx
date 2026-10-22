@@ -25,7 +25,7 @@ import {
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { lngLatToLocal, sunDirection } from '../../../workers/dog/src/world';
 import type { WorldTileData } from './decode';
-import { crossingsAtIntersections, dressCell, dressPlants, hash2, lampsAlongRoads, type Crossing, type Plant } from './dress';
+import { crossingsAtIntersections, dressPlants, hash2, lampsAlongRoads, type Crossing, type Plant } from './dress';
 import {
   LAYER_Y,
   createBuildJob,
@@ -649,7 +649,7 @@ export default function WorldScene({
   // `here` changes on every 4 Hz pose/location sync while walking; re-dress only per 12 m cell.
   const dressCellX = Math.round(here.x / 12);
   const dressCellZ = Math.round(here.z / 12);
-  const dressHere = useMemo(() => dressCell(here), [dressCellX, dressCellZ]);
+  const dressHere = useMemo(() => ({ x: dressCellX * 12, z: dressCellZ * 12 }), [dressCellX, dressCellZ]);
   const cache = useRef(new Map<string, BuiltTile>());
   const queue = useRef<WorldTileData[]>([]);
   const uploads = useRef<{ tile: WorldTileData; packed: PackedTile; layer: number }[]>([]);
