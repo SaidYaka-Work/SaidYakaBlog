@@ -1,7 +1,9 @@
-import type { DailyRound, PromptKind } from '../../../workers/fakegpt/src/schema';
+import type { DailyRound, DailySet as SchemaDailySet, PromptKind as SchemaPromptKind } from '../../../workers/fakegpt/src/schema';
+import type { BankKind } from './bank/types';
 
-export type { PromptKind };
-export type Prompt = DailyRound;
+export type PromptKind = SchemaPromptKind | BankKind;
+export type Prompt = Omit<DailyRound, 'kind'> & { kind: PromptKind };
+export type DailySet = Omit<SchemaDailySet, 'rounds'> & { rounds: Prompt[] };
 
 export type Thumbs = 'up' | 'down';
 
