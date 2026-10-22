@@ -8,7 +8,7 @@ export const TEXT_MAX_TOKENS_PERSONAS = 280;
 /** ~5 rounds × ~110 tokens plus MC-option headroom. */
 export const TEXT_MAX_TOKENS_BATCH = 800;
 export const TEXT_MAX_TOKENS_DAILY = TEXT_MAX_TOKENS_BATCH;
-export const TEXT_MAX_TOKENS_VERIFY = 220;
+export const TEXT_MAX_TOKENS_VERIFY = 360;
 export const TEXT_MAX_TOKENS_GRADE = 80;
 /** Judge JSON is larger than a chat turn (score, seen/heard, reason, 1–3 messages, nudges). */
 export const TEXT_MAX_TOKENS_JUDGE = 256;
@@ -29,7 +29,7 @@ export const DAILY_GENERATE_SPEND = 6;
 /** Full-day cache for a validated AI set. Fallback is cached only briefly so we retry. */
 export const AI_DAILY_CACHE_TTL_SEC = 26 * 60 * 60;
 export const FALLBACK_DAILY_CACHE_TTL_SEC = 3 * 60;
-export const DAILY_CACHE_KEY_PREFIX = 'daily:v6:';
+export const DAILY_CACHE_KEY_PREFIX = 'daily:v7:';
 
 export function dailyCacheTtlSec(source: 'ai' | 'fallback'): number {
   return source === 'ai' ? AI_DAILY_CACHE_TTL_SEC : FALLBACK_DAILY_CACHE_TTL_SEC;

@@ -3,6 +3,7 @@ import { PERSONA_BANK, fillPersonas } from '../../../components/games/fakegpt/la
 import { mulberry32, pickJobs } from '../../../components/games/fakegpt/logic';
 import { DAILY_ROUNDS } from './models';
 import { dateSeed, parseDailyPersona, parseDailyRound, validateDailySet, type DailyPersona, type DailyRound, type DailySet } from './schema';
+import { sanitizeReplies } from './validators';
 
 export function fallbackDailySet(date: string): DailySet {
   return fillDailySet(date, [], 'fallback');
@@ -13,7 +14,10 @@ export function assignDayPersonas(rounds: DailyRound[], personas: DailyPersona[]
   if (!personas.length) return rounds;
   return rounds.map((round, index) => {
     const persona = personas[index % personas.length];
-    return { ...round, persona: persona.name, vibe: persona.vibe || round.vibe };
+    return sanitizeReplies(
+      { ...round, persona: persona.name, vibe: persona.vibe || round.vibe },
+      personas,
+    );
   });
 }
 

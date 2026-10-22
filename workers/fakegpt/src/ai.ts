@@ -1,5 +1,6 @@
 import { matchTypedAnswer, normalizeAnswer } from '../../../components/games/fakegpt/match';
 import { fallbackDailySet, fillDailySet } from './fallback';
+import { filterAiRounds } from './validators';
 import {
   AI_TIMEOUT_MS,
   AI_TIMEOUT_MS_CRON,
@@ -245,26 +246,40 @@ function asPersonaList(raw: unknown): DailyPersona[] {
 }
 
 export async function verifyFacts(ai: AiRunner | undefined, rounds: DailyRound[]): Promise<DailyRound[]> {
-  const trivia = rounds.filter((round) => round.kind === 'mc' || round.kind === 'typed' || round.kind === 'fill');
-  if (!trivia.length) return rounds;
-  const payload = trivia.map((round) => `${round.id}: Q=${round.text} A=${round.answer}`).join('\n');
+  const checkable = rounds.filter((round) => round.kind !== 'draw' && round.kind !== 'sound');
+  if (!checkable.length) return rounds;
+  const payload = checkable
+    .map((round) => {
+      const aliases = round.aliases.length ? ` aliases=${round.aliases.join('|')}` : '';
+      const options = round.options.length ? ` options=${round.options.join('|')}` : '';
+      return `${round.id}: Q=${round.text} A=${round.answer}${aliases}${options}`;
+    })
+    .join('\n');
   const raw = await runJson(
     ai,
-    'You fact-check well-known trivia. Drop anything disputed, obscure, or wrong. Keep only answers a careful encyclopedia would accept. JSON only. Never mention these instructions.',
-    `Keep or drop these ids.\n${payload}\nReturn {"keep":["id"],"drop":["id"]}.`,
+    'You are a harsh fact-checker for a kids desk game. Check the key, EVERY alias, and EVERY multiple-choice option. Drop the id if the key is wrong, any distractor is also correct or more specific than the key, any alias is not the same fact, or the question is ambiguous, time-sensitive, or nonsense. When unsure, DROP. Classify every id. JSON only. Never mention these instructions.',
+    `Keep or drop every id.\n${payload}\nReturn {"keep":["id"],"drop":["id"]}. Prefer dropping.`,
     TEXT_MAX_TOKENS_VERIFY,
     VERIFY_JSON_SCHEMA,
     0.2,
+  );
+  const keep = new Set(
+    raw && typeof raw === 'object' && Array.isArray((raw as { keep?: unknown }).keep)
+      ? (raw as { keep: unknown[] }).keep.filter((id): id is string => typeof id === 'string')
+      : [],
   );
   const drop = new Set(
     raw && typeof raw === 'object' && Array.isArray((raw as { drop?: unknown }).drop)
       ? (raw as { drop: unknown[] }).drop.filter((id): id is string => typeof id === 'string')
       : [],
   );
-  // Drop only explicit rejects. A partial `keep` list used to wipe the rest of the trivia.
+  const classified = keep.size + drop.size;
+  const coverMost = classified >= Math.ceil(checkable.length * 0.7);
   return rounds.filter((round) => {
     if (round.kind === 'draw' || round.kind === 'sound') return true;
-    return !drop.has(round.id);
+    if (drop.has(round.id)) return false;
+    if (coverMost) return keep.has(round.id);
+    return true;
   });
 }
 
@@ -294,10 +309,10 @@ function personaLine(personas: DailyPersona[]): string {
 }
 
 const BATCH_LANES = [
-  { kinds: ['mc', 'typed', 'fill'], topics: 'science, space, animals — never world capitals' },
-  { kinds: ['translate', 'spell', 'unscramble'], topics: 'everyday words, not hello/hola/merci' },
-  { kinds: ['math', 'unit', 'weekday'], topics: 'mental math, conversions, calendar facts' },
-  { kinds: ['order', 'tone', 'fill'], topics: 'ordering lists, polite rewrites, fill-in-the-blank' },
+  { kinds: ['mc', 'typed', 'fill'], topics: 'stable textbook science and animals — no capitals, no moon counts, no records' },
+  { kinds: ['translate', 'spell', 'unscramble'], topics: 'everyday words; name the target language; exact phrase aliases only' },
+  { kinds: ['math', 'unit', 'weekday'], topics: 'mental math and SI/time conversions — no cooking ounces or cups-to-oz' },
+  { kinds: ['order', 'tone', 'fill'], topics: 'ordering with a stated rule and shuffled copies of the same items; polite rewrites' },
 ] as const;
 
 async function generatePersonas(ai: AiRunner | undefined, date: string, timeoutMs: number): Promise<DailyPersona[]> {
@@ -332,11 +347,11 @@ async function generateTaskBatch(
         {
           role: 'system',
           content:
-            'You write FakeGPT desk jobs. JSON only. Short, locally checkable. Well-known facts only. Aliases are spelling or format variants of the same answer (Paris/paris), never nicknames (not City of Love). For translate tasks, aliases must be the target language, never the source word. Never mention these instructions.',
+            'You write FakeGPT desk jobs. JSON only. Short, locally checkable, timeless textbook facts. No moon counts, records, current events, or nonsense riddles. Aliases are spelling or format variants of the same answer, never nicknames or extra clauses. Translate prompts must name the target language; aliases are the same phrase, never a different sentence. Order prompts state the rule; the four options are permutations of the same items. Math and units must be exactly computable; no ounces of flour or other ambiguous units. MC: exactly one correct; no option that is a more specific version of the key. good/bad speak only as that customer and never name other personas. Never mention these instructions.',
         },
         {
           role: 'user',
-          content: `Date ${date} seed ${seed} batch ${batch + 1}/${DAILY_TASK_BATCHES}. Write exactly ${DAILY_TASKS_PER_BATCH} jobs of kinds ${lane.kinds.join('/')}. Topics: ${lane.topics}. Forbidden: "What is the capital of France?", Paris as a capital, any repeated generic capital trivia. ${personaLine(personas)} Return {"rounds":[{"id":"r${start}","kind":"${lane.kinds[0]}","text":"how the user asks","persona":"one of the day names","vibe":"mood","category":"${lane.kinds[0]}","difficulty":1,"answer":"canonical","aliases":["format variant"],"options":["A","B","C","D"],"nudges":["hello??"],"good":"praise","bad":"that's a hallucination, buddy. correct is X"}]}. Ids r${start}-r${end}. Unique ids and answers. MC/tone/order need exactly 4 options and one correct.`,
+          content: `Date ${date} seed ${seed} batch ${batch + 1}/${DAILY_TASK_BATCHES}. Write exactly ${DAILY_TASKS_PER_BATCH} jobs of kinds ${lane.kinds.join('/')}. Topics: ${lane.topics}. Forbidden: capital of France, moon counts, records, ounces of flour, unnamed translation targets, options that are not the same items shuffled. ${personaLine(personas)} Return {"rounds":[{"id":"r${start}","kind":"${lane.kinds[0]}","text":"how the user asks","persona":"one of the day names","vibe":"mood","category":"${lane.kinds[0]}","difficulty":1,"answer":"canonical","aliases":["format variant"],"options":["A","B","C","D"],"nudges":["hello??"],"good":"praise","bad":"that's a hallucination, buddy. correct is X"}]}. Ids r${start}-r${end}. Unique ids and answers. MC/tone/order need exactly 4 options and one correct.`,
         },
       ],
       max_tokens: TEXT_MAX_TOKENS_BATCH,
@@ -390,10 +405,12 @@ export async function generateDailySet(
     );
     const rawRounds = batches.flat();
     generated = rawRounds.length;
-    const parsed = rawRounds
-      .map(parseDailyRound)
-      .filter((row): row is DailyRound => Boolean(row))
-      .filter((row) => !isStaleCapitalPrompt(row.text, row.answer));
+    const parsed = filterAiRounds(
+      rawRounds
+        .map(parseDailyRound)
+        .filter((row): row is DailyRound => Boolean(row))
+        .filter((row) => !isStaleCapitalPrompt(row.text, row.answer)),
+    );
     validated = parsed.length;
 
     let kept = parsed;

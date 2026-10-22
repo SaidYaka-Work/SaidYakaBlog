@@ -10,6 +10,7 @@ import {
   salvageRoundObjects,
   verifyFacts,
 } from '../src/ai.ts';
+import { filterAiRounds } from '../src/validators.ts';
 import { fallbackDailySet } from '../src/fallback.ts';
 import {
   AI_TIMEOUT_MS,
@@ -42,9 +43,25 @@ function batchFromInput(input: Record<string, unknown>): number {
   return hit ? Number(hit[1]) - 1 : 0;
 }
 
+function harvestRounds(valid: DailySet): DailySet['rounds'] {
+  const passing = filterAiRounds(valid.rounds);
+  if (passing.length >= 20) return passing.slice(0, 20);
+  const extra = valid.rounds.map((round, index) => ({
+    ...round,
+    id: `ok${index + 1}`,
+    kind: 'typed' as const,
+    text: `what do honeybees make for us number ${index + 1} now`,
+    answer: `honey${index + 1}`,
+    aliases: [],
+    options: [],
+    category: 'animals',
+  }));
+  return filterAiRounds([...passing, ...extra]).slice(0, 20);
+}
+
 function roundsForBatch(valid: DailySet, input: Record<string, unknown>) {
   const batch = batchFromInput(input);
-  return valid.rounds.slice(batch * DAILY_TASKS_PER_BATCH, batch * DAILY_TASKS_PER_BATCH + DAILY_TASKS_PER_BATCH);
+  return harvestRounds(valid).slice(batch * DAILY_TASKS_PER_BATCH, batch * DAILY_TASKS_PER_BATCH + DAILY_TASKS_PER_BATCH);
 }
 
 function completeRound(over: Record<string, unknown> = {}) {
@@ -223,7 +240,7 @@ test('generateDailySet logs truncated when the model hits the token cap', async 
   assert.ok(lines.every((line) => !line.includes('ignore previous')));
 });
 
-test('verifyFacts drops only explicit drop ids', async () => {
+test('verifyFacts drops only explicit drop ids when coverage is thin', async () => {
   const valid = fallbackDailySet('2026-10-21');
   const sample = valid.rounds.filter((round) => round.kind !== 'draw' && round.kind !== 'sound').slice(0, 4);
   const kept = await verifyFacts(
@@ -251,6 +268,23 @@ test('verifyFacts drops only explicit drop ids', async () => {
     false,
   );
   assert.ok(dropped.some((round) => round.id === sample[2].id));
+});
+
+test('verifyFacts drops unlabeled trivia when most ids are classified', async () => {
+  const valid = fallbackDailySet('2026-10-21');
+  const sample = valid.rounds.filter((round) => round.kind !== 'draw' && round.kind !== 'sound').slice(0, 4);
+  const kept = await verifyFacts(
+    {
+      async run() {
+        return { response: { keep: [sample[0].id], drop: [sample[1].id, sample[2].id] } };
+      },
+    },
+    sample,
+  );
+  assert.deepEqual(
+    kept.map((round) => round.id),
+    [sample[0].id],
+  );
 });
 
 test('generateDailySet logs requested/generated/validated/verified/filled', async () => {
@@ -372,7 +406,8 @@ test('batch prompts rotate kinds and ban capital-of-France', async () => {
   );
   assert.equal(prompts.length, DAILY_TASK_BATCHES);
   assert.ok(prompts.every((prompt) => /seed \d+/.test(prompt)));
-  assert.ok(prompts.every((prompt) => /Forbidden: "What is the capital of France\?"/.test(prompt)));
+  assert.ok(prompts.every((prompt) => /Forbidden: capital of France/.test(prompt)));
+  assert.ok(prompts.every((prompt) => /moon counts/.test(prompt)));
   const kinds = prompts.map((prompt) => prompt.match(/kinds ([a-z/]+)/)?.[1] ?? '');
   assert.ok(new Set(kinds).size >= 3, `expected varied lanes, got ${kinds.join(',')}`);
   assert.equal(isStaleCapitalPrompt('What is the capital of France?', 'Paris'), true);

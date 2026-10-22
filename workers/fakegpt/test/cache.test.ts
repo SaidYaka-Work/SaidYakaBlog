@@ -14,16 +14,33 @@ import {
   dailySourceFor,
 } from '../src/models.ts';
 import type { DailySet } from '../src/schema.ts';
+import { filterAiRounds } from '../src/validators.ts';
 
 function userText(input: Record<string, unknown>): string {
   const messages = input.messages as Array<{ role?: string; content?: string }> | undefined;
   return messages?.find((row) => row.role === 'user')?.content ?? '';
 }
 
+function harvestRounds(valid: DailySet): DailySet['rounds'] {
+  const passing = filterAiRounds(valid.rounds);
+  if (passing.length >= 20) return passing.slice(0, 20);
+  const extra = valid.rounds.map((round, index) => ({
+    ...round,
+    id: `ok${index + 1}`,
+    kind: 'typed' as const,
+    text: `what do honeybees make for us number ${index + 1} now`,
+    answer: `honey${index + 1}`,
+    aliases: [],
+    options: [],
+    category: 'animals',
+  }));
+  return filterAiRounds([...passing, ...extra]).slice(0, 20);
+}
+
 function roundsForBatch(valid: DailySet, input: Record<string, unknown>) {
   const hit = userText(input).match(/batch (\d+)/i);
   const batch = hit ? Number(hit[1]) - 1 : 0;
-  return valid.rounds.slice(batch * DAILY_TASKS_PER_BATCH, batch * DAILY_TASKS_PER_BATCH + DAILY_TASKS_PER_BATCH);
+  return harvestRounds(valid).slice(batch * DAILY_TASKS_PER_BATCH, batch * DAILY_TASKS_PER_BATCH + DAILY_TASKS_PER_BATCH);
 }
 
 function aiThatReturns(valid: ReturnType<typeof fallbackDailySet>) {
@@ -60,7 +77,7 @@ test('dailyCacheTtlSec keeps AI sets for a day and fallbacks for a few minutes',
   assert.ok(FALLBACK_DAILY_CACHE_TTL_SEC <= 5 * 60);
   assert.ok(FALLBACK_DAILY_CACHE_TTL_SEC < AI_DAILY_CACHE_TTL_SEC);
   assert.equal(dailyCacheKey('2026-10-21'), `${DAILY_CACHE_KEY_PREFIX}2026-10-21`);
-  assert.match(DAILY_CACHE_KEY_PREFIX, /daily:v6:/);
+  assert.match(DAILY_CACHE_KEY_PREFIX, /daily:v7:/);
 });
 
 test('dailySet caches an AI set for the full day', async () => {
