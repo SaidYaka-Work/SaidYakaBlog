@@ -1,0 +1,4804 @@
+[
+  {
+    "id": "math-m-add-2-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 2 + 2",
+    "options": [
+      "0",
+      "5",
+      "3",
+      "4"
+    ],
+    "answer": "4"
+  },
+  {
+    "id": "math-m-add-2-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 2 + 3",
+    "options": [
+      "6",
+      "4",
+      "5",
+      "1"
+    ],
+    "answer": "5"
+  },
+  {
+    "id": "math-m-add-2-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 2 + 4",
+    "options": [
+      "8",
+      "6",
+      "7",
+      "5"
+    ],
+    "answer": "6"
+  },
+  {
+    "id": "math-m-add-2-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 2 + 5",
+    "options": [
+      "7",
+      "6",
+      "10",
+      "3"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "math-m-add-2-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 2 + 6",
+    "options": [
+      "12",
+      "4",
+      "9",
+      "8"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "math-m-add-2-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 2 + 7",
+    "options": [
+      "10",
+      "8",
+      "9",
+      "5"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "math-m-add-2-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 2 + 8",
+    "options": [
+      "16",
+      "10",
+      "11",
+      "9"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "math-m-add-2-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 2 + 9",
+    "options": [
+      "11",
+      "10",
+      "18",
+      "7"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-add-2-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 2 + 10",
+    "options": [
+      "20",
+      "8",
+      "13",
+      "12"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-add-2-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 2 + 11",
+    "options": [
+      "14",
+      "12",
+      "13",
+      "9"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-add-2-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 2 + 12",
+    "options": [
+      "24",
+      "14",
+      "15",
+      "13"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-add-3-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 3 + 2",
+    "options": [
+      "6",
+      "1",
+      "4",
+      "5"
+    ],
+    "answer": "5"
+  },
+  {
+    "id": "math-m-sub-3-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "3 minus 2",
+    "options": [
+      "5",
+      "1",
+      "2",
+      "0"
+    ],
+    "answer": "1"
+  },
+  {
+    "id": "math-m-add-3-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 3 + 3",
+    "options": [
+      "7",
+      "5",
+      "6",
+      "0"
+    ],
+    "answer": "6"
+  },
+  {
+    "id": "math-m-add-3-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 3 + 4",
+    "options": [
+      "12",
+      "7",
+      "8",
+      "6"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "math-m-add-3-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 3 + 5",
+    "options": [
+      "8",
+      "7",
+      "15",
+      "2"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "math-m-add-3-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 3 + 6",
+    "options": [
+      "18",
+      "3",
+      "10",
+      "9"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "math-m-add-3-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 3 + 7",
+    "options": [
+      "11",
+      "9",
+      "10",
+      "4"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "math-m-add-3-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 3 + 8",
+    "options": [
+      "24",
+      "11",
+      "12",
+      "10"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-add-3-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 3 + 9",
+    "options": [
+      "12",
+      "11",
+      "27",
+      "6"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-add-3-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 3 + 10",
+    "options": [
+      "30",
+      "7",
+      "14",
+      "13"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-add-3-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 3 + 11",
+    "options": [
+      "15",
+      "13",
+      "14",
+      "8"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-add-3-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 3 + 12",
+    "options": [
+      "36",
+      "15",
+      "16",
+      "14"
+    ],
+    "answer": "15"
+  },
+  {
+    "id": "math-m-add-4-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 4 + 2",
+    "options": [
+      "8",
+      "2",
+      "7",
+      "6"
+    ],
+    "answer": "6"
+  },
+  {
+    "id": "math-m-add-4-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 4 + 3",
+    "options": [
+      "8",
+      "6",
+      "7",
+      "1"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "math-m-sub-4-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "4 minus 3",
+    "options": [
+      "2",
+      "0",
+      "1",
+      "12"
+    ],
+    "answer": "1"
+  },
+  {
+    "id": "math-m-add-4-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 4 + 4",
+    "options": [
+      "16",
+      "8",
+      "9",
+      "7"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "math-m-add-4-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 4 + 5",
+    "options": [
+      "9",
+      "8",
+      "20",
+      "1"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "math-m-add-4-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 4 + 6",
+    "options": [
+      "24",
+      "2",
+      "11",
+      "10"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "math-m-add-4-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 4 + 7",
+    "options": [
+      "12",
+      "10",
+      "11",
+      "3"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-add-4-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 4 + 8",
+    "options": [
+      "32",
+      "12",
+      "13",
+      "11"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-add-4-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 4 + 9",
+    "options": [
+      "13",
+      "12",
+      "36",
+      "5"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-add-4-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 4 + 10",
+    "options": [
+      "40",
+      "6",
+      "15",
+      "14"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-add-4-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 4 + 11",
+    "options": [
+      "16",
+      "14",
+      "15",
+      "7"
+    ],
+    "answer": "15"
+  },
+  {
+    "id": "math-m-add-4-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 4 + 12",
+    "options": [
+      "48",
+      "16",
+      "17",
+      "15"
+    ],
+    "answer": "16"
+  },
+  {
+    "id": "math-m-add-5-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 5 + 2",
+    "options": [
+      "10",
+      "3",
+      "8",
+      "7"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "math-m-sub-5-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "5 minus 2",
+    "options": [
+      "7",
+      "3",
+      "4",
+      "2"
+    ],
+    "answer": "3"
+  },
+  {
+    "id": "math-m-add-5-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 5 + 3",
+    "options": [
+      "9",
+      "7",
+      "8",
+      "2"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "math-m-sub-5-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "5 minus 3",
+    "options": [
+      "2",
+      "1",
+      "8",
+      "15"
+    ],
+    "answer": "2"
+  },
+  {
+    "id": "math-m-add-5-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 5 + 4",
+    "options": [
+      "20",
+      "9",
+      "10",
+      "8"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "math-m-sub-5-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "5 minus 4",
+    "options": [
+      "9",
+      "20",
+      "2",
+      "1"
+    ],
+    "answer": "1"
+  },
+  {
+    "id": "math-m-add-5-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 5 + 5",
+    "options": [
+      "10",
+      "9",
+      "25",
+      "0"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "math-m-add-5-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 5 + 6",
+    "options": [
+      "30",
+      "1",
+      "12",
+      "11"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-add-5-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 5 + 7",
+    "options": [
+      "13",
+      "11",
+      "12",
+      "2"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-add-5-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 5 + 8",
+    "options": [
+      "40",
+      "13",
+      "14",
+      "12"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-add-5-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 5 + 9",
+    "options": [
+      "14",
+      "13",
+      "45",
+      "4"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-add-5-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 5 + 10",
+    "options": [
+      "50",
+      "5",
+      "16",
+      "15"
+    ],
+    "answer": "15"
+  },
+  {
+    "id": "math-m-add-5-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 5 + 11",
+    "options": [
+      "17",
+      "15",
+      "16",
+      "6"
+    ],
+    "answer": "16"
+  },
+  {
+    "id": "math-m-add-5-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 5 + 12",
+    "options": [
+      "60",
+      "17",
+      "18",
+      "16"
+    ],
+    "answer": "17"
+  },
+  {
+    "id": "math-m-add-6-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 6 + 2",
+    "options": [
+      "12",
+      "4",
+      "9",
+      "8"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "math-m-sub-6-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "6 minus 2",
+    "options": [
+      "8",
+      "12",
+      "5",
+      "4"
+    ],
+    "answer": "4"
+  },
+  {
+    "id": "math-m-add-6-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 6 + 3",
+    "options": [
+      "10",
+      "8",
+      "9",
+      "3"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "math-m-add-6-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 6 + 4",
+    "options": [
+      "24",
+      "10",
+      "11",
+      "9"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "math-m-sub-6-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "6 minus 4",
+    "options": [
+      "10",
+      "2",
+      "3",
+      "1"
+    ],
+    "answer": "2"
+  },
+  {
+    "id": "math-m-add-6-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 6 + 5",
+    "options": [
+      "11",
+      "10",
+      "30",
+      "1"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-sub-6-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "6 minus 5",
+    "options": [
+      "1",
+      "0",
+      "11",
+      "30"
+    ],
+    "answer": "1"
+  },
+  {
+    "id": "math-m-add-6-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 6 + 6",
+    "options": [
+      "36",
+      "0",
+      "13",
+      "12"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-add-6-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 6 + 7",
+    "options": [
+      "14",
+      "12",
+      "13",
+      "1"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-add-6-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 6 + 8",
+    "options": [
+      "48",
+      "14",
+      "15",
+      "13"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-add-6-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 6 + 9",
+    "options": [
+      "15",
+      "14",
+      "54",
+      "3"
+    ],
+    "answer": "15"
+  },
+  {
+    "id": "math-m-add-6-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 6 + 10",
+    "options": [
+      "60",
+      "4",
+      "17",
+      "16"
+    ],
+    "answer": "16"
+  },
+  {
+    "id": "math-m-add-6-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 6 + 11",
+    "options": [
+      "18",
+      "16",
+      "17",
+      "5"
+    ],
+    "answer": "17"
+  },
+  {
+    "id": "math-m-add-6-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 6 + 12",
+    "options": [
+      "72",
+      "18",
+      "19",
+      "17"
+    ],
+    "answer": "18"
+  },
+  {
+    "id": "math-m-add-7-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 7 + 2",
+    "options": [
+      "14",
+      "5",
+      "10",
+      "9"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "math-m-sub-7-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "7 minus 2",
+    "options": [
+      "9",
+      "5",
+      "6",
+      "4"
+    ],
+    "answer": "5"
+  },
+  {
+    "id": "math-m-add-7-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 7 + 3",
+    "options": [
+      "11",
+      "9",
+      "10",
+      "4"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "math-m-sub-7-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "7 minus 3",
+    "options": [
+      "4",
+      "3",
+      "10",
+      "21"
+    ],
+    "answer": "4"
+  },
+  {
+    "id": "math-m-add-7-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 7 + 4",
+    "options": [
+      "28",
+      "11",
+      "12",
+      "10"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-sub-7-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "7 minus 4",
+    "options": [
+      "11",
+      "28",
+      "4",
+      "3"
+    ],
+    "answer": "3"
+  },
+  {
+    "id": "math-m-add-7-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 7 + 5",
+    "options": [
+      "12",
+      "11",
+      "35",
+      "2"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-sub-7-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "7 minus 5",
+    "options": [
+      "3",
+      "1",
+      "2",
+      "35"
+    ],
+    "answer": "2"
+  },
+  {
+    "id": "math-m-add-7-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 7 + 6",
+    "options": [
+      "42",
+      "1",
+      "14",
+      "13"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-sub-7-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "7 minus 6",
+    "options": [
+      "13",
+      "1",
+      "2",
+      "0"
+    ],
+    "answer": "1"
+  },
+  {
+    "id": "math-m-add-7-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 7 + 7",
+    "options": [
+      "15",
+      "13",
+      "14",
+      "0"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-add-7-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 7 + 8",
+    "options": [
+      "56",
+      "15",
+      "16",
+      "14"
+    ],
+    "answer": "15"
+  },
+  {
+    "id": "math-m-add-7-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 7 + 9",
+    "options": [
+      "16",
+      "15",
+      "63",
+      "2"
+    ],
+    "answer": "16"
+  },
+  {
+    "id": "math-m-add-7-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 7 + 10",
+    "options": [
+      "70",
+      "3",
+      "18",
+      "17"
+    ],
+    "answer": "17"
+  },
+  {
+    "id": "math-m-add-7-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 7 + 11",
+    "options": [
+      "19",
+      "17",
+      "18",
+      "4"
+    ],
+    "answer": "18"
+  },
+  {
+    "id": "math-m-add-7-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 7 + 12",
+    "options": [
+      "84",
+      "19",
+      "20",
+      "18"
+    ],
+    "answer": "19"
+  },
+  {
+    "id": "math-m-add-8-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 8 + 2",
+    "options": [
+      "16",
+      "6",
+      "11",
+      "10"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "math-m-sub-8-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "8 minus 2",
+    "options": [
+      "10",
+      "16",
+      "7",
+      "6"
+    ],
+    "answer": "6"
+  },
+  {
+    "id": "math-m-add-8-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 8 + 3",
+    "options": [
+      "12",
+      "10",
+      "11",
+      "5"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-sub-8-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "8 minus 3",
+    "options": [
+      "6",
+      "4",
+      "5",
+      "24"
+    ],
+    "answer": "5"
+  },
+  {
+    "id": "math-m-add-8-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 8 + 4",
+    "options": [
+      "32",
+      "12",
+      "13",
+      "11"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-add-8-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 8 + 5",
+    "options": [
+      "13",
+      "12",
+      "40",
+      "3"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-sub-8-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "8 minus 5",
+    "options": [
+      "3",
+      "2",
+      "13",
+      "40"
+    ],
+    "answer": "3"
+  },
+  {
+    "id": "math-m-add-8-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 8 + 6",
+    "options": [
+      "48",
+      "2",
+      "15",
+      "14"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-sub-8-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "8 minus 6",
+    "options": [
+      "14",
+      "48",
+      "3",
+      "2"
+    ],
+    "answer": "2"
+  },
+  {
+    "id": "math-m-add-8-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 8 + 7",
+    "options": [
+      "16",
+      "14",
+      "15",
+      "1"
+    ],
+    "answer": "15"
+  },
+  {
+    "id": "math-m-sub-8-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "8 minus 7",
+    "options": [
+      "2",
+      "0",
+      "1",
+      "56"
+    ],
+    "answer": "1"
+  },
+  {
+    "id": "math-m-add-8-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 8 + 8",
+    "options": [
+      "64",
+      "16",
+      "17",
+      "15"
+    ],
+    "answer": "16"
+  },
+  {
+    "id": "math-m-add-8-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 8 + 9",
+    "options": [
+      "17",
+      "16",
+      "72",
+      "1"
+    ],
+    "answer": "17"
+  },
+  {
+    "id": "math-m-add-8-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 8 + 10",
+    "options": [
+      "80",
+      "2",
+      "19",
+      "18"
+    ],
+    "answer": "18"
+  },
+  {
+    "id": "math-m-add-8-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 8 + 11",
+    "options": [
+      "20",
+      "18",
+      "19",
+      "3"
+    ],
+    "answer": "19"
+  },
+  {
+    "id": "math-m-add-8-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 8 + 12",
+    "options": [
+      "96",
+      "20",
+      "21",
+      "19"
+    ],
+    "answer": "20"
+  },
+  {
+    "id": "math-m-add-9-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 9 + 2",
+    "options": [
+      "18",
+      "7",
+      "12",
+      "11"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-sub-9-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "9 minus 2",
+    "options": [
+      "11",
+      "7",
+      "8",
+      "6"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "math-m-add-9-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 9 + 3",
+    "options": [
+      "13",
+      "11",
+      "12",
+      "6"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-sub-9-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "9 minus 3",
+    "options": [
+      "6",
+      "5",
+      "12",
+      "27"
+    ],
+    "answer": "6"
+  },
+  {
+    "id": "math-m-add-9-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 9 + 4",
+    "options": [
+      "36",
+      "13",
+      "14",
+      "12"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-sub-9-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "9 minus 4",
+    "options": [
+      "13",
+      "36",
+      "6",
+      "5"
+    ],
+    "answer": "5"
+  },
+  {
+    "id": "math-m-add-9-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 9 + 5",
+    "options": [
+      "14",
+      "13",
+      "45",
+      "4"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-sub-9-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "9 minus 5",
+    "options": [
+      "5",
+      "3",
+      "4",
+      "45"
+    ],
+    "answer": "4"
+  },
+  {
+    "id": "math-m-add-9-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 9 + 6",
+    "options": [
+      "54",
+      "3",
+      "16",
+      "15"
+    ],
+    "answer": "15"
+  },
+  {
+    "id": "math-m-sub-9-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "9 minus 6",
+    "options": [
+      "15",
+      "3",
+      "4",
+      "2"
+    ],
+    "answer": "3"
+  },
+  {
+    "id": "math-m-add-9-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 9 + 7",
+    "options": [
+      "17",
+      "15",
+      "16",
+      "2"
+    ],
+    "answer": "16"
+  },
+  {
+    "id": "math-m-sub-9-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "9 minus 7",
+    "options": [
+      "2",
+      "1",
+      "16",
+      "63"
+    ],
+    "answer": "2"
+  },
+  {
+    "id": "math-m-add-9-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 9 + 8",
+    "options": [
+      "72",
+      "17",
+      "18",
+      "16"
+    ],
+    "answer": "17"
+  },
+  {
+    "id": "math-m-sub-9-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "9 minus 8",
+    "options": [
+      "17",
+      "72",
+      "2",
+      "1"
+    ],
+    "answer": "1"
+  },
+  {
+    "id": "math-m-add-9-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 9 + 9",
+    "options": [
+      "18",
+      "17",
+      "81",
+      "0"
+    ],
+    "answer": "18"
+  },
+  {
+    "id": "math-m-add-9-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 9 + 10",
+    "options": [
+      "90",
+      "1",
+      "20",
+      "19"
+    ],
+    "answer": "19"
+  },
+  {
+    "id": "math-m-add-9-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 9 + 11",
+    "options": [
+      "21",
+      "19",
+      "20",
+      "2"
+    ],
+    "answer": "20"
+  },
+  {
+    "id": "math-m-add-9-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 9 + 12",
+    "options": [
+      "108",
+      "21",
+      "22",
+      "20"
+    ],
+    "answer": "21"
+  },
+  {
+    "id": "math-m-add-10-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 10 + 2",
+    "options": [
+      "20",
+      "8",
+      "13",
+      "12"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-sub-10-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "10 minus 2",
+    "options": [
+      "12",
+      "20",
+      "9",
+      "8"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "math-m-add-10-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 10 + 3",
+    "options": [
+      "14",
+      "12",
+      "13",
+      "7"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-sub-10-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "10 minus 3",
+    "options": [
+      "8",
+      "6",
+      "7",
+      "30"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "math-m-add-10-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 10 + 4",
+    "options": [
+      "40",
+      "14",
+      "15",
+      "13"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-sub-10-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "10 minus 4",
+    "options": [
+      "14",
+      "6",
+      "7",
+      "5"
+    ],
+    "answer": "6"
+  },
+  {
+    "id": "math-m-add-10-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 10 + 5",
+    "options": [
+      "15",
+      "14",
+      "50",
+      "5"
+    ],
+    "answer": "15"
+  },
+  {
+    "id": "math-m-add-10-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 10 + 6",
+    "options": [
+      "60",
+      "4",
+      "17",
+      "16"
+    ],
+    "answer": "16"
+  },
+  {
+    "id": "math-m-sub-10-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "10 minus 6",
+    "options": [
+      "16",
+      "60",
+      "5",
+      "4"
+    ],
+    "answer": "4"
+  },
+  {
+    "id": "math-m-add-10-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 10 + 7",
+    "options": [
+      "18",
+      "16",
+      "17",
+      "3"
+    ],
+    "answer": "17"
+  },
+  {
+    "id": "math-m-sub-10-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "10 minus 7",
+    "options": [
+      "4",
+      "2",
+      "3",
+      "70"
+    ],
+    "answer": "3"
+  },
+  {
+    "id": "math-m-add-10-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 10 + 8",
+    "options": [
+      "80",
+      "18",
+      "19",
+      "17"
+    ],
+    "answer": "18"
+  },
+  {
+    "id": "math-m-sub-10-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "10 minus 8",
+    "options": [
+      "18",
+      "2",
+      "3",
+      "1"
+    ],
+    "answer": "2"
+  },
+  {
+    "id": "math-m-add-10-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 10 + 9",
+    "options": [
+      "19",
+      "18",
+      "90",
+      "1"
+    ],
+    "answer": "19"
+  },
+  {
+    "id": "math-m-sub-10-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "10 minus 9",
+    "options": [
+      "1",
+      "0",
+      "19",
+      "90"
+    ],
+    "answer": "1"
+  },
+  {
+    "id": "math-m-add-10-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 10 + 10",
+    "options": [
+      "100",
+      "0",
+      "21",
+      "20"
+    ],
+    "answer": "20"
+  },
+  {
+    "id": "math-m-add-10-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 10 + 11",
+    "options": [
+      "22",
+      "20",
+      "21",
+      "1"
+    ],
+    "answer": "21"
+  },
+  {
+    "id": "math-m-add-10-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 10 + 12",
+    "options": [
+      "120",
+      "22",
+      "23",
+      "21"
+    ],
+    "answer": "22"
+  },
+  {
+    "id": "math-m-add-11-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 11 + 2",
+    "options": [
+      "22",
+      "9",
+      "14",
+      "13"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-sub-11-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "11 minus 2",
+    "options": [
+      "13",
+      "9",
+      "10",
+      "8"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "math-m-add-11-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 11 + 3",
+    "options": [
+      "15",
+      "13",
+      "14",
+      "8"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-sub-11-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "11 minus 3",
+    "options": [
+      "8",
+      "7",
+      "14",
+      "33"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "math-m-add-11-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 11 + 4",
+    "options": [
+      "44",
+      "15",
+      "16",
+      "14"
+    ],
+    "answer": "15"
+  },
+  {
+    "id": "math-m-sub-11-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "11 minus 4",
+    "options": [
+      "15",
+      "44",
+      "8",
+      "7"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "math-m-add-11-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 11 + 5",
+    "options": [
+      "16",
+      "15",
+      "55",
+      "6"
+    ],
+    "answer": "16"
+  },
+  {
+    "id": "math-m-sub-11-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "11 minus 5",
+    "options": [
+      "7",
+      "5",
+      "6",
+      "55"
+    ],
+    "answer": "6"
+  },
+  {
+    "id": "math-m-add-11-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 11 + 6",
+    "options": [
+      "66",
+      "5",
+      "18",
+      "17"
+    ],
+    "answer": "17"
+  },
+  {
+    "id": "math-m-sub-11-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "11 minus 6",
+    "options": [
+      "17",
+      "5",
+      "6",
+      "4"
+    ],
+    "answer": "5"
+  },
+  {
+    "id": "math-m-add-11-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 11 + 7",
+    "options": [
+      "19",
+      "17",
+      "18",
+      "4"
+    ],
+    "answer": "18"
+  },
+  {
+    "id": "math-m-sub-11-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "11 minus 7",
+    "options": [
+      "4",
+      "3",
+      "18",
+      "77"
+    ],
+    "answer": "4"
+  },
+  {
+    "id": "math-m-add-11-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 11 + 8",
+    "options": [
+      "88",
+      "19",
+      "20",
+      "18"
+    ],
+    "answer": "19"
+  },
+  {
+    "id": "math-m-sub-11-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "11 minus 8",
+    "options": [
+      "19",
+      "88",
+      "4",
+      "3"
+    ],
+    "answer": "3"
+  },
+  {
+    "id": "math-m-add-11-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 11 + 9",
+    "options": [
+      "20",
+      "19",
+      "99",
+      "2"
+    ],
+    "answer": "20"
+  },
+  {
+    "id": "math-m-sub-11-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "11 minus 9",
+    "options": [
+      "3",
+      "1",
+      "2",
+      "99"
+    ],
+    "answer": "2"
+  },
+  {
+    "id": "math-m-add-11-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 11 + 10",
+    "options": [
+      "110",
+      "1",
+      "22",
+      "21"
+    ],
+    "answer": "21"
+  },
+  {
+    "id": "math-m-sub-11-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "11 minus 10",
+    "options": [
+      "21",
+      "1",
+      "2",
+      "0"
+    ],
+    "answer": "1"
+  },
+  {
+    "id": "math-m-add-11-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 11 + 11",
+    "options": [
+      "23",
+      "21",
+      "22",
+      "0"
+    ],
+    "answer": "22"
+  },
+  {
+    "id": "math-m-add-11-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 11 + 12",
+    "options": [
+      "132",
+      "23",
+      "24",
+      "22"
+    ],
+    "answer": "23"
+  },
+  {
+    "id": "math-m-add-12-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 12 + 2",
+    "options": [
+      "24",
+      "10",
+      "15",
+      "14"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-sub-12-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "12 minus 2",
+    "options": [
+      "14",
+      "24",
+      "11",
+      "10"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "math-m-add-12-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 12 + 3",
+    "options": [
+      "16",
+      "14",
+      "15",
+      "9"
+    ],
+    "answer": "15"
+  },
+  {
+    "id": "math-m-sub-12-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "12 minus 3",
+    "options": [
+      "10",
+      "8",
+      "9",
+      "36"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "math-m-add-12-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 12 + 4",
+    "options": [
+      "48",
+      "16",
+      "17",
+      "15"
+    ],
+    "answer": "16"
+  },
+  {
+    "id": "math-m-sub-12-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "12 minus 4",
+    "options": [
+      "16",
+      "8",
+      "9",
+      "7"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "math-m-add-12-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 12 + 5",
+    "options": [
+      "17",
+      "16",
+      "60",
+      "7"
+    ],
+    "answer": "17"
+  },
+  {
+    "id": "math-m-sub-12-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "12 minus 5",
+    "options": [
+      "7",
+      "6",
+      "17",
+      "60"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "math-m-add-12-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 12 + 6",
+    "options": [
+      "72",
+      "6",
+      "19",
+      "18"
+    ],
+    "answer": "18"
+  },
+  {
+    "id": "math-m-add-12-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 12 + 7",
+    "options": [
+      "20",
+      "18",
+      "19",
+      "5"
+    ],
+    "answer": "19"
+  },
+  {
+    "id": "math-m-sub-12-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "12 minus 7",
+    "options": [
+      "6",
+      "4",
+      "5",
+      "84"
+    ],
+    "answer": "5"
+  },
+  {
+    "id": "math-m-add-12-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 12 + 8",
+    "options": [
+      "96",
+      "20",
+      "21",
+      "19"
+    ],
+    "answer": "20"
+  },
+  {
+    "id": "math-m-sub-12-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "12 minus 8",
+    "options": [
+      "20",
+      "4",
+      "5",
+      "3"
+    ],
+    "answer": "4"
+  },
+  {
+    "id": "math-m-add-12-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 12 + 9",
+    "options": [
+      "21",
+      "20",
+      "108",
+      "3"
+    ],
+    "answer": "21"
+  },
+  {
+    "id": "math-m-sub-12-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "12 minus 9",
+    "options": [
+      "3",
+      "2",
+      "21",
+      "108"
+    ],
+    "answer": "3"
+  },
+  {
+    "id": "math-m-add-12-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 12 + 10",
+    "options": [
+      "120",
+      "2",
+      "23",
+      "22"
+    ],
+    "answer": "22"
+  },
+  {
+    "id": "math-m-sub-12-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "12 minus 10",
+    "options": [
+      "22",
+      "120",
+      "3",
+      "2"
+    ],
+    "answer": "2"
+  },
+  {
+    "id": "math-m-add-12-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 12 + 11",
+    "options": [
+      "24",
+      "22",
+      "23",
+      "1"
+    ],
+    "answer": "23"
+  },
+  {
+    "id": "math-m-sub-12-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "12 minus 11",
+    "options": [
+      "2",
+      "0",
+      "1",
+      "132"
+    ],
+    "answer": "1"
+  },
+  {
+    "id": "math-m-add-12-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 12 + 12",
+    "options": [
+      "144",
+      "24",
+      "25",
+      "23"
+    ],
+    "answer": "24"
+  },
+  {
+    "id": "math-m-add-13-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 13 + 2",
+    "options": [
+      "26",
+      "11",
+      "16",
+      "15"
+    ],
+    "answer": "15"
+  },
+  {
+    "id": "math-m-sub-13-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "13 minus 2",
+    "options": [
+      "15",
+      "11",
+      "12",
+      "10"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-add-13-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 13 + 3",
+    "options": [
+      "17",
+      "15",
+      "16",
+      "10"
+    ],
+    "answer": "16"
+  },
+  {
+    "id": "math-m-sub-13-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "13 minus 3",
+    "options": [
+      "10",
+      "9",
+      "16",
+      "39"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "math-m-add-13-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 13 + 4",
+    "options": [
+      "52",
+      "17",
+      "18",
+      "16"
+    ],
+    "answer": "17"
+  },
+  {
+    "id": "math-m-sub-13-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "13 minus 4",
+    "options": [
+      "17",
+      "52",
+      "10",
+      "9"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "math-m-add-13-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 13 + 5",
+    "options": [
+      "18",
+      "17",
+      "65",
+      "8"
+    ],
+    "answer": "18"
+  },
+  {
+    "id": "math-m-sub-13-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "13 minus 5",
+    "options": [
+      "9",
+      "7",
+      "8",
+      "65"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "math-m-add-13-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 13 + 6",
+    "options": [
+      "78",
+      "7",
+      "20",
+      "19"
+    ],
+    "answer": "19"
+  },
+  {
+    "id": "math-m-sub-13-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "13 minus 6",
+    "options": [
+      "19",
+      "7",
+      "8",
+      "6"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "math-m-add-13-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 13 + 7",
+    "options": [
+      "21",
+      "19",
+      "20",
+      "6"
+    ],
+    "answer": "20"
+  },
+  {
+    "id": "math-m-sub-13-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "13 minus 7",
+    "options": [
+      "6",
+      "5",
+      "20",
+      "91"
+    ],
+    "answer": "6"
+  },
+  {
+    "id": "math-m-add-13-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 13 + 8",
+    "options": [
+      "104",
+      "21",
+      "22",
+      "20"
+    ],
+    "answer": "21"
+  },
+  {
+    "id": "math-m-sub-13-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "13 minus 8",
+    "options": [
+      "21",
+      "104",
+      "6",
+      "5"
+    ],
+    "answer": "5"
+  },
+  {
+    "id": "math-m-add-13-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 13 + 9",
+    "options": [
+      "22",
+      "21",
+      "117",
+      "4"
+    ],
+    "answer": "22"
+  },
+  {
+    "id": "math-m-sub-13-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "13 minus 9",
+    "options": [
+      "5",
+      "3",
+      "4",
+      "117"
+    ],
+    "answer": "4"
+  },
+  {
+    "id": "math-m-add-13-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 13 + 10",
+    "options": [
+      "130",
+      "3",
+      "24",
+      "23"
+    ],
+    "answer": "23"
+  },
+  {
+    "id": "math-m-sub-13-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "13 minus 10",
+    "options": [
+      "23",
+      "3",
+      "4",
+      "2"
+    ],
+    "answer": "3"
+  },
+  {
+    "id": "math-m-add-13-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 13 + 11",
+    "options": [
+      "25",
+      "23",
+      "24",
+      "2"
+    ],
+    "answer": "24"
+  },
+  {
+    "id": "math-m-sub-13-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "13 minus 11",
+    "options": [
+      "2",
+      "1",
+      "24",
+      "143"
+    ],
+    "answer": "2"
+  },
+  {
+    "id": "math-m-add-13-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 13 + 12",
+    "options": [
+      "156",
+      "25",
+      "26",
+      "24"
+    ],
+    "answer": "25"
+  },
+  {
+    "id": "math-m-sub-13-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "13 minus 12",
+    "options": [
+      "25",
+      "156",
+      "2",
+      "1"
+    ],
+    "answer": "1"
+  },
+  {
+    "id": "math-m-add-14-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 14 + 2",
+    "options": [
+      "28",
+      "12",
+      "17",
+      "16"
+    ],
+    "answer": "16"
+  },
+  {
+    "id": "math-m-sub-14-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "14 minus 2",
+    "options": [
+      "16",
+      "28",
+      "13",
+      "12"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-add-14-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 14 + 3",
+    "options": [
+      "18",
+      "16",
+      "17",
+      "11"
+    ],
+    "answer": "17"
+  },
+  {
+    "id": "math-m-sub-14-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "14 minus 3",
+    "options": [
+      "12",
+      "10",
+      "11",
+      "42"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-add-14-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 14 + 4",
+    "options": [
+      "56",
+      "18",
+      "19",
+      "17"
+    ],
+    "answer": "18"
+  },
+  {
+    "id": "math-m-sub-14-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "14 minus 4",
+    "options": [
+      "18",
+      "10",
+      "11",
+      "9"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "math-m-add-14-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 14 + 5",
+    "options": [
+      "19",
+      "18",
+      "70",
+      "9"
+    ],
+    "answer": "19"
+  },
+  {
+    "id": "math-m-sub-14-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "14 minus 5",
+    "options": [
+      "9",
+      "8",
+      "19",
+      "70"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "math-m-add-14-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 14 + 6",
+    "options": [
+      "84",
+      "8",
+      "21",
+      "20"
+    ],
+    "answer": "20"
+  },
+  {
+    "id": "math-m-sub-14-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "14 minus 6",
+    "options": [
+      "20",
+      "84",
+      "9",
+      "8"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "math-m-add-14-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 14 + 7",
+    "options": [
+      "22",
+      "20",
+      "21",
+      "7"
+    ],
+    "answer": "21"
+  },
+  {
+    "id": "math-m-add-14-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 14 + 8",
+    "options": [
+      "112",
+      "22",
+      "23",
+      "21"
+    ],
+    "answer": "22"
+  },
+  {
+    "id": "math-m-sub-14-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "14 minus 8",
+    "options": [
+      "22",
+      "6",
+      "7",
+      "5"
+    ],
+    "answer": "6"
+  },
+  {
+    "id": "math-m-add-14-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 14 + 9",
+    "options": [
+      "23",
+      "22",
+      "126",
+      "5"
+    ],
+    "answer": "23"
+  },
+  {
+    "id": "math-m-sub-14-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "14 minus 9",
+    "options": [
+      "5",
+      "4",
+      "23",
+      "126"
+    ],
+    "answer": "5"
+  },
+  {
+    "id": "math-m-add-14-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 14 + 10",
+    "options": [
+      "140",
+      "4",
+      "25",
+      "24"
+    ],
+    "answer": "24"
+  },
+  {
+    "id": "math-m-sub-14-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "14 minus 10",
+    "options": [
+      "24",
+      "140",
+      "5",
+      "4"
+    ],
+    "answer": "4"
+  },
+  {
+    "id": "math-m-add-14-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 14 + 11",
+    "options": [
+      "26",
+      "24",
+      "25",
+      "3"
+    ],
+    "answer": "25"
+  },
+  {
+    "id": "math-m-sub-14-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "14 minus 11",
+    "options": [
+      "4",
+      "2",
+      "3",
+      "154"
+    ],
+    "answer": "3"
+  },
+  {
+    "id": "math-m-add-14-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 14 + 12",
+    "options": [
+      "168",
+      "26",
+      "27",
+      "25"
+    ],
+    "answer": "26"
+  },
+  {
+    "id": "math-m-sub-14-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "14 minus 12",
+    "options": [
+      "26",
+      "2",
+      "3",
+      "1"
+    ],
+    "answer": "2"
+  },
+  {
+    "id": "math-m-add-15-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 15 + 2",
+    "options": [
+      "30",
+      "13",
+      "18",
+      "17"
+    ],
+    "answer": "17"
+  },
+  {
+    "id": "math-m-sub-15-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "15 minus 2",
+    "options": [
+      "17",
+      "13",
+      "14",
+      "12"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-add-15-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 15 + 3",
+    "options": [
+      "19",
+      "17",
+      "18",
+      "12"
+    ],
+    "answer": "18"
+  },
+  {
+    "id": "math-m-sub-15-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "15 minus 3",
+    "options": [
+      "12",
+      "11",
+      "18",
+      "45"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-add-15-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 15 + 4",
+    "options": [
+      "60",
+      "19",
+      "20",
+      "18"
+    ],
+    "answer": "19"
+  },
+  {
+    "id": "math-m-sub-15-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "15 minus 4",
+    "options": [
+      "19",
+      "60",
+      "12",
+      "11"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-add-15-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 15 + 5",
+    "options": [
+      "20",
+      "19",
+      "75",
+      "10"
+    ],
+    "answer": "20"
+  },
+  {
+    "id": "math-m-sub-15-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "15 minus 5",
+    "options": [
+      "11",
+      "9",
+      "10",
+      "75"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "math-m-add-15-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 15 + 6",
+    "options": [
+      "90",
+      "9",
+      "22",
+      "21"
+    ],
+    "answer": "21"
+  },
+  {
+    "id": "math-m-sub-15-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "15 minus 6",
+    "options": [
+      "21",
+      "9",
+      "10",
+      "8"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "math-m-add-15-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 15 + 7",
+    "options": [
+      "23",
+      "21",
+      "22",
+      "8"
+    ],
+    "answer": "22"
+  },
+  {
+    "id": "math-m-sub-15-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "15 minus 7",
+    "options": [
+      "8",
+      "7",
+      "22",
+      "105"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "math-m-add-15-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 15 + 8",
+    "options": [
+      "120",
+      "23",
+      "24",
+      "22"
+    ],
+    "answer": "23"
+  },
+  {
+    "id": "math-m-sub-15-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "15 minus 8",
+    "options": [
+      "23",
+      "120",
+      "8",
+      "7"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "math-m-add-15-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 15 + 9",
+    "options": [
+      "24",
+      "23",
+      "135",
+      "6"
+    ],
+    "answer": "24"
+  },
+  {
+    "id": "math-m-sub-15-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "15 minus 9",
+    "options": [
+      "7",
+      "5",
+      "6",
+      "135"
+    ],
+    "answer": "6"
+  },
+  {
+    "id": "math-m-add-15-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 15 + 10",
+    "options": [
+      "150",
+      "5",
+      "26",
+      "25"
+    ],
+    "answer": "25"
+  },
+  {
+    "id": "math-m-sub-15-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "15 minus 10",
+    "options": [
+      "25",
+      "5",
+      "6",
+      "4"
+    ],
+    "answer": "5"
+  },
+  {
+    "id": "math-m-add-15-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 15 + 11",
+    "options": [
+      "27",
+      "25",
+      "26",
+      "4"
+    ],
+    "answer": "26"
+  },
+  {
+    "id": "math-m-sub-15-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "15 minus 11",
+    "options": [
+      "4",
+      "3",
+      "26",
+      "165"
+    ],
+    "answer": "4"
+  },
+  {
+    "id": "math-m-add-15-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 15 + 12",
+    "options": [
+      "180",
+      "27",
+      "28",
+      "26"
+    ],
+    "answer": "27"
+  },
+  {
+    "id": "math-m-sub-15-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "15 minus 12",
+    "options": [
+      "27",
+      "180",
+      "4",
+      "3"
+    ],
+    "answer": "3"
+  },
+  {
+    "id": "math-m-add-16-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 16 + 2",
+    "options": [
+      "32",
+      "14",
+      "19",
+      "18"
+    ],
+    "answer": "18"
+  },
+  {
+    "id": "math-m-sub-16-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "16 minus 2",
+    "options": [
+      "18",
+      "32",
+      "15",
+      "14"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-add-16-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 16 + 3",
+    "options": [
+      "20",
+      "18",
+      "19",
+      "13"
+    ],
+    "answer": "19"
+  },
+  {
+    "id": "math-m-sub-16-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "16 minus 3",
+    "options": [
+      "14",
+      "12",
+      "13",
+      "48"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-add-16-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 16 + 4",
+    "options": [
+      "64",
+      "20",
+      "21",
+      "19"
+    ],
+    "answer": "20"
+  },
+  {
+    "id": "math-m-sub-16-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "16 minus 4",
+    "options": [
+      "20",
+      "12",
+      "13",
+      "11"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-add-16-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 16 + 5",
+    "options": [
+      "21",
+      "20",
+      "80",
+      "11"
+    ],
+    "answer": "21"
+  },
+  {
+    "id": "math-m-sub-16-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "16 minus 5",
+    "options": [
+      "11",
+      "10",
+      "21",
+      "80"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-add-16-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 16 + 6",
+    "options": [
+      "96",
+      "10",
+      "23",
+      "22"
+    ],
+    "answer": "22"
+  },
+  {
+    "id": "math-m-sub-16-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "16 minus 6",
+    "options": [
+      "22",
+      "96",
+      "11",
+      "10"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "math-m-add-16-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 16 + 7",
+    "options": [
+      "24",
+      "22",
+      "23",
+      "9"
+    ],
+    "answer": "23"
+  },
+  {
+    "id": "math-m-sub-16-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "16 minus 7",
+    "options": [
+      "10",
+      "8",
+      "9",
+      "112"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "math-m-add-16-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 16 + 8",
+    "options": [
+      "128",
+      "24",
+      "25",
+      "23"
+    ],
+    "answer": "24"
+  },
+  {
+    "id": "math-m-add-16-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 16 + 9",
+    "options": [
+      "25",
+      "24",
+      "144",
+      "7"
+    ],
+    "answer": "25"
+  },
+  {
+    "id": "math-m-sub-16-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "16 minus 9",
+    "options": [
+      "7",
+      "6",
+      "25",
+      "144"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "math-m-add-16-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 16 + 10",
+    "options": [
+      "160",
+      "6",
+      "27",
+      "26"
+    ],
+    "answer": "26"
+  },
+  {
+    "id": "math-m-sub-16-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "16 minus 10",
+    "options": [
+      "26",
+      "160",
+      "7",
+      "6"
+    ],
+    "answer": "6"
+  },
+  {
+    "id": "math-m-add-16-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 16 + 11",
+    "options": [
+      "28",
+      "26",
+      "27",
+      "5"
+    ],
+    "answer": "27"
+  },
+  {
+    "id": "math-m-sub-16-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "16 minus 11",
+    "options": [
+      "6",
+      "4",
+      "5",
+      "176"
+    ],
+    "answer": "5"
+  },
+  {
+    "id": "math-m-add-16-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 16 + 12",
+    "options": [
+      "192",
+      "28",
+      "29",
+      "27"
+    ],
+    "answer": "28"
+  },
+  {
+    "id": "math-m-sub-16-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "16 minus 12",
+    "options": [
+      "28",
+      "4",
+      "5",
+      "3"
+    ],
+    "answer": "4"
+  },
+  {
+    "id": "math-m-add-17-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 17 + 2",
+    "options": [
+      "34",
+      "15",
+      "20",
+      "19"
+    ],
+    "answer": "19"
+  },
+  {
+    "id": "math-m-sub-17-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "17 minus 2",
+    "options": [
+      "19",
+      "15",
+      "16",
+      "14"
+    ],
+    "answer": "15"
+  },
+  {
+    "id": "math-m-add-17-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 17 + 3",
+    "options": [
+      "21",
+      "19",
+      "20",
+      "14"
+    ],
+    "answer": "20"
+  },
+  {
+    "id": "math-m-sub-17-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "17 minus 3",
+    "options": [
+      "14",
+      "13",
+      "20",
+      "51"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-add-17-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 17 + 4",
+    "options": [
+      "68",
+      "21",
+      "22",
+      "20"
+    ],
+    "answer": "21"
+  },
+  {
+    "id": "math-m-sub-17-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "17 minus 4",
+    "options": [
+      "21",
+      "68",
+      "14",
+      "13"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-add-17-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 17 + 5",
+    "options": [
+      "22",
+      "21",
+      "85",
+      "12"
+    ],
+    "answer": "22"
+  },
+  {
+    "id": "math-m-sub-17-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "17 minus 5",
+    "options": [
+      "13",
+      "11",
+      "12",
+      "85"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-add-17-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 17 + 6",
+    "options": [
+      "102",
+      "11",
+      "24",
+      "23"
+    ],
+    "answer": "23"
+  },
+  {
+    "id": "math-m-sub-17-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "17 minus 6",
+    "options": [
+      "23",
+      "11",
+      "12",
+      "10"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-add-17-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 17 + 7",
+    "options": [
+      "25",
+      "23",
+      "24",
+      "10"
+    ],
+    "answer": "24"
+  },
+  {
+    "id": "math-m-sub-17-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "17 minus 7",
+    "options": [
+      "10",
+      "9",
+      "24",
+      "119"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "math-m-add-17-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 17 + 8",
+    "options": [
+      "136",
+      "25",
+      "26",
+      "24"
+    ],
+    "answer": "25"
+  },
+  {
+    "id": "math-m-sub-17-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "17 minus 8",
+    "options": [
+      "25",
+      "136",
+      "10",
+      "9"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "math-m-add-17-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 17 + 9",
+    "options": [
+      "26",
+      "25",
+      "153",
+      "8"
+    ],
+    "answer": "26"
+  },
+  {
+    "id": "math-m-sub-17-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "17 minus 9",
+    "options": [
+      "9",
+      "7",
+      "8",
+      "153"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "math-m-add-17-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 17 + 10",
+    "options": [
+      "170",
+      "7",
+      "28",
+      "27"
+    ],
+    "answer": "27"
+  },
+  {
+    "id": "math-m-sub-17-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "17 minus 10",
+    "options": [
+      "27",
+      "7",
+      "8",
+      "6"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "math-m-add-17-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 17 + 11",
+    "options": [
+      "29",
+      "27",
+      "28",
+      "6"
+    ],
+    "answer": "28"
+  },
+  {
+    "id": "math-m-sub-17-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "17 minus 11",
+    "options": [
+      "6",
+      "5",
+      "28",
+      "187"
+    ],
+    "answer": "6"
+  },
+  {
+    "id": "math-m-add-17-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 17 + 12",
+    "options": [
+      "204",
+      "29",
+      "30",
+      "28"
+    ],
+    "answer": "29"
+  },
+  {
+    "id": "math-m-sub-17-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "17 minus 12",
+    "options": [
+      "29",
+      "204",
+      "6",
+      "5"
+    ],
+    "answer": "5"
+  },
+  {
+    "id": "math-m-add-18-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 18 + 2",
+    "options": [
+      "36",
+      "16",
+      "21",
+      "20"
+    ],
+    "answer": "20"
+  },
+  {
+    "id": "math-m-sub-18-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "18 minus 2",
+    "options": [
+      "20",
+      "36",
+      "17",
+      "16"
+    ],
+    "answer": "16"
+  },
+  {
+    "id": "math-m-add-18-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 18 + 3",
+    "options": [
+      "22",
+      "20",
+      "21",
+      "15"
+    ],
+    "answer": "21"
+  },
+  {
+    "id": "math-m-sub-18-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "18 minus 3",
+    "options": [
+      "16",
+      "14",
+      "15",
+      "54"
+    ],
+    "answer": "15"
+  },
+  {
+    "id": "math-m-add-18-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 18 + 4",
+    "options": [
+      "72",
+      "22",
+      "23",
+      "21"
+    ],
+    "answer": "22"
+  },
+  {
+    "id": "math-m-sub-18-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "18 minus 4",
+    "options": [
+      "22",
+      "14",
+      "15",
+      "13"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-add-18-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 18 + 5",
+    "options": [
+      "23",
+      "22",
+      "90",
+      "13"
+    ],
+    "answer": "23"
+  },
+  {
+    "id": "math-m-sub-18-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "18 minus 5",
+    "options": [
+      "13",
+      "12",
+      "23",
+      "90"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-add-18-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 18 + 6",
+    "options": [
+      "108",
+      "12",
+      "25",
+      "24"
+    ],
+    "answer": "24"
+  },
+  {
+    "id": "math-m-sub-18-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "18 minus 6",
+    "options": [
+      "24",
+      "108",
+      "13",
+      "12"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-add-18-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 18 + 7",
+    "options": [
+      "26",
+      "24",
+      "25",
+      "11"
+    ],
+    "answer": "25"
+  },
+  {
+    "id": "math-m-sub-18-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "18 minus 7",
+    "options": [
+      "12",
+      "10",
+      "11",
+      "126"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-add-18-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 18 + 8",
+    "options": [
+      "144",
+      "26",
+      "27",
+      "25"
+    ],
+    "answer": "26"
+  },
+  {
+    "id": "math-m-sub-18-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "18 minus 8",
+    "options": [
+      "26",
+      "10",
+      "11",
+      "9"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "math-m-add-18-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 18 + 9",
+    "options": [
+      "27",
+      "26",
+      "162",
+      "9"
+    ],
+    "answer": "27"
+  },
+  {
+    "id": "math-m-add-18-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 18 + 10",
+    "options": [
+      "180",
+      "8",
+      "29",
+      "28"
+    ],
+    "answer": "28"
+  },
+  {
+    "id": "math-m-sub-18-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "18 minus 10",
+    "options": [
+      "28",
+      "180",
+      "9",
+      "8"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "math-m-add-18-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 18 + 11",
+    "options": [
+      "30",
+      "28",
+      "29",
+      "7"
+    ],
+    "answer": "29"
+  },
+  {
+    "id": "math-m-sub-18-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "18 minus 11",
+    "options": [
+      "8",
+      "6",
+      "7",
+      "198"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "math-m-add-18-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 18 + 12",
+    "options": [
+      "216",
+      "30",
+      "31",
+      "29"
+    ],
+    "answer": "30"
+  },
+  {
+    "id": "math-m-sub-18-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "18 minus 12",
+    "options": [
+      "30",
+      "6",
+      "7",
+      "5"
+    ],
+    "answer": "6"
+  },
+  {
+    "id": "math-m-add-19-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 19 + 2",
+    "options": [
+      "38",
+      "17",
+      "22",
+      "21"
+    ],
+    "answer": "21"
+  },
+  {
+    "id": "math-m-sub-19-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "19 minus 2",
+    "options": [
+      "21",
+      "17",
+      "18",
+      "16"
+    ],
+    "answer": "17"
+  },
+  {
+    "id": "math-m-add-19-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 19 + 3",
+    "options": [
+      "23",
+      "21",
+      "22",
+      "16"
+    ],
+    "answer": "22"
+  },
+  {
+    "id": "math-m-sub-19-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "19 minus 3",
+    "options": [
+      "16",
+      "15",
+      "22",
+      "57"
+    ],
+    "answer": "16"
+  },
+  {
+    "id": "math-m-add-19-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 19 + 4",
+    "options": [
+      "76",
+      "23",
+      "24",
+      "22"
+    ],
+    "answer": "23"
+  },
+  {
+    "id": "math-m-sub-19-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "19 minus 4",
+    "options": [
+      "23",
+      "76",
+      "16",
+      "15"
+    ],
+    "answer": "15"
+  },
+  {
+    "id": "math-m-add-19-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 19 + 5",
+    "options": [
+      "24",
+      "23",
+      "95",
+      "14"
+    ],
+    "answer": "24"
+  },
+  {
+    "id": "math-m-sub-19-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "19 minus 5",
+    "options": [
+      "15",
+      "13",
+      "14",
+      "95"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-add-19-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 19 + 6",
+    "options": [
+      "114",
+      "13",
+      "26",
+      "25"
+    ],
+    "answer": "25"
+  },
+  {
+    "id": "math-m-sub-19-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "19 minus 6",
+    "options": [
+      "25",
+      "13",
+      "14",
+      "12"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-add-19-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 19 + 7",
+    "options": [
+      "27",
+      "25",
+      "26",
+      "12"
+    ],
+    "answer": "26"
+  },
+  {
+    "id": "math-m-sub-19-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "19 minus 7",
+    "options": [
+      "12",
+      "11",
+      "26",
+      "133"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-add-19-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 19 + 8",
+    "options": [
+      "152",
+      "27",
+      "28",
+      "26"
+    ],
+    "answer": "27"
+  },
+  {
+    "id": "math-m-sub-19-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "19 minus 8",
+    "options": [
+      "27",
+      "152",
+      "12",
+      "11"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-add-19-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 19 + 9",
+    "options": [
+      "28",
+      "27",
+      "171",
+      "10"
+    ],
+    "answer": "28"
+  },
+  {
+    "id": "math-m-sub-19-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "19 minus 9",
+    "options": [
+      "11",
+      "9",
+      "10",
+      "171"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "math-m-add-19-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 19 + 10",
+    "options": [
+      "190",
+      "9",
+      "30",
+      "29"
+    ],
+    "answer": "29"
+  },
+  {
+    "id": "math-m-sub-19-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "19 minus 10",
+    "options": [
+      "29",
+      "9",
+      "10",
+      "8"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "math-m-add-19-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 19 + 11",
+    "options": [
+      "31",
+      "29",
+      "30",
+      "8"
+    ],
+    "answer": "30"
+  },
+  {
+    "id": "math-m-sub-19-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "19 minus 11",
+    "options": [
+      "8",
+      "7",
+      "30",
+      "209"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "math-m-add-19-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 19 + 12",
+    "options": [
+      "228",
+      "31",
+      "32",
+      "30"
+    ],
+    "answer": "31"
+  },
+  {
+    "id": "math-m-sub-19-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "19 minus 12",
+    "options": [
+      "31",
+      "228",
+      "8",
+      "7"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "math-m-add-20-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 20 + 2",
+    "options": [
+      "40",
+      "18",
+      "23",
+      "22"
+    ],
+    "answer": "22"
+  },
+  {
+    "id": "math-m-sub-20-2",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "20 minus 2",
+    "options": [
+      "22",
+      "40",
+      "19",
+      "18"
+    ],
+    "answer": "18"
+  },
+  {
+    "id": "math-m-add-20-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 20 + 3",
+    "options": [
+      "24",
+      "22",
+      "23",
+      "17"
+    ],
+    "answer": "23"
+  },
+  {
+    "id": "math-m-sub-20-3",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "20 minus 3",
+    "options": [
+      "18",
+      "16",
+      "17",
+      "60"
+    ],
+    "answer": "17"
+  },
+  {
+    "id": "math-m-add-20-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 20 + 4",
+    "options": [
+      "80",
+      "24",
+      "25",
+      "23"
+    ],
+    "answer": "24"
+  },
+  {
+    "id": "math-m-sub-20-4",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "20 minus 4",
+    "options": [
+      "24",
+      "16",
+      "17",
+      "15"
+    ],
+    "answer": "16"
+  },
+  {
+    "id": "math-m-add-20-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 20 + 5",
+    "options": [
+      "25",
+      "24",
+      "100",
+      "15"
+    ],
+    "answer": "25"
+  },
+  {
+    "id": "math-m-sub-20-5",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "20 minus 5",
+    "options": [
+      "15",
+      "14",
+      "25",
+      "100"
+    ],
+    "answer": "15"
+  },
+  {
+    "id": "math-m-add-20-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 20 + 6",
+    "options": [
+      "120",
+      "14",
+      "27",
+      "26"
+    ],
+    "answer": "26"
+  },
+  {
+    "id": "math-m-sub-20-6",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "20 minus 6",
+    "options": [
+      "26",
+      "120",
+      "15",
+      "14"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "math-m-add-20-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 20 + 7",
+    "options": [
+      "28",
+      "26",
+      "27",
+      "13"
+    ],
+    "answer": "27"
+  },
+  {
+    "id": "math-m-sub-20-7",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "20 minus 7",
+    "options": [
+      "14",
+      "12",
+      "13",
+      "140"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "math-m-add-20-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 20 + 8",
+    "options": [
+      "160",
+      "28",
+      "29",
+      "27"
+    ],
+    "answer": "28"
+  },
+  {
+    "id": "math-m-sub-20-8",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "20 minus 8",
+    "options": [
+      "28",
+      "12",
+      "13",
+      "11"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "math-m-add-20-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 20 + 9",
+    "options": [
+      "29",
+      "28",
+      "180",
+      "11"
+    ],
+    "answer": "29"
+  },
+  {
+    "id": "math-m-sub-20-9",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "20 minus 9",
+    "options": [
+      "11",
+      "10",
+      "29",
+      "180"
+    ],
+    "answer": "11"
+  },
+  {
+    "id": "math-m-add-20-10",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 20 + 10",
+    "options": [
+      "200",
+      "10",
+      "31",
+      "30"
+    ],
+    "answer": "30"
+  },
+  {
+    "id": "math-m-add-20-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 20 + 11",
+    "options": [
+      "32",
+      "30",
+      "31",
+      "9"
+    ],
+    "answer": "31"
+  },
+  {
+    "id": "math-m-sub-20-11",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "20 minus 11",
+    "options": [
+      "10",
+      "8",
+      "9",
+      "220"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "math-m-add-20-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "quick, 20 + 12",
+    "options": [
+      "240",
+      "32",
+      "33",
+      "31"
+    ],
+    "answer": "32"
+  },
+  {
+    "id": "math-m-sub-20-12",
+    "kind": "math",
+    "category": "math",
+    "difficulty": 1,
+    "text": "20 minus 12",
+    "options": [
+      "32",
+      "8",
+      "9",
+      "7"
+    ],
+    "answer": "8"
+  }
+]

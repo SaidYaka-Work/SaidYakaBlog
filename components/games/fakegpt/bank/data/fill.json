@@ -1,0 +1,548 @@
+[
+  {
+    "id": "fill-fill-0",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "Earth orbits the ___.",
+    "options": [
+      "Venus",
+      "Sun",
+      "Moon",
+      "Mars"
+    ],
+    "answer": "Sun"
+  },
+  {
+    "id": "fill-fill-1",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A hexagon has ___ sides.",
+    "options": [
+      "6",
+      "7",
+      "8",
+      "5"
+    ],
+    "answer": "6"
+  },
+  {
+    "id": "fill-fill-2",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "Water freezes at ___ °C.",
+    "options": [
+      "10",
+      "32",
+      "100",
+      "0"
+    ],
+    "answer": "0"
+  },
+  {
+    "id": "fill-fill-3",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "There are ___ days in a common year.",
+    "options": [
+      "360",
+      "364",
+      "365",
+      "366"
+    ],
+    "answer": "365"
+  },
+  {
+    "id": "fill-fill-4",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A triangle has ___ sides.",
+    "options": [
+      "4",
+      "3",
+      "5",
+      "2"
+    ],
+    "answer": "3"
+  },
+  {
+    "id": "fill-fill-5",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "Humans typically have ___ chambers in the heart.",
+    "options": [
+      "4",
+      "6",
+      "2",
+      "3"
+    ],
+    "answer": "4"
+  },
+  {
+    "id": "fill-fill-6",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A right angle is ___ degrees.",
+    "options": [
+      "45",
+      "180",
+      "60",
+      "90"
+    ],
+    "answer": "90"
+  },
+  {
+    "id": "fill-fill-7",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "There are ___ hours in a day.",
+    "options": [
+      "60",
+      "12",
+      "24",
+      "48"
+    ],
+    "answer": "24"
+  },
+  {
+    "id": "fill-fill-8",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A standard piano has ___ keys.",
+    "options": [
+      "64",
+      "88",
+      "100",
+      "76"
+    ],
+    "answer": "88"
+  },
+  {
+    "id": "fill-fill-9",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "The Olympic flag has ___ rings.",
+    "options": [
+      "5",
+      "4",
+      "6",
+      "7"
+    ],
+    "answer": "5"
+  },
+  {
+    "id": "fill-fill-10",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A chessboard has ___ squares.",
+    "options": [
+      "100",
+      "16",
+      "32",
+      "64"
+    ],
+    "answer": "64"
+  },
+  {
+    "id": "fill-fill-11",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "There are ___ minutes in an hour.",
+    "options": [
+      "100",
+      "30",
+      "60",
+      "24"
+    ],
+    "answer": "60"
+  },
+  {
+    "id": "fill-fill-12",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "Water boils at ___ °C at sea level.",
+    "options": [
+      "90",
+      "100",
+      "0",
+      "212"
+    ],
+    "answer": "100"
+  },
+  {
+    "id": "fill-fill-13",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A typical adult has about ___ teeth.",
+    "options": [
+      "32",
+      "28",
+      "36",
+      "20"
+    ],
+    "answer": "32"
+  },
+  {
+    "id": "fill-fill-14",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A leap year has ___ days.",
+    "options": [
+      "360",
+      "365",
+      "364",
+      "366"
+    ],
+    "answer": "366"
+  },
+  {
+    "id": "fill-fill-15",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "There are ___ continents in the usual school list.",
+    "options": [
+      "6",
+      "8",
+      "7",
+      "5"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "fill-fill-16",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A week has ___ days.",
+    "options": [
+      "5",
+      "7",
+      "6",
+      "10"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "fill-fill-17",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A stop sign has ___ sides.",
+    "options": [
+      "8",
+      "5",
+      "6",
+      "4"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "fill-fill-18",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A cube has ___ faces.",
+    "options": [
+      "4",
+      "8",
+      "12",
+      "6"
+    ],
+    "answer": "6"
+  },
+  {
+    "id": "fill-fill-19",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A dozen is ___ items.",
+    "options": [
+      "24",
+      "10",
+      "12",
+      "6"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "fill-fill-20",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A cube has ___ edges.",
+    "options": [
+      "8",
+      "12",
+      "16",
+      "6"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "fill-fill-21",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A square has ___ equal sides.",
+    "options": [
+      "4",
+      "3",
+      "5",
+      "6"
+    ],
+    "answer": "4"
+  },
+  {
+    "id": "fill-fill-22",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "There are ___ seconds in a minute.",
+    "options": [
+      "30",
+      "24",
+      "100",
+      "60"
+    ],
+    "answer": "60"
+  },
+  {
+    "id": "fill-fill-23",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A pentagon has ___ sides.",
+    "options": [
+      "6",
+      "7",
+      "5",
+      "8"
+    ],
+    "answer": "5"
+  },
+  {
+    "id": "fill-fill-24",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "An octagon has ___ sides.",
+    "options": [
+      "5",
+      "8",
+      "6",
+      "10"
+    ],
+    "answer": "8"
+  },
+  {
+    "id": "fill-fill-25",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A typical week of workdays has ___ weekdays.",
+    "options": [
+      "5",
+      "6",
+      "4",
+      "7"
+    ],
+    "answer": "5"
+  },
+  {
+    "id": "fill-fill-26",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "There are ___ months in a year.",
+    "options": [
+      "24",
+      "10",
+      "13",
+      "12"
+    ],
+    "answer": "12"
+  },
+  {
+    "id": "fill-fill-27",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A right triangle can have a ___ degree corner.",
+    "options": [
+      "360",
+      "45 only",
+      "90",
+      "180"
+    ],
+    "answer": "90"
+  },
+  {
+    "id": "fill-fill-28",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "Light is faster than ___.",
+    "options": [
+      "itself",
+      "sound",
+      "radio forever",
+      "nothing ever"
+    ],
+    "answer": "sound"
+  },
+  {
+    "id": "fill-fill-29",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "Plants make food using ___.",
+    "options": [
+      "sunlight",
+      "rocks only",
+      "moonlight",
+      "wind only"
+    ],
+    "answer": "sunlight"
+  },
+  {
+    "id": "fill-fill-30",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "The Pacific is an ___.",
+    "options": [
+      "island",
+      "desert",
+      "river",
+      "ocean"
+    ],
+    "answer": "ocean"
+  },
+  {
+    "id": "fill-fill-31",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A tadpole grows into a ___.",
+    "options": [
+      "snake",
+      "fish",
+      "frog",
+      "bird"
+    ],
+    "answer": "frog"
+  },
+  {
+    "id": "fill-fill-32",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "Bees collect nectar to make ___.",
+    "options": [
+      "wax fruit",
+      "honey",
+      "milk",
+      "silk"
+    ],
+    "answer": "honey"
+  },
+  {
+    "id": "fill-fill-33",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A compass needle points toward ___.",
+    "options": [
+      "north",
+      "east",
+      "the sun",
+      "down"
+    ],
+    "answer": "north"
+  },
+  {
+    "id": "fill-fill-34",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "Ice is ___ water.",
+    "options": [
+      "salty only",
+      "gaseous",
+      "boiling",
+      "frozen"
+    ],
+    "answer": "frozen"
+  },
+  {
+    "id": "fill-fill-35",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A year has four ___.",
+    "options": [
+      "decades",
+      "centuries",
+      "seasons",
+      "hours"
+    ],
+    "answer": "seasons"
+  },
+  {
+    "id": "fill-fill-36",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "The Nile is a ___.",
+    "options": [
+      "sea",
+      "river",
+      "mountain",
+      "desert"
+    ],
+    "answer": "river"
+  },
+  {
+    "id": "fill-fill-37",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A kitten grows into a ___.",
+    "options": [
+      "cat",
+      "lion only",
+      "fox",
+      "dog"
+    ],
+    "answer": "cat"
+  },
+  {
+    "id": "fill-fill-38",
+    "kind": "fill",
+    "category": "fill",
+    "difficulty": 1,
+    "text": "A baker often bakes ___.",
+    "options": [
+      "batteries",
+      "bricks",
+      "bolts",
+      "bread"
+    ],
+    "answer": "bread"
+  }
+]

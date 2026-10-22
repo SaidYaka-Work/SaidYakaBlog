@@ -1,0 +1,576 @@
+[
+  {
+    "id": "unit-u-2-minutes-seconds",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "2 minutes in seconds?",
+    "options": [
+      "20",
+      "120",
+      "12",
+      "62"
+    ],
+    "answer": "120"
+  },
+  {
+    "id": "unit-u-3-minutes-seconds",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "3 minutes in seconds?",
+    "options": [
+      "180",
+      "63",
+      "30",
+      "300"
+    ],
+    "answer": "180"
+  },
+  {
+    "id": "unit-u-5-minutes-seconds",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "5 minutes in seconds?",
+    "options": [
+      "50",
+      "500",
+      "30",
+      "300"
+    ],
+    "answer": "300"
+  },
+  {
+    "id": "unit-u-2-hours-minutes",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "2 hours in minutes?",
+    "options": [
+      "12",
+      "62",
+      "120",
+      "200"
+    ],
+    "answer": "120"
+  },
+  {
+    "id": "unit-u-3-hours-minutes",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "3 hours in minutes?",
+    "options": [
+      "30",
+      "180",
+      "18",
+      "63"
+    ],
+    "answer": "180"
+  },
+  {
+    "id": "unit-u-4-hours-minutes",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "4 hours in minutes?",
+    "options": [
+      "240",
+      "64",
+      "40",
+      "400"
+    ],
+    "answer": "240"
+  },
+  {
+    "id": "unit-u-2-hours-seconds",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "2 hours in seconds?",
+    "options": [
+      "20",
+      "200",
+      "720",
+      "7200"
+    ],
+    "answer": "7200"
+  },
+  {
+    "id": "unit-u-3-days-hours",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "3 days in hours?",
+    "options": [
+      "7.199999999999999",
+      "27",
+      "72",
+      "300"
+    ],
+    "answer": "72"
+  },
+  {
+    "id": "unit-u-5-days-hours",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "5 days in hours?",
+    "options": [
+      "50",
+      "120",
+      "12",
+      "29"
+    ],
+    "answer": "120"
+  },
+  {
+    "id": "unit-u-2-weeks-days",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "2 weeks in days?",
+    "options": [
+      "14",
+      "9",
+      "20",
+      "200"
+    ],
+    "answer": "14"
+  },
+  {
+    "id": "unit-u-3-weeks-days",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "3 weeks in days?",
+    "options": [
+      "30",
+      "300",
+      "2.0999999999999996",
+      "21"
+    ],
+    "answer": "21"
+  },
+  {
+    "id": "unit-u-4-kilometres-metres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "4 kilometres in metres?",
+    "options": [
+      "1004",
+      "40",
+      "4000",
+      "400"
+    ],
+    "answer": "4000"
+  },
+  {
+    "id": "unit-u-6-kilometres-metres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "6 kilometres in metres?",
+    "options": [
+      "60",
+      "6000",
+      "600",
+      "1006"
+    ],
+    "answer": "6000"
+  },
+  {
+    "id": "unit-u-3-metres-centimetres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "3 metres in centimetres?",
+    "options": [
+      "300",
+      "103",
+      "30",
+      "300 option 1"
+    ],
+    "answer": "300"
+  },
+  {
+    "id": "unit-u-8-metres-centimetres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "8 metres in centimetres?",
+    "options": [
+      "80",
+      "108",
+      "800 option 1",
+      "800"
+    ],
+    "answer": "800"
+  },
+  {
+    "id": "unit-u-2-kilograms-grams",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "2 kilograms in grams?",
+    "options": [
+      "1002",
+      "20",
+      "2000",
+      "200"
+    ],
+    "answer": "2000"
+  },
+  {
+    "id": "unit-u-5-kilograms-grams",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "5 kilograms in grams?",
+    "options": [
+      "50",
+      "5000",
+      "500",
+      "1005"
+    ],
+    "answer": "5000"
+  },
+  {
+    "id": "unit-u-2-litres-millilitres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "2 litres in millilitres?",
+    "options": [
+      "2000",
+      "1002",
+      "20",
+      "200"
+    ],
+    "answer": "2000"
+  },
+  {
+    "id": "unit-u-4-litres-millilitres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "4 litres in millilitres?",
+    "options": [
+      "40",
+      "400",
+      "1004",
+      "4000"
+    ],
+    "answer": "4000"
+  },
+  {
+    "id": "unit-u-7-minutes-seconds",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "7 minutes in seconds?",
+    "options": [
+      "42",
+      "67",
+      "420",
+      "700"
+    ],
+    "answer": "420"
+  },
+  {
+    "id": "unit-u-9-minutes-seconds",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "9 minutes in seconds?",
+    "options": [
+      "90",
+      "540",
+      "54",
+      "69"
+    ],
+    "answer": "540"
+  },
+  {
+    "id": "unit-u-6-hours-minutes",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "6 hours in minutes?",
+    "options": [
+      "360",
+      "66",
+      "60",
+      "600"
+    ],
+    "answer": "360"
+  },
+  {
+    "id": "unit-u-8-hours-minutes",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "8 hours in minutes?",
+    "options": [
+      "80",
+      "800",
+      "48",
+      "480"
+    ],
+    "answer": "480"
+  },
+  {
+    "id": "unit-u-1-hours-seconds",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "1 hours in seconds?",
+    "options": [
+      "360",
+      "3601",
+      "3600",
+      "100"
+    ],
+    "answer": "3600"
+  },
+  {
+    "id": "unit-u-2-days-hours",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "2 days in hours?",
+    "options": [
+      "48",
+      "26",
+      "20",
+      "200"
+    ],
+    "answer": "48"
+  },
+  {
+    "id": "unit-u-6-days-hours",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "6 days in hours?",
+    "options": [
+      "14.399999999999999",
+      "30",
+      "144",
+      "600"
+    ],
+    "answer": "144"
+  },
+  {
+    "id": "unit-u-1-weeks-days",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "1 weeks in days?",
+    "options": [
+      "10",
+      "7",
+      "0.7",
+      "8"
+    ],
+    "answer": "7"
+  },
+  {
+    "id": "unit-u-4-weeks-days",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "4 weeks in days?",
+    "options": [
+      "28",
+      "11",
+      "40",
+      "400"
+    ],
+    "answer": "28"
+  },
+  {
+    "id": "unit-u-2-kilometres-metres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "2 kilometres in metres?",
+    "options": [
+      "1002",
+      "20",
+      "2000",
+      "200"
+    ],
+    "answer": "2000"
+  },
+  {
+    "id": "unit-u-3-kilometres-metres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "3 kilometres in metres?",
+    "options": [
+      "30",
+      "3000",
+      "300",
+      "1003"
+    ],
+    "answer": "3000"
+  },
+  {
+    "id": "unit-u-5-kilometres-metres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "5 kilometres in metres?",
+    "options": [
+      "5000",
+      "1005",
+      "50",
+      "500"
+    ],
+    "answer": "5000"
+  },
+  {
+    "id": "unit-u-7-kilometres-metres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "7 kilometres in metres?",
+    "options": [
+      "70",
+      "700",
+      "1007",
+      "7000"
+    ],
+    "answer": "7000"
+  },
+  {
+    "id": "unit-u-2-metres-centimetres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "2 metres in centimetres?",
+    "options": [
+      "102",
+      "200 option 1",
+      "200",
+      "20"
+    ],
+    "answer": "200"
+  },
+  {
+    "id": "unit-u-5-metres-centimetres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "5 metres in centimetres?",
+    "options": [
+      "500 option 1",
+      "500",
+      "50",
+      "105"
+    ],
+    "answer": "500"
+  },
+  {
+    "id": "unit-u-9-metres-centimetres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 1,
+    "text": "9 metres in centimetres?",
+    "options": [
+      "900",
+      "109",
+      "90",
+      "900 option 1"
+    ],
+    "answer": "900"
+  },
+  {
+    "id": "unit-u-3-kilograms-grams",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "3 kilograms in grams?",
+    "options": [
+      "30",
+      "300",
+      "1003",
+      "3000"
+    ],
+    "answer": "3000"
+  },
+  {
+    "id": "unit-u-4-kilograms-grams",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "4 kilograms in grams?",
+    "options": [
+      "1004",
+      "40",
+      "4000",
+      "400"
+    ],
+    "answer": "4000"
+  },
+  {
+    "id": "unit-u-6-kilograms-grams",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "6 kilograms in grams?",
+    "options": [
+      "60",
+      "6000",
+      "600",
+      "1006"
+    ],
+    "answer": "6000"
+  },
+  {
+    "id": "unit-u-3-litres-millilitres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "3 litres in millilitres?",
+    "options": [
+      "3000",
+      "1003",
+      "30",
+      "300"
+    ],
+    "answer": "3000"
+  },
+  {
+    "id": "unit-u-5-litres-millilitres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "5 litres in millilitres?",
+    "options": [
+      "50",
+      "500",
+      "1005",
+      "5000"
+    ],
+    "answer": "5000"
+  },
+  {
+    "id": "unit-u-6-litres-millilitres",
+    "kind": "unit",
+    "category": "unit",
+    "difficulty": 2,
+    "text": "6 litres in millilitres?",
+    "options": [
+      "1006",
+      "60",
+      "6000",
+      "600"
+    ],
+    "answer": "6000"
+  }
+]

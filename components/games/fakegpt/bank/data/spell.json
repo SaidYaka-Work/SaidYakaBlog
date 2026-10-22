@@ -1,0 +1,422 @@
+[
+  {
+    "id": "spell-spel-separate",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "separrate",
+      "separate",
+      "seperate",
+      "separete"
+    ],
+    "answer": "separate"
+  },
+  {
+    "id": "spell-spel-definitely",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "definitely",
+      "definatly",
+      "definetly",
+      "definately"
+    ],
+    "answer": "definitely"
+  },
+  {
+    "id": "spell-spel-necessary",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "nessessary",
+      "neccessary",
+      "necesary",
+      "necessary"
+    ],
+    "answer": "necessary"
+  },
+  {
+    "id": "spell-spel-accommodate",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "acommodate",
+      "accomadate",
+      "accommodate",
+      "accomodate"
+    ],
+    "answer": "accommodate"
+  },
+  {
+    "id": "spell-spel-rhythm",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "rythm",
+      "rhythm",
+      "rhythym",
+      "rythem"
+    ],
+    "answer": "rhythm"
+  },
+  {
+    "id": "spell-spel-occurrence",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "occurrence",
+      "ocurrance",
+      "occurence",
+      "occurrance"
+    ],
+    "answer": "occurrence"
+  },
+  {
+    "id": "spell-spel-privilege",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "priviledge",
+      "privilage",
+      "privelege",
+      "privilege"
+    ],
+    "answer": "privilege"
+  },
+  {
+    "id": "spell-spel-maintenance",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "maintenence",
+      "maintainance",
+      "maintenance",
+      "maintanance"
+    ],
+    "answer": "maintenance"
+  },
+  {
+    "id": "spell-spel-conscience",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "consciense",
+      "conscience",
+      "consience",
+      "concience"
+    ],
+    "answer": "conscience"
+  },
+  {
+    "id": "spell-spel-recommend",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "recomend",
+      "reccommend",
+      "reccomend",
+      "recommend"
+    ],
+    "answer": "recommend"
+  },
+  {
+    "id": "spell-spel-liaison",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "laison",
+      "liaison",
+      "liason",
+      "liaision"
+    ],
+    "answer": "liaison"
+  },
+  {
+    "id": "spell-spel-millennium",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "millennium",
+      "millenium",
+      "milenium",
+      "milennium"
+    ],
+    "answer": "millennium"
+  },
+  {
+    "id": "spell-spel-weird",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "weerd",
+      "weiird",
+      "weird",
+      "wierd"
+    ],
+    "answer": "weird"
+  },
+  {
+    "id": "spell-spel-vacuum",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "vaccuum",
+      "vacuum",
+      "vacume",
+      "vaccum"
+    ],
+    "answer": "vacuum"
+  },
+  {
+    "id": "spell-spel-acknowledge",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "acknowlege",
+      "aknowledge",
+      "acknowldege",
+      "acknowledge"
+    ],
+    "answer": "acknowledge"
+  },
+  {
+    "id": "spell-spel-calendar",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "calandar",
+      "calender",
+      "calendar",
+      "calander"
+    ],
+    "answer": "calendar"
+  },
+  {
+    "id": "spell-spel-argument",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "argumant",
+      "argument",
+      "arguementt",
+      "arguement"
+    ],
+    "answer": "argument"
+  },
+  {
+    "id": "spell-spel-believe",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "believe",
+      "beleive",
+      "belive",
+      "beleeve"
+    ],
+    "answer": "believe"
+  },
+  {
+    "id": "spell-spel-receive",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "receve",
+      "receeve",
+      "recieve",
+      "receive"
+    ],
+    "answer": "receive"
+  },
+  {
+    "id": "spell-spel-because",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "becouse",
+      "because",
+      "becuase",
+      "becasue"
+    ],
+    "answer": "because"
+  },
+  {
+    "id": "spell-spel-friend",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "friend",
+      "frend",
+      "friand",
+      "freind"
+    ],
+    "answer": "friend"
+  },
+  {
+    "id": "spell-spel-people",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "peopel",
+      "peolpe",
+      "peple",
+      "people"
+    ],
+    "answer": "people"
+  },
+  {
+    "id": "spell-spel-tomorrow",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "tommorrow",
+      "tomorrow",
+      "tomorow",
+      "tommorow"
+    ],
+    "answer": "tomorrow"
+  },
+  {
+    "id": "spell-spel-beginning",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "beginning",
+      "beggining",
+      "begining",
+      "beginnning"
+    ],
+    "answer": "beginning"
+  },
+  {
+    "id": "spell-spel-environment",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "environmnet",
+      "enviroment",
+      "environment",
+      "enviornment"
+    ],
+    "answer": "environment"
+  },
+  {
+    "id": "spell-spel-government",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "governement",
+      "government",
+      "govornment",
+      "goverment"
+    ],
+    "answer": "government"
+  },
+  {
+    "id": "spell-spel-independent",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "independent",
+      "independant",
+      "indepedent",
+      "independint"
+    ],
+    "answer": "independent"
+  },
+  {
+    "id": "spell-spel-knowledge",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "knolwedge",
+      "knowldge",
+      "knowlege",
+      "knowledge"
+    ],
+    "answer": "knowledge"
+  },
+  {
+    "id": "spell-spel-library",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "libary",
+      "librery",
+      "library",
+      "libarary"
+    ],
+    "answer": "library"
+  },
+  {
+    "id": "spell-spel-neighbor",
+    "kind": "spell",
+    "category": "spell",
+    "difficulty": 2,
+    "text": "which spelling is the real English one?",
+    "options": [
+      "neigbor",
+      "neighbor",
+      "nieghbor",
+      "neighboor"
+    ],
+    "answer": "neighbor"
+  }
+]

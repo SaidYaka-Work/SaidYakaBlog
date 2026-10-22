@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
   MAX_CUSTOMERS,
@@ -11,18 +12,25 @@ import {
   fillPersonas,
   isLevelComplete,
   isRunComplete,
+  customerPanelId,
+  customerTabId,
   joinNotice,
   laneLayout,
+  leaveNotice,
   levelServeGoal,
   levelSurviveMs,
   newlyJoined,
   nextCombo,
+  nextTabIndex,
   patienceMs,
   planRun,
   rankFor,
   shareGlyph,
   spawnDelayMs,
   startCustomerCount,
+  tabCycleDelta,
+  tabShortcutIndex,
+  tabTone,
   tickRequest,
 } from '../../../components/games/fakegpt/lanes.ts';
 
@@ -86,7 +94,32 @@ test('planRun deals a queue to every future customer and names joiners', () => {
   assert.equal(joiners.length, 1);
   assert.equal(joinNotice('Dana'), '🟢 Dana joined the chat');
   assert.equal(joinNotice('the microwave'), '🟢 microwave joined the chat');
+  assert.equal(leaveNotice('Dana'), '🔴 Dana left the chat');
   assert.equal(fillPersonas([], 1).length, MAX_CUSTOMERS);
+});
+
+test('tab shortcuts cycle, skip bare digits, and colour by patience', () => {
+  assert.equal(nextTabIndex(0, 3, 1), 1);
+  assert.equal(nextTabIndex(0, 3, -1), 2);
+  assert.equal(nextTabIndex(4, 5, 1), 0);
+  assert.equal(nextTabIndex(0, 0, 1), 0);
+  assert.equal(tabShortcutIndex({ key: '2', altKey: true }, 4), 1);
+  assert.equal(tabShortcutIndex({ key: '5', ctrlKey: true }, 5), 4);
+  assert.equal(tabShortcutIndex({ key: '3', metaKey: true }, 2), null);
+  assert.equal(tabShortcutIndex({ key: '2' }, 4), null);
+  assert.equal(tabShortcutIndex({ key: '1', altKey: true }, 0), null);
+  assert.equal(tabCycleDelta({ key: 'ArrowRight' }), 1);
+  assert.equal(tabCycleDelta({ key: '[' }), -1);
+  assert.equal(tabCycleDelta({ key: 'Tab', ctrlKey: true }), 1);
+  assert.equal(tabCycleDelta({ key: 'Tab', ctrlKey: true, shiftKey: true }), -1);
+  assert.equal(tabCycleDelta({ key: 'Tab' }), null);
+  assert.equal(tabTone({ patience: 0.9, unread: 0 }), 'ok');
+  assert.equal(tabTone({ patience: 0.4, unread: 0 }), 'warn');
+  assert.equal(tabTone({ patience: 0.2, unread: 0 }), 'urgent');
+  assert.equal(tabTone({ patience: 0.9, unread: 2 }), 'unread');
+  assert.equal(tabTone({ patience: 0.2, unread: 2, left: true }), 'left');
+  assert.equal(customerTabId('kira'), 'fgpt-tab-kira');
+  assert.equal(customerPanelId('kira'), 'fgpt-panel-kira');
 });
 
 test('combo, strikes, ranks, share glyphs, and desktop layouts', () => {
@@ -106,4 +139,15 @@ test('combo, strikes, ranks, share glyphs, and desktop layouts', () => {
   assert.equal(laneLayout(3), 'plus-one');
   assert.equal(laneLayout(4), 'grid');
   assert.equal(laneLayout(5), 'three-two');
+});
+
+test('desktop CSS keeps the tab bar and a single customer panel', () => {
+  const css = readFileSync(new URL('../../../app/globals.css', import.meta.url), 'utf8');
+  const desktop = css.split('@media (min-width: 860px)')[1] ?? '';
+  assert.match(css, /\.fgpt-switcher\s*\{/);
+  assert.equal(/\.fgpt-switcher\s*\{[^}]*display:\s*none/s.test(css), false);
+  assert.equal(/\.fgpt-switcher\s*\{[^}]*display:\s*none/s.test(desktop), false);
+  assert.equal(/\.fgpt-lanes\.is-pair\s*\{[^}]*grid-template-columns:\s*1fr 1fr/s.test(desktop), false);
+  assert.match(desktop, /\.fgpt-lane:not\(\.is-focus\)\s*\{\s*display:\s*none/);
+  assert.match(desktop, /\.fgpt-tab\s*\{[^}]*min-width:\s*11rem/s);
 });
