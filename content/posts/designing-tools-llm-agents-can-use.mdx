@@ -1,0 +1,168 @@
+---
+slug: "designing-tools-llm-agents-can-use"
+title: "Designing Tools LLM Agents Can Actually Use"
+date: 2026-10-22
+author: Said Yaka
+tags:
+  - Agents
+  - Tool Use
+  - AI Engineering
+  - Evaluation
+  - Reliability
+description: "Tool schemas are prompts. Here is how I name tools, shape parameters, return compact results, write recoverable errors, and eval whether agents can use them."
+canonical_url: "https://saidyaka.com/en/posts/designing-tools-llm-agents-can-use"
+keywords:
+  - LLM agent tool design
+  - agent function calling
+  - tool schema design
+  - tool use evaluation
+  - AI agent reliability
+og_title: "Designing Tools LLM Agents Can Actually Use"
+og_description: "Good agent tools are a prompt problem. Name the action, keep the catalog small, return compact results, and make errors recoverable."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+A lot of agent work gets spent on the model. I think more of the reliability lives one layer down, in the tools.
+
+The model can only act through the names, descriptions, and return values you give it. If those are vague, the agent looks dumb. If they are sharp, a mid-tier model will often look careful.
+
+I treat tool design as interface design for a reader who is fluent, impatient, and very literal.
+
+## The schema is a prompt
+
+The JSON schema is not documentation for engineers. It is the prompt the model sees when it decides what to call.
+
+The name, the description, and every parameter description are instructions. They compete with the user turn. They should read like a short brief, not like an OpenAPI leftover.
+
+### What a useful description answers
+
+- what job this tool does
+- when to use it instead of a sibling
+- what a good argument looks like
+- what it will not do
+
+I avoid descriptions that only restate the function name. `search_orders`: "Search orders." teaches nothing. `search_orders`: "Find orders by customer-facing query or order id. Filter with status. Use cursor to continue. This does not refund or cancel." gives the model a policy.
+
+If two tools could plausibly apply, I say so in both descriptions and pick a winner. Ambiguous catalogs produce wrong-tool calls. That is not a reasoning failure. It is a labeling failure.
+
+This is also why I care about protocols that make tools [discoverable in a consistent shape](/en/posts/mcp-is-the-missing-ui-for-agents/). A clean discovery layer still fails if the copy inside each tool is sloppy.
+
+## Name the action, not the endpoint
+
+I name tools after the user's job, not after the backend route.
+
+`get_v2_orders_by_query` is for the service map. The model wants `search_orders`. `update_record` is a trap if the record could be a user, an invoice, or a permission. `cancel_order` is a promise.
+
+A few naming rules I keep coming back to:
+
+- **verb plus object:** `list_invoices`, `create_ticket`, `refund_charge`
+- **one job per tool:** if you need "and" in the name, it is probably two tools
+- **stable names:** renaming a tool is a behavior change, not a refactor
+- **no internal jargon:** if a new teammate would need a wiki, the model will guess
+
+Parameters follow the same rule. `q` is cheaper to type and worse to use. `query` is fine. `customer_email` is better than `val` or `input`.
+
+Enums beat free text when the set is known. If status can only be `open`, `shipped`, or `canceled`, do not ask the model to invent the company's vocabulary. Optional fields should be optional in the product sense, not leftover because the API is messy.
+
+I also try not to make the model mint identifiers it cannot know. If the only valid `ticket_id` comes from `list_tickets`, say that in the description. Otherwise you will watch the agent hallucinate ids and then "succeed" into an empty result.
+
+## Fewer, higher-level tools beat a thin API wrapper
+
+The tempting design is to expose every endpoint. It feels complete. It is usually unusable.
+
+A model picking from a pile of near-duplicates will hesitate, overlap, or chain five calls to do one job. I would rather expose a smaller set of task-shaped tools and do the composition in code.
+
+Compare a customer-status flow as two catalogs:
+
+- `get_customer`, `get_orders`, `get_shipments`, `get_tracking_events`
+- `lookup_order_status`: takes an email or order id, returns the current state and the next useful action
+
+The second one is less "pure." It is easier to call correctly. The model does not have to reconstruct your domain model on every turn.
+
+Granular tools still earn a place on expert surfaces. Most product agents are not that. They are trying to finish a job.
+
+I use a simple test: can I describe, in one sentence, when this tool is the right one? If I cannot, I merge it, rename it, or delete it.
+
+## Return results a model can reread
+
+Tool output becomes the next prompt. Fat, messy payloads crowd out the user goal. That is the same failure mode as [treating a context window like memory](/en/posts/context-windows-are-not-memory/): you put more on the desk than anyone can use.
+
+### Compact by default
+
+I want returns that a model can reread without losing the task:
+
+- the answer to the step, not the whole table
+- stable ids the model can pass back
+- a short summary a human could skim
+- a cursor or `has_more` when the set is large
+- an explicit note when you truncated
+
+A shape I like for search tools:
+
+> `search_orders(query, status?, cursor?)` → `{ orders: [{ id, status, total, updated_at }], next_cursor, note }`
+
+Dumping HTML, raw logs, or unbounded arrays is how you get loops. The model loses the thread and calls the same tool again.
+
+If `search_orders` can return thousands of rows, the default should be a page plus a way to continue. Truncation without a continuation token teaches the model that the world is smaller than it is.
+
+When a lookup finds nothing, I return a structured miss: `found: false`, plus a hint about what to try next. An empty array and a 200 look like success. Models treat them that way.
+
+## Errors should tell the model how to recover
+
+A tool error is a turn of instruction. `400 Bad Request` is not an instruction. `missing status; expected open | shipped | canceled` is.
+
+I try to make failures:
+
+- **specific:** which field, which constraint
+- **actionable:** retry, ask the user, pick another tool
+- **honest about retryability:** transient vs permanent
+- **safe:** do not leak secrets or stack traces into the prompt
+
+If the charge already exists, say so and return the existing id. If the user is not allowed to refund, say that the tool cannot do it. If the upstream timed out, say it is safe to retry and whether the write was applied.
+
+This is where a lot of "the agent is flaky" reports actually live. The model is reacting to a shrug.
+
+## Side effects need idempotency and a human gate
+
+Read tools can be sloppy. Write tools cannot.
+
+Anything that charges, deletes, emails, or changes access should be safe to retry. I want an idempotency key in the contract, or a natural one (order id plus action) that the server honors. Agents retry. Networks blip. If a second `refund_charge` creates a second refund, the tool is the bug.
+
+I also separate draft from commit for destructive work.
+
+`prepare_cancel_order` can return what will happen. `confirm_cancel_order` takes the preview id. The model can still be wrong. It is less likely to be wrong twice in a row, and you have a place to require a user click.
+
+Silent side effects are how you teach users not to trust the product. I would rather the agent stop and ask than succeed into a mess.
+
+## Eval the path, not just the final answer
+
+A correct final answer after the wrong tools is still a bad system. It is expensive, hard to debug, and one prompt change away from failing.
+
+### Trajectory checks I actually use
+
+I score the path, not only the outcome:
+
+- **wrong-tool rate:** it called a tool that could not do the job
+- **wrong-argument rate:** right tool, unusable arguments
+- **missing-tool rate:** it answered from memory when a lookup existed
+- **waste:** extra calls that did not change state
+- **recovery:** after an error, did the next call use the hint?
+
+If wrong-tool is high, descriptions overlap. If wrong-argument is high, the schema is thin or the returns do not give back ids. If waste is high, the tools are too low-level.
+
+I like a small labeled set of tasks with a known good path, plus a few adversarial ones: missing ids, ambiguous names, "please delete everything." Then I watch whether the agent asks, previews, or just swings.
+
+This is the same instinct as [RAG evals that catch regressions](/en/posts/rag-evals-that-catch-regressions/): measure the failure mode, not a vanity score. When a run looks wrong, I want the trace to show the decision, the arguments, and the result. I have written about [what that observability should show](/en/posts/building-agent-observability/).
+
+A stronger model will recover from a sloppy catalog more often. That is not a reason to keep the catalog sloppy. Routing can [escalate when tool output is messy](/en/posts/how-i-think-about-model-routing/). I would rather make the cheap path work by making the tools obvious.
+
+## The rule I keep coming back to
+
+Design tools for a careful intern who will not walk over to your desk.
+
+Give them a short list of jobs. Name each job clearly. Tell them what good input looks like. Hand back a small, readable result. When they mess up, tell them how to fix it. Do not let them hit the big red button twice.
+
+If a person could not use the catalog from the schemas alone, the model will not either.
+
+The schema is the UI. Write it like you mean it.
