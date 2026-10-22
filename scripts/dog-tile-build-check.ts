@@ -6,11 +6,13 @@ import {
   DRESS_STEPS,
   countBuiltTris,
   createBuildJob,
+  cheapRing,
   pointToAabb,
   runBuildJob,
   stepBuildJob,
   tileDistanceToPoint,
   tileIsLod,
+  tileLodWanted,
   type BuiltTile,
 } from '../components/dog/world/buildTile.ts';
 import {
@@ -97,7 +99,7 @@ assert.equal(lodBuilt.parks, null, 'lod drops park fills');
 assert.equal(lodBuilt.roofs.length, 0, 'lod drops roof caps');
 const lodTris = countBuiltTris(lodBuilt);
 assert.ok(lodTris.total < nearTris.total, `lod ${lodTris.total} should be cheaper than near ${nearTris.total}`);
-assert.ok(lodTris.buildings > 0, 'lod still draws the large nearby box as a cheap wall');
+assert.ok(lodTris.buildings > 0, 'lod still draws the large nearby footprint as a cheap wall');
 
 const stuck = createBuildJob(tile, here);
 stuck.dress = 'nope';
@@ -264,6 +266,75 @@ const fixtureBuilt = runBuildJob(decodedFixture, { x: 0, z: 0 }).built;
 assertMeshMatchesFootprint(fixtureBuilt, decodedFixture, 'OpenFreeMap fixture 14/4823/6157');
 const fixtureLod = runBuildJob(decodedFixture, { x: 4000, z: 0 }).built;
 assert.equal(fixtureLod.sidewalks, null, 'far fixture drops sidewalks');
+
+const diamond: WorldTileData = {
+  key: '14/lod/diamond',
+  bounds: { minX: -80, maxX: 80, minZ: -80, maxZ: 80 },
+  buildings: [
+    {
+      ring: [
+        { x: 0, z: 10 },
+        { x: 8, z: 0 },
+        { x: 0, z: -10 },
+        { x: -8, z: 0 },
+      ],
+      height: 12,
+      min: 0,
+      area: 160,
+    },
+  ],
+  roads: [{ line: [{ x: -20, z: 0 }, { x: 20, z: 0 }], width: 8, klass: 'primary' }],
+  water: [],
+  parks: [],
+  labels: [],
+};
+const diamondLod = runBuildJob(diamond, { x: 400, z: 0 }).built;
+assert.equal(diamondLod.lod, true, 'far diamond builds as lod');
+const diamondPos = diamondLod.buildings[0]?.getAttribute('position');
+assert.ok(diamondPos, 'lod diamond has walls');
+let nearCorner = 0;
+let nearTip = 0;
+for (let i = 0; i < diamondPos.count; i += 1) {
+  const x = diamondPos.getX(i);
+  const z = diamondPos.getZ(i);
+  if (Math.hypot(x - 8, z - 10) < 1.2) nearCorner += 1;
+  if (Math.hypot(x, z - 10) < 1.2 || Math.hypot(x - 8, z) < 1.2) nearTip += 1;
+}
+assert.equal(nearCorner, 0, 'lod walls must follow the diamond, not the AABB corner at (8,10)');
+assert.ok(nearTip > 0, 'lod walls keep the real footprint tips');
+
+const crowd: WorldTileData = {
+  key: '14/lod/crowd',
+  bounds: { minX: -20, maxX: 420, minZ: -20, maxZ: 20 },
+  buildings: Array.from({ length: 40 }, (_, i) => ({
+    ring: box(i * 10, 0, 4, 3),
+    height: 10,
+    min: 0,
+    area: 48,
+  })),
+  roads: [{ line: [{ x: -20, z: 0 }, { x: 420, z: 0 }], width: 8, klass: 'primary' }],
+  water: [],
+  parks: [],
+  labels: [],
+};
+const crowdLod = runBuildJob(crowd, { x: 4000, z: 0 }).built;
+const crowdWalls = xzBoundsOfGeos(crowdLod.buildings);
+assert.ok(crowdWalls.maxX > 380, `lod must draw all 40 collision footprints, maxX ${crowdWalls.maxX}`);
+
+const mid: WorldTileData = {
+  key: '14/0/0',
+  bounds: { minX: 0, maxX: 10, minZ: 0, maxZ: 10 },
+  buildings: [],
+  roads: [],
+  water: [],
+  parks: [],
+  labels: [],
+};
+assert.equal(tileLodWanted(mid, { x: 5, z: 5 }, true), false, 'walk-in upgrades a lod tile');
+assert.equal(tileLodWanted(mid, { x: 5, z: 5 }, false), false, 'near tile stays full inside the upgrade band');
+assert.equal(tileLodWanted(mid, { x: 200, z: 0 }, false), true, 'walk-away downgrades past hysteresis');
+assert.equal(tileLodWanted(mid, { x: 96, z: 0 }, false), false, 'still-near tile does not flap to lod at 96m');
+assert.ok(cheapRing(Array.from({ length: 20 }, (_, i) => ({ x: i, z: 0 })), 6).length <= 8);
 
 const center = { z: 14, x: 4825, y: 6156 };
 const windowKeys = wantedTileKeys(center);

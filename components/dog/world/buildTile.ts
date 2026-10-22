@@ -15,6 +15,8 @@ import type { TileBounds, WorldTileData } from './decode';
 
 export type BuiltTile = {
   key: string;
+  /** True when this mesh is the cheap far dress. Used to upgrade/downgrade in place. */
+  lod?: boolean;
   buildings: BufferGeometry[];
   roofs: BufferGeometry[];
   parks: BufferGeometry | null;
@@ -101,8 +103,31 @@ export function tileDistanceToPoint(tile: WorldTileData, here: { x: number; z: n
   return pointToAabb(here.x, here.z, boundsFromTile(tile));
 }
 
-export function tileIsLod(tile: WorldTileData, here: { x: number; z: number }, far = 88) {
+export const LOD_BUILD_M = 88;
+export const LOD_UPGRADE_M = 72;
+export const LOD_DOWNGRADE_M = 104;
+
+export function tileIsLod(tile: WorldTileData, here: { x: number; z: number }, far = LOD_BUILD_M) {
   return tileDistanceToPoint(tile, here) > far;
+}
+
+/** Live LOD with hysteresis so a tile does not flap as the dog crosses 88 m. */
+export function tileLodWanted(tile: WorldTileData, here: { x: number; z: number }, currentLod?: boolean) {
+  const gap = tileDistanceToPoint(tile, here);
+  if (currentLod === true) return gap > LOD_UPGRADE_M;
+  if (currentLod === false) return gap > LOD_DOWNGRADE_M;
+  return gap > LOD_BUILD_M;
+}
+
+/** Drop vertices on far extrudes. Keeps the real footprint, not the AABB. */
+export function cheapRing(ring: { x: number; z: number }[], maxPts = 6) {
+  if (ring.length <= maxPts) return ring;
+  const step = Math.ceil(ring.length / maxPts);
+  const next = ring.filter((_, i) => i % step === 0);
+  if (next[0] !== ring[0]) next.unshift(ring[0]);
+  const last = ring[ring.length - 1];
+  if (next[next.length - 1] !== last) next.push(last);
+  return next.length >= 3 ? next : ring;
 }
 
 /** Shape Y is -Z so rotateX(-PI/2) maps it back to world +Z (no north/south mirror). */
@@ -165,22 +190,14 @@ export function pushBuilding(
   walls: BufferGeometry[],
   roofs: BufferGeometry[],
   withRoof: boolean,
-  asBox = false,
+  cheap = false,
 ) {
   try {
     const height = Math.max(3.2, building.height - building.min);
     const mid = centroid(building.ring);
     const tint = facadeTint(mid.x, mid.z);
-    if (asBox) {
-      const box = ringBounds(building.ring);
-      if (box.w < 1.2 || box.d < 1.2) return;
-      const geo = new BoxGeometry(box.w, height, box.d);
-      geo.translate((box.minX + box.maxX) / 2, building.min + height / 2, (box.minZ + box.maxZ) / 2);
-      paintBuilding(geo, tint, height);
-      walls.push(geo);
-      return;
-    }
-    const geo = new ExtrudeGeometry(shapeFrom(building.ring), {
+    const ring = cheap ? cheapRing(building.ring) : building.ring;
+    const geo = new ExtrudeGeometry(shapeFrom(ring), {
       depth: height,
       bevelEnabled: false,
       curveSegments: 1,
@@ -354,11 +371,13 @@ export function flattenRings(rings: { x: number; z: number }[][], y = 0.012) {
   return merged;
 }
 
-export function createBuildJob(tile: WorldTileData, here: { x: number; z: number }): BuildJob {
-  const lod = tileIsLod(tile, here);
-  const list = lod
-    ? tile.buildings.filter((building) => building.area >= 48).slice(0, 28)
-    : tile.buildings.filter((building) => building.area >= 12).slice(0, 96);
+export function createBuildJob(
+  tile: WorldTileData,
+  here: { x: number; z: number },
+  lod = tileIsLod(tile, here),
+): BuildJob {
+  // Far tiles still draw every collision footprint — just cheaper (no roofs / parks / sidewalks).
+  const list = lod ? tile.buildings : tile.buildings.filter((building) => building.area >= 12).slice(0, 96);
   const visualRoads = lod
     ? tile.roads.filter((road) => isMajorRoad(road.width, road.klass)).slice(0, 36)
     : tile.roads.filter((road) => isDressRoad(road.width, road.klass));
@@ -371,7 +390,7 @@ export function createBuildJob(tile: WorldTileData, here: { x: number; z: number
     list,
     visualRoads,
     dress: 'buildings',
-    built: emptyTile(tile.key),
+    built: { ...emptyTile(tile.key), lod },
     ribbon: null,
   };
 }

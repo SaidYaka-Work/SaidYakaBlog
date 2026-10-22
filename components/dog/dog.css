@@ -1128,7 +1128,12 @@
 }
 
 .dog-game.is-compact .dog-left {
-  width: min(14rem, 72vw);
+  top: calc(88px + env(safe-area-inset-top));
+  width: min(11rem, 64vw);
+}
+
+.dog-game.is-compact .dog-id strong {
+  font-size: 1.15rem;
 }
 
 .dog-game.is-compact .dog-left .dog-leash {
@@ -1158,10 +1163,15 @@
   right: auto;
   transform: none;
   bottom: calc(98px + env(safe-area-inset-bottom));
-  max-width: min(11.2rem, 48%);
+  max-width: min(16rem, calc(100% - 16px));
   font-size: 10px;
   line-height: 1.25;
   z-index: 4;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .dog-game.is-compact .dog-emotes {

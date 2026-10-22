@@ -16,6 +16,7 @@ export type PackedMesh = {
 
 export type PackedTile = {
   key: string;
+  lod?: boolean;
   buildings: PackedMesh | null;
   roofs: PackedMesh | null;
   parks: PackedMesh | null;
@@ -65,6 +66,7 @@ export function unpackGeometry(mesh: PackedMesh | null | undefined): BufferGeome
 export function packBuiltTile(built: BuiltTile): PackedTile {
   return {
     key: built.key,
+    lod: built.lod,
     buildings: packGeometry(built.buildings[0] ?? null),
     roofs: packGeometry(built.roofs[0] ?? null),
     parks: packGeometry(built.parks),
@@ -79,6 +81,7 @@ export function unpackBuiltTile(packed: PackedTile): BuiltTile {
   const roofs = unpackGeometry(packed.roofs);
   return {
     key: packed.key,
+    lod: packed.lod,
     buildings: buildings ? [buildings] : [],
     roofs: roofs ? [roofs] : [],
     parks: unpackGeometry(packed.parks),

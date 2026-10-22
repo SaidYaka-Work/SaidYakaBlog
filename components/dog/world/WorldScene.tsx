@@ -4,14 +4,21 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useFrame, useThree } from '@react-three/fiber';
 import {
   Color,
+  DataTexture,
   DoubleSide,
   Fog,
   InstancedMesh,
+  LinearFilter,
+  LinearMipmapLinearFilter,
   Mesh,
+  MeshBasicMaterial,
   MeshStandardMaterial,
   Object3D,
   PlaneGeometry,
+  RGBAFormat,
+  RepeatWrapping,
   ShaderMaterial,
+  UnsignedByteType,
   Vector3,
   type BufferGeometry,
 } from 'three';
@@ -25,12 +32,50 @@ import {
   emptyTile,
   stepBuildJob,
   tileDistanceToPoint,
+  tileLodWanted,
   type BuildJob,
   type BuiltTile,
 } from './buildTile';
 import { unpackGeometry, type PackedTile } from './packTile';
 import { KEEP_RING, MAX_CACHED_TILES, evictTileCache, wantedTileKeys } from './tileWindow';
 import { camFade, frameMark } from './frameMark';
+
+export const FOG_NEAR = 28;
+export const FOG_FAR = 130;
+export const FOG_FAR_SLIM = 96;
+export const SKY_RADIUS = 168;
+export const TREE_SCALE = 0.65;
+
+function fogFar(slim: boolean) {
+  return slim ? FOG_FAR_SLIM : FOG_FAR;
+}
+
+function makeWindowTexture() {
+  const size = 64;
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const u = (x + 0.5) / size;
+      const v = (y + 0.5) / size;
+      const pane = u > 0.16 && u < 0.84 && v > 0.22 && v < 0.86;
+      const i = (y * size + x) * 4;
+      const tone = pane ? 255 : 0;
+      data[i] = tone;
+      data[i + 1] = tone;
+      data[i + 2] = tone;
+      data[i + 3] = 255;
+    }
+  }
+  const tex = new DataTexture(data, size, size, RGBAFormat, UnsignedByteType);
+  tex.wrapS = RepeatWrapping;
+  tex.wrapT = RepeatWrapping;
+  tex.magFilter = LinearFilter;
+  tex.minFilter = LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.anisotropy = 8;
+  tex.needsUpdate = true;
+  return tex;
+}
 
 function disposeBuilt(tile: BuiltTile) {
   tile.buildings.forEach((geo) => geo.dispose());
@@ -43,7 +88,8 @@ function disposeBuilt(tile: BuiltTile) {
 }
 
 function facadeMaterial(night: boolean) {
-  return new ShaderMaterial({
+  const windows = makeWindowTexture();
+  const mat = new ShaderMaterial({
     vertexColors: true,
     side: DoubleSide,
     transparent: true,
@@ -51,8 +97,9 @@ function facadeMaterial(night: boolean) {
     uniforms: {
       uNight: { value: night ? 1 : 0 },
       uFogColor: { value: new Color(night ? '#4a5c7a' : '#c8d6e4') },
-      uFogNear: { value: 36 },
-      uFogFar: { value: 220 },
+      uFogNear: { value: FOG_NEAR },
+      uFogFar: { value: FOG_FAR },
+      uWindow: { value: windows },
       uHemiSky: { value: new Color(night ? '#9eb6e6' : '#fff1dc') },
       uHemiGround: { value: new Color(night ? '#3a342c' : '#c4a888') },
       uSunColor: { value: new Color(night ? '#d0def8' : '#ffe4bc') },
@@ -85,6 +132,7 @@ function facadeMaterial(night: boolean) {
       uniform vec3 uFogColor;
       uniform float uFogNear;
       uniform float uFogFar;
+      uniform sampler2D uWindow;
       uniform vec3 uHemiSky;
       uniform vec3 uHemiGround;
       uniform vec3 uSunColor;
@@ -104,9 +152,9 @@ function facadeMaterial(night: boolean) {
         float h = max(3.2, vHeight);
         float rows = max(3.0, floor(h / 2.8));
         float along = abs(nrm.x) > abs(nrm.z) ? vWorldPos.z : vWorldPos.x;
-        float wy = fract((vWorldPos.y / h) * rows);
-        float wx = fract(along / 2.4);
-        float pane = step(0.16, wx) * step(wx, 0.84) * step(0.22, wy) * step(wy, 0.86);
+        float wy = (vWorldPos.y / h) * rows;
+        float wx = along / 2.4;
+        float pane = texture2D(uWindow, vec2(wx, wy)).r;
         float id = fract(sin(dot(floor(vec2(along * 0.42, vWorldPos.y * rows * 0.32)), vec2(12.9898, 78.233))) * 43758.5453);
         float lit = step(0.34, id);
         vec3 windowDay = vec3(0.28, 0.38, 0.48);
@@ -133,6 +181,8 @@ function facadeMaterial(night: boolean) {
       }
     `,
   });
+  mat.userData.windows = windows;
+  return mat;
 }
 
 function roadMaterial(night: boolean, marked: boolean) {
@@ -146,8 +196,8 @@ function roadMaterial(night: boolean, marked: boolean) {
     uniforms: {
       uNight: { value: night ? 1 : 0 },
       uFogColor: { value: new Color(night ? '#4a5c7a' : '#c8d6e4') },
-      uFogNear: { value: 36 },
-      uFogFar: { value: 220 },
+      uFogNear: { value: FOG_NEAR },
+      uFogFar: { value: FOG_FAR },
     },
     vertexShader: `
       varying vec2 vUv;
@@ -186,8 +236,8 @@ function waterMaterial(night: boolean) {
       uTime: { value: 0 },
       uNight: { value: night ? 1 : 0 },
       uFogColor: { value: new Color(night ? '#4a5c7a' : '#c8d6e4') },
-      uFogNear: { value: 36 },
-      uFogFar: { value: 220 },
+      uFogNear: { value: FOG_NEAR },
+      uFogFar: { value: FOG_FAR },
     },
     vertexShader: `
       varying vec3 vWorldPos;
@@ -276,7 +326,7 @@ function SkyDome({ night }: { night: boolean }) {
   });
   return (
     <mesh ref={ref} renderOrder={-2}>
-      <sphereGeometry args={[180, 12, 8]} />
+      <sphereGeometry args={[SKY_RADIUS, 12, 8]} />
       <shaderMaterial
         side={DoubleSide}
         depthWrite={false}
@@ -342,12 +392,56 @@ function stampColors(mesh: InstancedMesh | null, plants: Plant[], palette: strin
   if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 }
 
+/** Cone leaves / trunks on the camera→dog line dither out so they never hide Biscuit. */
+function treeFadeMaterial(color: string) {
+  const mat = new MeshBasicMaterial({ color });
+  const fade = { uLook: { value: new Vector3() }, uCam: { value: new Vector3(0, 8, 14) } };
+  mat.userData.fade = fade;
+  mat.customProgramCacheKey = () => 'dog-tree-fade';
+  mat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, fade);
+    shader.vertexShader = `varying vec3 vTreeWp;\n${shader.vertexShader}`.replace(
+      '#include <project_vertex>',
+      `#include <project_vertex>
+      vec4 treeWp = vec4(transformed, 1.0);
+      #ifdef USE_INSTANCING
+        treeWp = instanceMatrix * treeWp;
+      #endif
+      vTreeWp = (modelMatrix * treeWp).xyz;`,
+    );
+    shader.fragmentShader = `uniform vec3 uLook;\nuniform vec3 uCam;\nvarying vec3 vTreeWp;\n${shader.fragmentShader}`.replace(
+      'void main() {',
+      `void main() {
+        vec2 ta = vTreeWp.xz - uLook.xz;
+        vec2 tb = uCam.xz - uLook.xz;
+        float tt = clamp(dot(ta, tb) / max(dot(tb, tb), 0.001), 0.0, 1.0);
+        float treeFade = (1.0 - smoothstep(1.6, 3.2, length(ta - tb * tt))) * smoothstep(0.05, 0.2, tt) * (1.0 - smoothstep(0.9, 1.0, tt));
+        vec2 cell = mod(floor(gl_FragCoord.xy), 2.0);
+        float bayer = (cell.x * 2.0 + cell.y * 3.0 - cell.x * cell.y * 4.0 + 0.5) / 4.0;
+        if (treeFade * 0.85 > bayer) discard;`,
+    );
+  };
+  return mat;
+}
+
 function Forest({ plants, night }: { plants: Plant[]; night: boolean }) {
   const trunk = useRef<InstancedMesh>(null);
   const leaf = useRef<InstancedMesh>(null);
   const bush = useRef<InstancedMesh>(null);
   const trees = plants.filter((plant) => plant.kind === 'tree');
   const bushes = plants.filter((plant) => plant.kind === 'bush');
+  const leafMat = useMemo(() => treeFadeMaterial(night ? '#8aaa62' : '#5f8a4e'), [night]);
+  const trunkMat = useMemo(() => treeFadeMaterial('#8a5a38'), []);
+  useEffect(() => () => leafMat.dispose(), [leafMat]);
+  useEffect(() => () => trunkMat.dispose(), [trunkMat]);
+  useFrame(() => {
+    for (const mat of [leafMat, trunkMat]) {
+      const u = mat.userData.fade as { uLook: { value: Vector3 }; uCam: { value: Vector3 } } | undefined;
+      if (!u) continue;
+      u.uLook.value.set(camFade.lookX, camFade.lookY, camFade.lookZ);
+      u.uCam.value.set(camFade.camX, camFade.camY, camFade.camZ);
+    }
+  });
   useLayoutEffect(() => {
     const nextTrees = plants.filter((plant) => plant.kind === 'tree');
     const nextBushes = plants.filter((plant) => plant.kind === 'bush');
@@ -355,8 +449,8 @@ function Forest({ plants, night }: { plants: Plant[]; night: boolean }) {
       trunk.current,
       (dummy, i) => {
         const tree = nextTrees[i];
-        dummy.position.set(tree.x, 0.85 * tree.s, tree.z);
-        dummy.scale.setScalar(tree.s);
+        dummy.position.set(tree.x, 0.85 * tree.s * TREE_SCALE, tree.z);
+        dummy.scale.setScalar(tree.s * TREE_SCALE);
       },
       nextTrees.length,
     );
@@ -364,8 +458,12 @@ function Forest({ plants, night }: { plants: Plant[]; night: boolean }) {
       leaf.current,
       (dummy, i) => {
         const tree = nextTrees[i];
-        dummy.position.set(tree.x, 2.2 * tree.s, tree.z);
-        dummy.scale.set(tree.s * (0.9 + hash2(tree.z, tree.x) * 0.22), tree.s, tree.s * (0.9 + hash2(tree.x, tree.s) * 0.22));
+        dummy.position.set(tree.x, 2.2 * tree.s * TREE_SCALE, tree.z);
+        dummy.scale.set(
+          tree.s * TREE_SCALE * (0.9 + hash2(tree.z, tree.x) * 0.22),
+          tree.s * TREE_SCALE,
+          tree.s * TREE_SCALE * (0.9 + hash2(tree.x, tree.s) * 0.22),
+        );
         dummy.rotation.y = hash2(tree.x, tree.z) * Math.PI * 2;
       },
       nextTrees.length,
@@ -387,13 +485,11 @@ function Forest({ plants, night }: { plants: Plant[]; night: boolean }) {
     <group>
       {trees.length > 0 && (
         <>
-          <instancedMesh ref={trunk} args={[undefined, undefined, trees.length]}>
+          <instancedMesh ref={trunk} args={[undefined, undefined, trees.length]} material={trunkMat}>
             <cylinderGeometry args={[0.18, 0.24, 1.7, 4]} />
-            <meshBasicMaterial color="#8a5a38" />
           </instancedMesh>
-          <instancedMesh ref={leaf} args={[undefined, undefined, trees.length]}>
+          <instancedMesh ref={leaf} args={[undefined, undefined, trees.length]} material={leafMat}>
             <coneGeometry args={[1.9, 3.8, 4]} />
-            <meshBasicMaterial color={night ? '#8aaa62' : '#5f8a4e'} />
           </instancedMesh>
         </>
       )}
@@ -646,6 +742,8 @@ export default function WorldScene({
     }
   }, [facade, night, sun.x, sun.y, sun.z]);
 
+  const ground = useRef<Mesh>(null);
+  const lastLodCheck = useRef({ x: Number.POSITIVE_INFINITY, z: Number.POSITIVE_INFINITY });
   const skipUpload = useRef(0);
   const compiled = useRef(false);
   const compile = useCallback(() => {
@@ -667,6 +765,10 @@ export default function WorldScene({
 
   useFrame((_, dt) => {
     const tileStart = performance.now();
+    if (ground.current) {
+      ground.current.position.x = Math.round(camera.position.x / 20) * 20;
+      ground.current.position.z = Math.round(camera.position.z / 20) * 20;
+    }
     const look = facade.uniforms.uLook?.value;
     const cam = facade.uniforms.uCam?.value;
     if (look && typeof look.set === 'function') look.set(camFade.lookX, camFade.lookY, camFade.lookZ);
@@ -681,15 +783,40 @@ export default function WorldScene({
       host.__DOG_PERF.textures = gl.info.memory.textures;
     }
     let changed = false;
+    const hereNow = hereRef.current;
+    if (Math.hypot(hereNow.x - lastLodCheck.current.x, hereNow.z - lastLodCheck.current.z) > 6) {
+      lastLodCheck.current = { x: hereNow.x, z: hereNow.z };
+      for (const tile of tiles) {
+        const built = cache.current.get(tile.key);
+        if (!built || uploads.current.some((item) => item.tile.key === tile.key)) continue;
+        const wantedLod = tileLodWanted(tile, hereNow, built.lod);
+        if (wantedLod === !!built.lod) continue;
+        if (pending.current?.tile.key === tile.key) continue;
+        if (!queue.current.some((item) => item.key === tile.key)) queue.current.push(tile);
+      }
+      queue.current.sort(
+        (a, b) => tileDistanceToPoint(a, hereNow) - tileDistanceToPoint(b, hereNow),
+      );
+    }
     if (skipUpload.current > 0) {
       skipUpload.current -= 1;
       frameMark.tiles = performance.now() - tileStart;
       return;
     }
+    const keepKeys = tiles[0]
+      ? wantedTileKeys(
+          {
+            z: Number(tiles[0].key.split('/')[0]),
+            x: Number(tiles[0].key.split('/')[1]),
+            y: Number(tiles[0].key.split('/')[2]),
+          },
+          KEEP_RING,
+        )
+      : tiles.map((tile) => tile.key);
     const upload = uploads.current[0];
     if (upload) {
       if (!cache.current.has(upload.tile.key)) {
-        cache.current.set(upload.tile.key, emptyTile(upload.tile.key));
+        cache.current.set(upload.tile.key, { ...emptyTile(upload.tile.key), lod: upload.packed.lod });
       }
       const built = cache.current.get(upload.tile.key);
       const layer = PACK_LAYERS[upload.layer];
@@ -701,52 +828,37 @@ export default function WorldScene({
       upload.layer += 1;
       if (upload.layer >= PACK_LAYERS.length) {
         uploads.current.shift();
-        evictTileCache(
-          cache.current,
-          tiles[0]
-            ? wantedTileKeys(
-                {
-                  z: Number(tiles[0].key.split('/')[0]),
-                  x: Number(tiles[0].key.split('/')[1]),
-                  y: Number(tiles[0].key.split('/')[2]),
-                },
-                KEEP_RING,
-              )
-            : tiles.map((tile) => tile.key),
-          (_key, item) => disposeBuilt(item),
-          MAX_CACHED_TILES,
-        );
+        evictTileCache(cache.current, keepKeys, (_key, item) => disposeBuilt(item), MAX_CACHED_TILES);
       }
     } else {
       const budget = slim ? 4 : 6;
       const start = performance.now();
       if (!pending.current) {
         const next = queue.current.shift();
-        if (next && !cache.current.has(next.key)) pending.current = createBuildJob(next, hereRef.current);
+        if (next) {
+          const existing = cache.current.get(next.key);
+          const wantedLod = tileLodWanted(next, hereNow, existing?.lod);
+          if (!existing || existing.lod !== wantedLod) {
+            pending.current = createBuildJob(next, hereNow, wantedLod);
+          }
+        }
       }
       if (pending.current && performance.now() - start < budget) {
         const current = pending.current;
+        const existing = cache.current.get(current.tile.key);
+        const replacing = Boolean(existing) && existing !== current.built;
         const result = stepBuildJob(current);
-        if (result.changed || result.done) {
-          cache.current.set(current.tile.key, { ...(result.job?.built ?? current.built) });
+        if (result.done) {
+          const nextBuilt = current.built;
+          cache.current.set(current.tile.key, nextBuilt);
+          if (replacing && existing) disposeBuilt(existing);
+          changed = true;
+        } else if (!replacing && (result.changed || result.done)) {
+          cache.current.set(current.tile.key, current.built);
           changed = true;
         }
         pending.current = result.done ? null : result.job;
-        evictTileCache(
-          cache.current,
-          tiles[0]
-            ? wantedTileKeys(
-                {
-                  z: Number(tiles[0].key.split('/')[0]),
-                  x: Number(tiles[0].key.split('/')[1]),
-                  y: Number(tiles[0].key.split('/')[2]),
-                },
-                KEEP_RING,
-              )
-            : tiles.map((tile) => tile.key),
-          (_key, item) => disposeBuilt(item),
-          MAX_CACHED_TILES,
-        );
+        evictTileCache(cache.current, keepKeys, (_key, item) => disposeBuilt(item), MAX_CACHED_TILES);
       }
     }
     const display = new Set(tiles.map((tile) => tile.key));
@@ -756,13 +868,20 @@ export default function WorldScene({
 
   useEffect(() => {
     const fog = night ? '#4a5c7a' : '#c8d6e4';
+    const far = fogFar(slim);
     scene.background = new Color(fog);
-    scene.fog = new Fog(fog, 28, slim ? 96 : 130);
+    scene.fog = new Fog(fog, FOG_NEAR, far);
+    for (const mat of [facade, asphalt, marked, water, zebra] as { uniforms?: Record<string, { value: unknown }> }[]) {
+      if (mat.uniforms?.uFogNear) mat.uniforms.uFogNear.value = FOG_NEAR;
+      if (mat.uniforms?.uFogFar) mat.uniforms.uFogFar.value = far;
+    }
     gl.setClearColor(fog, 1);
     gl.toneMappingExposure = night ? 1.22 : 0.9;
-  }, [gl, night, scene, slim]);
+  }, [asphalt, facade, gl, marked, night, scene, slim, water, zebra]);
 
   useEffect(() => () => {
+    const windows = facade.userData.windows as { dispose?: () => void } | undefined;
+    windows?.dispose?.();
     facade.dispose();
     asphalt.dispose();
     marked.dispose();
@@ -781,7 +900,7 @@ export default function WorldScene({
   return (
     <group>
       <SkyDome night={night} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]} material={groundMat}>
+      <mesh ref={ground} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]} material={groundMat}>
         <planeGeometry args={[360, 360]} />
       </mesh>
       {failed && ready.every((tile) => !tile.buildings.length && !tile.roads) && (

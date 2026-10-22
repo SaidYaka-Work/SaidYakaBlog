@@ -6,7 +6,8 @@ import { ACESFilmicToneMapping, PerspectiveCamera, PointLight, SRGBColorSpace, V
 import type { DogCompanion, DogGenome, LifeStage } from '@/lib/dog';
 import Companions from './Companions';
 import type { PortraitReaction } from './look';
-import { CAMERA_YAW, frameCamera, followYardCamera } from './frame';
+import { CAMERA_YAW, clampOrbitPitchOffset, frameCamera, followYardCamera, worldOrbitPitch } from './frame';
+import './timerClock';
 import DogRig, { type DriveControl } from './DogRig';
 import WorldBowl from './WorldBowl';
 import { asFootprintGrid, footprintClearance, resolveCameraXZ, HOME_PLACE } from '../../workers/dog/src/world';
@@ -122,7 +123,7 @@ function DebugHud() {
         (window.visualViewport?.width ?? 400) <= 400;
       setLine(
         compact
-          ? `${perf.fps.toFixed(0)} fps · p95 ${perf.p95.toFixed(1)}ms · ${perf.calls} calls · ${perf.triangles} tris · ${perf.tiles ?? 0} tiles · geo ${perf.geometries ?? 0} · tex ${perf.textures ?? 0}`
+          ? `${perf.fps.toFixed(0)} fps · p95 ${perf.p95.toFixed(0)}ms · hitch ${perf.hitch.toFixed(0)}ms\n${perf.triangles} tris · ${perf.tiles ?? 0} tiles · ${perf.calls} calls`
           : `${perf.fps.toFixed(0)} fps · p95 ${perf.p95.toFixed(1)}ms · hitch ${perf.hitch.toFixed(0)}ms · ${perf.calls} calls · ${perf.triangles} tris · ${perf.tiles ?? 0} tiles · geo ${perf.geometries ?? 0} · tex ${perf.textures ?? 0} · drv ${(perf.driveMs ?? 0).toFixed(1)} cam ${(perf.cameraMs ?? 0).toFixed(1)} til ${(perf.tileMs ?? 0).toFixed(1)}`,
       );
     };
@@ -220,9 +221,7 @@ function FramedCamera({
       const dx = event.clientX - lastX;
       const dy = event.clientY - lastY;
       orbit.current.yaw -= dx * 0.005;
-      if (Math.abs(dy) > Math.abs(dx) * 1.15) {
-        orbit.current.pitch = Math.max(-0.1, Math.min(0.22, orbit.current.pitch + dy * 0.0035));
-      }
+      orbit.current.pitch = clampOrbitPitchOffset(orbit.current.pitch + dy * 0.0035);
       lastX = event.clientX;
       lastY = event.clientY;
     };
@@ -258,17 +257,18 @@ function FramedCamera({
       const narrow = size.width < 400;
       const yaw = object.rotation.y + orbit.current.yaw;
       const dist = 14.8 + flight * 170;
-      const pitch = 0.5 + orbit.current.pitch + flight * 0.7;
-      const height = 6.6 + flight * 210;
+      const pitch = worldOrbitPitch(orbit.current.pitch, flight);
+      const lookY = (narrow ? 2.85 : 1.35) + flight * 8;
+      const height = lookY + dist * Math.sin(pitch) + flight * 210;
+      look.current.set(
+        object.position.x + Math.sin(yaw) * (narrow ? 0.2 : 1.1 + flight * 6),
+        lookY,
+        object.position.z + Math.cos(yaw) * (narrow ? 0.2 : 1.1 + flight * 6),
+      );
       street.current.set(
         object.position.x - Math.sin(yaw) * dist * Math.cos(pitch),
         height,
         object.position.z - Math.cos(yaw) * dist * Math.cos(pitch),
-      );
-      look.current.set(
-        object.position.x + Math.sin(yaw) * (narrow ? 0.2 : 1.1 + flight * 6),
-        (narrow ? 2.85 : 1.35) + flight * 8,
-        object.position.z + Math.cos(yaw) * (narrow ? 0.2 : 1.1 + flight * 6),
       );
       dir.current.copy(street.current).sub(object.position);
       dir.current.y = 0;

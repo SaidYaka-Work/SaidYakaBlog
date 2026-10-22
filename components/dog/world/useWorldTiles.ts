@@ -34,9 +34,16 @@ const DECODE_MS = 8_000;
 const FETCH_TRIES = 3;
 
 let templatePromise: Promise<string> | null = null;
-let sharedWorker: Worker | null = null;
-let workerUsers = 0;
-let workerBroken = false;
+
+type TileWorkerHost = {
+  __DOG_TILE_WORKER__?: Worker | null;
+  __DOG_TILE_WORKER_USERS__?: number;
+  __DOG_TILE_WORKER_BROKEN__?: boolean;
+};
+
+function workerHost() {
+  return globalThis as typeof globalThis & TileWorkerHost;
+}
 
 function tileTemplate() {
   if (!templatePromise) {
@@ -61,36 +68,36 @@ function tileTemplate() {
 }
 
 function acquireWorker() {
-  if (workerBroken) return null;
-  if (!sharedWorker) {
+  const host = workerHost();
+  if (host.__DOG_TILE_WORKER_BROKEN__) return null;
+  if (!host.__DOG_TILE_WORKER__) {
     try {
-      sharedWorker = new Worker(new URL('./tile.worker.ts', import.meta.url));
-      sharedWorker.addEventListener('error', () => {
+      const worker = new Worker(new URL('./tile.worker.ts', import.meta.url));
+      worker.addEventListener('error', () => {
         console.warn('[dog] tile worker failed; decoding on the main thread');
-        workerBroken = true;
+        host.__DOG_TILE_WORKER_BROKEN__ = true;
         try {
-          sharedWorker?.terminate();
+          worker.terminate();
         } catch {
           // ignore
         }
-        sharedWorker = null;
+        if (host.__DOG_TILE_WORKER__ === worker) host.__DOG_TILE_WORKER__ = null;
       });
+      host.__DOG_TILE_WORKER__ = worker;
     } catch (error) {
       console.warn('[dog] tile worker unavailable', error);
-      workerBroken = true;
-      sharedWorker = null;
+      host.__DOG_TILE_WORKER_BROKEN__ = true;
+      host.__DOG_TILE_WORKER__ = null;
     }
   }
-  workerUsers += 1;
-  return sharedWorker;
+  host.__DOG_TILE_WORKER_USERS__ = (host.__DOG_TILE_WORKER_USERS__ ?? 0) + 1;
+  return host.__DOG_TILE_WORKER__ ?? null;
 }
 
 function releaseWorker() {
-  workerUsers = Math.max(0, workerUsers - 1);
-  if (workerUsers === 0 && sharedWorker) {
-    sharedWorker.terminate();
-    sharedWorker = null;
-  }
+  const host = workerHost();
+  host.__DOG_TILE_WORKER_USERS__ = Math.max(0, (host.__DOG_TILE_WORKER_USERS__ ?? 1) - 1);
+  // Keep the one worker for remounts / Strict Mode so a page never accumulates extras.
 }
 
 function decodeOnMain(
@@ -166,7 +173,7 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
       else wait.reject(new Error(error || 'decode'));
     };
     const failAll = (reason: string) => {
-      workerBroken = true;
+      workerHost().__DOG_TILE_WORKER_BROKEN__ = true;
       Array.from(pending.entries()).forEach(([id, wait]) => {
         pending.delete(id);
         wait.reject(new Error(reason));
@@ -185,7 +192,7 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
     worker?.addEventListener('error', onWorkerError);
 
     async function decode(buffer: ArrayBuffer, z: number, x: number, y: number) {
-      if (!worker || workerBroken) {
+      if (!worker || workerHost().__DOG_TILE_WORKER_BROKEN__) {
         return decodeOnMain(
           buffer,
           z,
@@ -237,7 +244,7 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
         }
       }).catch((error) => {
         console.warn('[dog] tile decode worker failed; using main thread', error);
-        workerBroken = true;
+        workerHost().__DOG_TILE_WORKER_BROKEN__ = true;
         return decodeOnMain(
           buffer,
           z,
