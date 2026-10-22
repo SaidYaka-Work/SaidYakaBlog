@@ -1215,7 +1215,7 @@
 .dog-game.is-compact .dog-attrib {
   left: 8px;
   right: auto;
-  bottom: calc(98px + env(safe-area-inset-bottom));
+  bottom: calc(140px + env(safe-area-inset-bottom));
   max-width: min(11rem, 42vw);
   font-size: 0.52rem;
   z-index: 3;
@@ -1224,7 +1224,7 @@
 .dog-game.is-compact .dog-credit {
   left: 8px;
   right: auto;
-  bottom: calc(118px + env(safe-area-inset-bottom));
+  bottom: calc(162px + env(safe-area-inset-bottom));
   max-width: min(12rem, 46vw);
   font-size: 0.56rem;
   z-index: 3;
