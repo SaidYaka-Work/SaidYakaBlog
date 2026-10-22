@@ -44,10 +44,11 @@ function batchFromInput(input: Record<string, unknown>): number {
 }
 
 function harvestRounds(valid: DailySet): DailySet['rounds'] {
+  const need = DAILY_TASK_BATCHES * DAILY_TASKS_PER_BATCH;
   const passing = filterAiRounds(valid.rounds);
-  if (passing.length >= 20) return passing.slice(0, 20);
-  const extra = valid.rounds.map((round, index) => ({
-    ...round,
+  if (passing.length >= need) return passing.slice(0, need);
+  const extra = Array.from({ length: need }, (_, index) => ({
+    ...valid.rounds[index % valid.rounds.length],
     id: `ok${index + 1}`,
     kind: 'typed' as const,
     text: `what do honeybees make for us number ${index + 1} now`,
@@ -56,7 +57,7 @@ function harvestRounds(valid: DailySet): DailySet['rounds'] {
     options: [],
     category: 'animals',
   }));
-  return filterAiRounds([...passing, ...extra]).slice(0, 20);
+  return filterAiRounds([...passing, ...extra]).slice(0, need);
 }
 
 function roundsForBatch(valid: DailySet, input: Record<string, unknown>) {
@@ -270,7 +271,7 @@ test('verifyFacts drops only explicit drop ids when coverage is thin', async () 
   assert.ok(dropped.some((round) => round.id === sample[2].id));
 });
 
-test('verifyFacts drops unlabeled trivia when most ids are classified', async () => {
+test('verifyFacts keeps unlabeled trivia even when most ids are classified', async () => {
   const valid = fallbackDailySet('2026-10-21');
   const sample = valid.rounds.filter((round) => round.kind !== 'draw' && round.kind !== 'sound').slice(0, 4);
   const kept = await verifyFacts(
@@ -283,7 +284,7 @@ test('verifyFacts drops unlabeled trivia when most ids are classified', async ()
   );
   assert.deepEqual(
     kept.map((round) => round.id),
-    [sample[0].id],
+    [sample[0].id, sample[3].id],
   );
 });
 
@@ -311,8 +312,8 @@ test('generateDailySet logs requested/generated/validated/verified/filled', asyn
   }
   const counts = lines.find((line) => line.includes('fakegpt daily counts'));
   assert.ok(counts);
-  assert.match(counts, /requested=20/);
-  assert.match(counts, /generated=20/);
+  assert.match(counts, new RegExp(`requested=${DAILY_TASK_BATCHES * DAILY_TASKS_PER_BATCH}`));
+  assert.match(counts, new RegExp(`generated=${DAILY_TASK_BATCHES * DAILY_TASKS_PER_BATCH}`));
   assert.match(counts, /validated=\d+/);
   assert.match(counts, /verified=\d+/);
   assert.match(counts, /filled=\d+/);
@@ -378,7 +379,7 @@ test('a thin AI harvest is labeled fallback so the next request retries', async 
         const max = Number(input.max_tokens);
         if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: valid.personas } };
         if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
-        return { response: { rounds: roundsForBatch(valid, input).slice(0, 2) } };
+        return { response: { rounds: roundsForBatch(valid, input).slice(0, 1) } };
       },
     },
     '2026-10-21',

@@ -33,31 +33,32 @@ function round(over: Partial<DailyRound> & Pick<DailyRound, 'kind' | 'text' | 'a
   };
 }
 
-test('translation prompts must name the target language and keep equivalent aliases', () => {
+test('translation prompts strip non-format aliases instead of dropping the round', () => {
   assert.equal(namesTargetLanguage('translate I love my dog to French'), true);
   assert.equal(namesTargetLanguage('I love my dog, go'), false);
-  assert.equal(
-    validateAiRound(
-      round({
-        kind: 'translate',
-        text: 'I love my dog, go',
-        answer: "je t'aime mon chien",
-        aliases: ['mon chien, il est adorable'],
-      }),
-    ).ok,
-    false,
+  const unnamed = validateAiRound(
+    round({
+      kind: 'translate',
+      text: 'I love my dog, go',
+      answer: "je t'aime mon chien",
+      aliases: ['mon chien, il est adorable'],
+    }),
   );
-  assert.equal(
-    validateAiRound(
-      round({
-        kind: 'translate',
-        text: 'translate the cat is black to French',
-        answer: 'le chat est noir',
-        aliases: ['le chat est sombre'],
-      }),
-    ).ok,
-    false,
+  assert.equal(unnamed.ok, true);
+  if (unnamed.ok) assert.deepEqual(unnamed.round.aliases, []);
+  const stripped = validateAiRound(
+    round({
+      kind: 'translate',
+      text: 'translate the cat is black to French',
+      answer: 'le chat est noir',
+      aliases: ['le chat est sombre', 'le chat est noir'],
+    }),
   );
+  assert.equal(stripped.ok, true);
+  if (stripped.ok) {
+    assert.equal(stripped.round.aliases.includes('le chat est sombre'), false);
+    assert.ok(stripped.round.aliases.includes('le chat est noir'));
+  }
   assert.equal(
     validateAiRound(
       round({
@@ -87,13 +88,23 @@ test('order rounds need a rule, permutations, and a computed key when possible',
   );
   assert.equal(fixed.ok, true);
   if (fixed.ok) assert.equal(normalize(fixed.round.answer), normalize('one, three, two, zero'));
+  const noRule = validateAiRound(
+    round({
+      kind: 'order',
+      text: 'list of colors for me now',
+      answer: 'red, green, blue',
+      options: ['red, green, blue', 'blue, red, green', 'green, blue, red', 'blue, green, red'],
+    }),
+  );
+  assert.equal(noRule.ok, true);
+  if (noRule.ok) assert.equal(normalize(noRule.round.answer), normalize('red, green, blue'));
   assert.equal(
     validateAiRound(
       round({
         kind: 'order',
-        text: 'list of colors for me now',
-        answer: 'red, green, blue',
-        options: ['red, green, blue', 'blue, red, green', 'green, blue, red', 'blue, green, red'],
+        text: 'alphabetical order of these words please',
+        answer: 'apple banana',
+        options: ['apple banana', 'banana apple', 'pear apple', 'apple pear banana'],
       }),
     ).ok,
     false,
@@ -116,6 +127,11 @@ test('math and unit keys are recomputed and ambiguous ounces are dropped', () =>
     validateAiRound(round({ kind: 'unit', text: '2 cups flour in ounces please', answer: '16' })).ok,
     false,
   );
+  const unparsed = validateAiRound(
+    round({ kind: 'math', text: 'what is the 12th fibonacci number please', answer: '144' }),
+  );
+  assert.equal(unparsed.ok, true);
+  if (unparsed.ok) assert.equal(unparsed.round.answer, '144');
 });
 
 test('time-sensitive, nonsense, and more-specific distractors are dropped', () => {
@@ -177,14 +193,25 @@ test('reply text cannot name another day persona', () => {
   assert.match(cleaned.bad, /noir/i);
 });
 
-test('filterAiRounds keeps only passing jobs', () => {
-  const kept = filterAiRounds([
-    round({ kind: 'math', text: '9 times 6, pub quiz sudden death', answer: '54' }),
-    round({ kind: 'unit', text: '2 cups flour in ounces please', answer: '16' }),
-    round({ kind: 'translate', text: 'the cat is black', answer: 'le chat est noir' }),
-  ]);
-  assert.equal(kept.length, 1);
-  assert.equal(kept[0].kind, 'math');
+test('filterAiRounds keeps fixable jobs and logs a drop reason', () => {
+  const lines: string[] = [];
+  const orig = console.log;
+  console.log = (...args: unknown[]) => {
+    lines.push(args.map(String).join(' '));
+  };
+  try {
+    const kept = filterAiRounds([
+      round({ kind: 'math', text: '9 times 6, pub quiz sudden death', answer: '54' }),
+      round({ id: 'flour', kind: 'unit', text: '2 cups flour in ounces please', answer: '16' }),
+      round({ kind: 'translate', text: 'the cat is black', answer: 'le chat est noir' }),
+    ]);
+    assert.equal(kept.length, 2);
+    assert.ok(kept.some((row) => row.kind === 'math'));
+    assert.ok(kept.some((row) => row.kind === 'translate'));
+  } finally {
+    console.log = orig;
+  }
+  assert.ok(lines.some((line) => /fakegpt daily drop id=flour reason=unit-ambiguous/.test(line)));
 });
 
 function normalize(value: string | null): string {

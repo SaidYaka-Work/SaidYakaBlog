@@ -42,6 +42,8 @@ export type DailySet = {
   source: 'ai' | 'fallback';
   personas: DailyPersona[];
   rounds: DailyRound[];
+  /** How many rounds came from the model before bank fill. */
+  aiCount?: number;
 };
 
 export type AudioFeatures = {
@@ -341,11 +343,17 @@ export function validateDailySet(raw: unknown, date: string): DailySet | null {
   );
   if (personas.length < Math.min(DAILY_PERSONAS, MAX_CUSTOMERS)) return null;
 
+  const aiCount =
+    typeof input.aiCount === 'number' && Number.isFinite(input.aiCount)
+      ? Math.max(0, Math.min(picked.length, Math.round(input.aiCount)))
+      : undefined;
+
   return {
     date,
     source: input.source === 'fallback' ? 'fallback' : 'ai',
     personas,
     rounds: picked,
+    aiCount,
   };
 }
 

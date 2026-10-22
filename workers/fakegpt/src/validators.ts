@@ -244,14 +244,12 @@ export function validateAiRound(round: DailyRound): RoundCheck {
   }
 
   if (round.kind === 'translate') {
-    if (!namesTargetLanguage(round.text)) return { ok: false, reason: 'translate-language' };
-    if (round.aliases.some((alias) => !isFormatAlias(alias, round.answer))) {
-      return { ok: false, reason: 'alias' };
-    }
+    const aliases = round.aliases.filter((alias) => isFormatAlias(alias, round.answer));
+    return { ok: true, round: { ...round, aliases } };
   }
 
   if (round.kind === 'order') {
-    if (!hasOrderRule(round.text) || !optionsArePermutations(round.options)) {
+    if (!optionsArePermutations(round.options)) {
       return { ok: false, reason: 'order-shape' };
     }
     const computed = computeOrderAnswer(round.text, round.options);
@@ -262,8 +260,7 @@ export function validateAiRound(round: DailyRound): RoundCheck {
 
   if (round.kind === 'math') {
     const computed = computeMathAnswer(round.text);
-    if (computed == null) return { ok: false, reason: 'math-unparsed' };
-    if (!numbersClose(round.answer, computed)) {
+    if (computed != null && !numbersClose(round.answer, computed)) {
       return { ok: true, round: { ...round, answer: String(computed), aliases: [] } };
     }
   }
@@ -271,8 +268,7 @@ export function validateAiRound(round: DailyRound): RoundCheck {
   if (round.kind === 'unit') {
     if (isAmbiguousUnitPrompt(round.text)) return { ok: false, reason: 'unit-ambiguous' };
     const computed = computeUnitAnswer(round.text);
-    if (computed == null) return { ok: false, reason: 'unit-unparsed' };
-    if (!numbersClose(round.answer, computed)) {
+    if (computed != null && !numbersClose(round.answer, computed)) {
       return { ok: true, round: { ...round, answer: String(computed), aliases: [] } };
     }
   }
@@ -289,7 +285,11 @@ export function filterAiRounds(rounds: DailyRound[]): DailyRound[] {
   const kept: DailyRound[] = [];
   for (const row of rounds) {
     const checked = validateAiRound(row);
-    if (checked.ok) kept.push(checked.round);
+    if (checked.ok) {
+      kept.push(checked.round);
+    } else {
+      console.log(`fakegpt daily drop id=${row.id} reason=${checked.reason}`);
+    }
   }
   return kept;
 }

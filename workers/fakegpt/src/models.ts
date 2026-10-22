@@ -3,7 +3,7 @@ export const TEXT_MODEL = '@cf/meta/llama-3.1-8b-instruct-fast';
 export const VISION_MODEL = '@cf/llava-hf/llava-1.5-7b-hf';
 export const WHISPER_MODEL = '@cf/openai/whisper';
 
-/** Split daily gen: personas, then four batches of 5. Live 10-round/900-token calls undershot or truncated. */
+/** Split daily gen: personas, then six batches of 5. Live 10-round/900-token calls undershot or truncated. */
 export const TEXT_MAX_TOKENS_PERSONAS = 280;
 /** ~5 rounds × ~110 tokens plus MC-option headroom. */
 export const TEXT_MAX_TOKENS_BATCH = 800;
@@ -21,22 +21,34 @@ export const AI_TIMEOUT_MS_DAILY = 14_000;
 export const AI_TIMEOUT_MS_CRON = 28_000;
 /** Live /judge fell back at 8.6s after vision + 5.5s judge. Typical judge is 3–5.5s. */
 export const AI_TIMEOUT_MS_JUDGE = 9000;
-export const DAILY_TASK_BATCHES = 4;
+export const DAILY_TASK_BATCHES = 6;
 export const DAILY_TASKS_PER_BATCH = 5;
 export const DAILY_AI_MIN = 12;
-export const DAILY_GENERATE_SPEND = 6;
+/** personas + 6 batches + verify */
+export const DAILY_GENERATE_SPEND = 8;
+export const DAILY_GENERATE_ATTEMPTS_MAX = 5;
+export const DAILY_GENERATE_BACKOFF_MS = 3 * 60 * 1000;
+export const DAILY_GENERATE_LOCK_MS = 2 * 60 * 1000;
 
 /** Full-day cache for a validated AI set. Fallback is cached only briefly so we retry. */
 export const AI_DAILY_CACHE_TTL_SEC = 26 * 60 * 60;
 export const FALLBACK_DAILY_CACHE_TTL_SEC = 3 * 60;
-export const DAILY_CACHE_KEY_PREFIX = 'daily:v7:';
+export const DAILY_CACHE_KEY_PREFIX = 'daily:v8:';
 
-export function dailyCacheTtlSec(source: 'ai' | 'fallback'): number {
-  return source === 'ai' ? AI_DAILY_CACHE_TTL_SEC : FALLBACK_DAILY_CACHE_TTL_SEC;
+export function dailyCacheTtlSec(source: 'ai' | 'fallback', aiCount = 0): number {
+  return source === 'ai' || aiCount > 0 ? AI_DAILY_CACHE_TTL_SEC : FALLBACK_DAILY_CACHE_TTL_SEC;
 }
 
 export function dailyCacheKey(date: string): string {
   return `${DAILY_CACHE_KEY_PREFIX}${date}`;
+}
+
+export function dailyAttemptKey(date: string): string {
+  return `lastAttempt:${date}`;
+}
+
+export function dailyLockKey(date: string): string {
+  return `genLock:${date}`;
 }
 
 export function dailySourceFor(aiRounds: number): 'ai' | 'fallback' {

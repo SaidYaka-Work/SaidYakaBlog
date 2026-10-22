@@ -2,11 +2,17 @@ import { chatTurn, generateDailySet, gradeTyped, judgeRound, logAiFailure, today
 import { kvGetJson, kvPutJson, takeBudget, takeWindow, type Counter, type KVNamespace } from './budget';
 import { fallbackDailySet } from './fallback';
 import {
+  AI_DAILY_CACHE_TTL_SEC,
   AI_TIMEOUT_MS_CRON,
   AI_TIMEOUT_MS_DAILY,
+  DAILY_GENERATE_ATTEMPTS_MAX,
+  DAILY_GENERATE_BACKOFF_MS,
+  DAILY_GENERATE_LOCK_MS,
   DAILY_GENERATE_SPEND,
+  dailyAttemptKey,
   dailyCacheKey,
   dailyCacheTtlSec,
+  dailyLockKey,
   GLOBAL_AI_CALLS_PER_DAY,
   IP_CHAT_PER_HOUR,
   IP_DAILY_GET_PER_HOUR,
@@ -87,26 +93,112 @@ async function spend(env: Env, date: string, cost: number): Promise<boolean> {
   return true;
 }
 
-export async function generateAndCache(
-  env: Env,
-  date: string,
-  timeoutMs = AI_TIMEOUT_MS_CRON,
-): Promise<DailySet> {
-  const key = dailyCacheKey(date);
-  const generated = (await spend(env, date, DAILY_GENERATE_SPEND))
-    ? await generateDailySet(env.AI, date, { timeoutMs })
-    : fallbackDailySet(date);
-  await kvPutJson(env.FAKEGPT, key, generated, dailyCacheTtlSec(generated.source));
-  return generated;
-}
+export type AttemptMarker = {
+  count: number;
+  at: number;
+};
+
+export type GenerationClaim = {
+  claimed: boolean;
+  attempts: number;
+  reason?: 'have-ai' | 'locked' | 'backoff' | 'capped';
+};
+
+export type GenerateAndCacheOpts = {
+  claimed?: boolean;
+  now?: number;
+};
 
 export type DailySetOpts = {
   /** Serve a fallback immediately and generate in the background. */
   waitUntil?: (promise: Promise<unknown>) => void;
   timeoutMs?: number;
+  now?: number;
 };
 
+export function dailyAiCount(set: DailySet | null | undefined): number {
+  if (!set) return 0;
+  if (typeof set.aiCount === 'number' && Number.isFinite(set.aiCount)) {
+    return Math.max(0, Math.round(set.aiCount));
+  }
+  return set.source === 'ai' ? set.rounds.length : 0;
+}
+
+export function pickBetterDailySet(cached: DailySet | null | undefined, next: DailySet): DailySet {
+  if (!cached?.rounds?.length) return next;
+  if (dailyAiCount(next) > dailyAiCount(cached)) return next;
+  if (next.source === 'ai' && cached.source !== 'ai') return next;
+  return cached;
+}
+
+async function readAttempt(env: Env, date: string): Promise<AttemptMarker> {
+  const raw = await kvGetJson<AttemptMarker>(env.FAKEGPT, dailyAttemptKey(date));
+  const count = typeof raw?.count === 'number' && Number.isFinite(raw.count) ? Math.max(0, Math.round(raw.count)) : 0;
+  const at = typeof raw?.at === 'number' && Number.isFinite(raw.at) ? raw.at : 0;
+  return { count, at };
+}
+
+export async function clearGenerationLock(env: Env, date: string): Promise<void> {
+  await kvPutJson(env.FAKEGPT, dailyLockKey(date), { at: 0 }, 60);
+}
+
+export async function claimGeneration(env: Env, date: string, opts: { now?: number } = {}): Promise<GenerationClaim> {
+  const now = opts.now ?? Date.now();
+  const cached = await kvGetJson<DailySet>(env.FAKEGPT, dailyCacheKey(date));
+  const attempts = await readAttempt(env, date);
+  if (cached?.rounds?.length && cached.source === 'ai') {
+    return { claimed: false, attempts: attempts.count, reason: 'have-ai' };
+  }
+
+  const lock = await kvGetJson<{ at?: number }>(env.FAKEGPT, dailyLockKey(date));
+  if (typeof lock?.at === 'number' && now - lock.at < DAILY_GENERATE_LOCK_MS) {
+    return { claimed: false, attempts: attempts.count, reason: 'locked' };
+  }
+
+  if (attempts.count >= DAILY_GENERATE_ATTEMPTS_MAX) {
+    return { claimed: false, attempts: attempts.count, reason: 'capped' };
+  }
+  if (attempts.at > 0 && now - attempts.at < DAILY_GENERATE_BACKOFF_MS) {
+    return { claimed: false, attempts: attempts.count, reason: 'backoff' };
+  }
+
+  await kvPutJson(env.FAKEGPT, dailyLockKey(date), { at: now }, Math.ceil(DAILY_GENERATE_LOCK_MS / 1000) + 30);
+  const next = { count: attempts.count + 1, at: now };
+  await kvPutJson(env.FAKEGPT, dailyAttemptKey(date), next, AI_DAILY_CACHE_TTL_SEC);
+  return { claimed: true, attempts: next.count };
+}
+
+export async function generateAndCache(
+  env: Env,
+  date: string,
+  timeoutMs = AI_TIMEOUT_MS_CRON,
+  opts: GenerateAndCacheOpts = {},
+): Promise<DailySet> {
+  const now = opts.now ?? Date.now();
+  if (!opts.claimed) {
+    const claim = await claimGeneration(env, date, { now });
+    if (!claim.claimed) {
+      const cached = await kvGetJson<DailySet>(env.FAKEGPT, dailyCacheKey(date));
+      return cached?.rounds?.length ? cached : fallbackDailySet(date);
+    }
+  }
+
+  const key = dailyCacheKey(date);
+  try {
+    const cached = await kvGetJson<DailySet>(env.FAKEGPT, key);
+    const generated = (await spend(env, date, DAILY_GENERATE_SPEND))
+      ? await generateDailySet(env.AI, date, { timeoutMs })
+      : fallbackDailySet(date);
+    const next = pickBetterDailySet(cached, generated);
+    await kvPutJson(env.FAKEGPT, key, next, dailyCacheTtlSec(next.source, dailyAiCount(next)));
+    return next;
+  } finally {
+    await clearGenerationLock(env, date);
+  }
+}
+
 export async function dailySet(env: Env, date: string, opts: DailySetOpts = {}): Promise<DailySet> {
+  const now = opts.now ?? Date.now();
   const key = dailyCacheKey(date);
   const cached = await kvGetJson<DailySet>(env.FAKEGPT, key);
   if (cached?.rounds?.length && cached.source === 'ai') return cached;
@@ -114,17 +206,24 @@ export async function dailySet(env: Env, date: string, opts: DailySetOpts = {}):
   if (opts.waitUntil) {
     const fallback = cached?.rounds?.length ? cached : fallbackDailySet(date);
     if (!cached?.rounds?.length) {
-      await kvPutJson(env.FAKEGPT, key, fallback, dailyCacheTtlSec(fallback.source));
+      await kvPutJson(env.FAKEGPT, key, fallback, dailyCacheTtlSec(fallback.source, dailyAiCount(fallback)));
     }
-    opts.waitUntil(
-      generateAndCache(env, date, opts.timeoutMs ?? AI_TIMEOUT_MS_DAILY).catch((error) => {
-        logAiFailure('daily-bg', error);
-      }),
-    );
+    const claim = await claimGeneration(env, date, { now });
+    if (claim.claimed) {
+      opts.waitUntil(
+        generateAndCache(env, date, opts.timeoutMs ?? AI_TIMEOUT_MS_DAILY, { claimed: true, now }).catch((error) => {
+          logAiFailure('daily-bg', error);
+        }),
+      );
+    }
     return fallback;
   }
 
-  return generateAndCache(env, date, opts.timeoutMs ?? AI_TIMEOUT_MS_CRON);
+  const claim = await claimGeneration(env, date, { now });
+  if (!claim.claimed) {
+    return cached?.rounds?.length ? cached : fallbackDailySet(date);
+  }
+  return generateAndCache(env, date, opts.timeoutMs ?? AI_TIMEOUT_MS_CRON, { claimed: true, now });
 }
 
 async function readJson(request: Request): Promise<unknown> {

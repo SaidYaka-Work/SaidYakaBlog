@@ -44,3 +44,11 @@ test('bank fills use the day personas, not leftover costume names', () => {
   assert.ok(set.rounds.every((round) => names.has(round.persona)));
   assert.equal(set.rounds.some((round) => round.persona === 'Uncle Modem'), false);
 });
+
+test('fillDailySet records how many incoming AI rounds survived', () => {
+  const incoming = fallbackDailySet('2026-10-21').rounds.slice(0, 4);
+  const set = fillDailySet('2026-10-21', incoming, 'fallback');
+  assert.equal(set.aiCount, 4);
+  assert.equal(set.source, 'fallback');
+  assert.ok(set.rounds.length >= 20);
+});

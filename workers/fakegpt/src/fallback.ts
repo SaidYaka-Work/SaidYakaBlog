@@ -50,6 +50,8 @@ export function fillDailySet(
     kept.push(parsed);
   }
 
+  const incomingKept = kept.length;
+
   if (kept.length < DAILY_ROUNDS) {
     const local = pickJobs(asTriviaItems(localJobPool()), DAILY_ROUNDS, random, dateSeed(date));
     for (const row of local) {
@@ -74,8 +76,9 @@ export function fillDailySet(
     dateSeed(date),
   );
   const assigned = assignDayPersonas(kept, personas);
+  const aiCount = Math.min(incomingKept, assigned.length);
 
-  const assembled = validateDailySet({ rounds: assigned, personas, source }, date);
+  const assembled = validateDailySet({ rounds: assigned, personas, source, aiCount }, date);
   if (assembled) return assembled;
   const pureLocal = pickJobs(
     asTriviaItems(localJobPool()),
@@ -85,7 +88,7 @@ export function fillDailySet(
   );
   const localPersonas = fillPersonas(PERSONA_BANK, dateSeed(`${date}-local`));
   const fallback = validateDailySet(
-    { rounds: assignDayPersonas(pureLocal, localPersonas), personas: localPersonas, source: 'fallback' },
+    { rounds: assignDayPersonas(pureLocal, localPersonas), personas: localPersonas, source: 'fallback', aiCount: 0 },
     date,
   );
   if (!fallback) throw new Error('local job bank failed validation');
