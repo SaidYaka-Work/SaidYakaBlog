@@ -137,6 +137,21 @@ function GamePreview({ tone, featured = false }: { tone: GameMeta['tone']; featu
           </span>
         </>
       )}
+      {tone === 'magnitude' && (
+        <>
+          <span className="absolute left-6 right-6 top-1/2 h-px -translate-y-1/2 bg-[#e8a87c]/35" />
+          {['1', '10', '100', '1k', '10k'].map((label, index) => (
+            <span
+              key={label}
+              className="absolute top-[38%] text-[10px] tracking-wide text-[#f3eee6]/55"
+              style={{ left: `${10 + index * 18}%` }}
+            >
+              {label}
+            </span>
+          ))}
+          <span className="absolute left-[58%] top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-[#e8a87c] shadow-[0_0_10px_#e8a87c]" />
+        </>
+      )}
     </div>
   );
 }

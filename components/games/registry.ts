@@ -11,4 +11,5 @@ export const reactGameLoaders: Record<string, GameLoader> = {
   'glyph-thread': () => import('./glyph-thread/Game'),
   'shade-shift': () => import('./shade-shift/Game'),
   'fold-herd': () => import('./fold-herd/Game'),
+  magnitude: () => import('./magnitude/Game'),
 };

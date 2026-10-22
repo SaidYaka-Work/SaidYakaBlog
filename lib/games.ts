@@ -12,7 +12,8 @@ export type GameTone =
   | 'shade'
   | 'herd'
   | 'unknown'
-  | 'gpt';
+  | 'gpt'
+  | 'magnitude';
 
 export type GameMeta = {
   slug: string;
@@ -153,6 +154,20 @@ export const games: GameMeta[] = [
     kind: 'react',
     href: englishPath('/games/fold-herd'),
     tone: 'herd',
+  },
+  {
+    slug: 'magnitude',
+    title: 'Magnitude',
+    tagline: 'Five Fermi guesses a day. How many orders of magnitude off are you?',
+    description:
+      'A daily estimation puzzle: five concrete facts, a logarithmic slider, and a score for how many powers of ten you miss by. Each answer comes with a short explanation and a source.',
+    howTo:
+      'Slide, type, or use the arrow keys to place your guess on a log scale. Lock in to see the true value, how many orders of magnitude you missed by, and a one-line explanation. Five questions a day; Practice deals a random set.',
+    genre: 'Estimation',
+    kind: 'react',
+    href: englishPath('/games/magnitude'),
+    tone: 'magnitude',
+    daily: true,
   },
 ];
 
