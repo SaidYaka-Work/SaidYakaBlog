@@ -179,7 +179,7 @@ function asPersonaList(raw: unknown): DailyPersona[] {
   return rows.map(parseDailyPersona).filter((row): row is DailyPersona => Boolean(row));
 }
 
-export async function verifyFacts(ai: AiRunner, rounds: DailyRound[]): Promise<DailyRound[]> {
+export async function verifyFacts(ai: AiRunner | undefined, rounds: DailyRound[]): Promise<DailyRound[]> {
   const trivia = rounds.filter((round) => round.kind === 'mc' || round.kind === 'typed' || round.kind === 'fill');
   if (!trivia.length) return rounds;
   const payload = trivia.map((round) => `${round.id}: Q=${round.text} A=${round.answer}`).join('\n');
@@ -301,11 +301,13 @@ export async function generateDailySet(
     validated = parsed.length;
 
     let kept = parsed;
-    try {
-      kept = await verifyFacts(ai, parsed);
-    } catch (error) {
-      lastError = error;
-      logAiFailure('verify', error);
+    if (ai && parsed.length) {
+      try {
+        kept = await verifyFacts(ai, parsed);
+      } catch (error) {
+        lastError = error;
+        logAiFailure('verify', error);
+      }
     }
     verified = kept.length;
 
