@@ -652,6 +652,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   useEffect(() => {
     if (!playing || overlay || !shared) return;
     const tick = () => {
+      // ?spawn= is a local-only QA mode: never drive (or take the leash of) the shared dog.
+      if (spawnRef.current) return;
       const current = inputRef.current;
       const moving = Math.hypot(current.ax, current.az) > 0.12;
       const now = performance.now();
@@ -676,7 +678,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   }, [overlay, playing, shared]);
 
   useEffect(() => {
-    if (!playing || overlay || !shared || previewing || youHold) return;
+    if (!playing || overlay || !shared || previewing || youHold || spawnRef.current) return;
     const moving = Math.hypot(input.ax, input.az) > 0.12;
     if (!moving) return;
     const now = performance.now();
@@ -929,6 +931,12 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           queueAhead={queueAhead}
           neighborCount={guests.length + (clientId ? 1 : 0)}
           youHold={youHold}
+          wantLeash={
+            !youHold &&
+            !debugSpawn &&
+            !previewing &&
+            Math.hypot(input.ax, input.az) > 0.12
+          }
           flying={flying}
           onTakeLeash={takeLeash}
         />

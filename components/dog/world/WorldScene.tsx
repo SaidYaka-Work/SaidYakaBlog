@@ -645,6 +645,11 @@ export default function WorldScene({
   }, []);
   const hereRef = useRef(here);
   hereRef.current = here;
+  // Dressing (lamps, plants, crossings) scans every road and park ring and sorts them.
+  // `here` changes on every 4 Hz pose/location sync while walking; re-dress only per 12 m cell.
+  const dressCellX = Math.round(here.x / 12);
+  const dressCellZ = Math.round(here.z / 12);
+  const dressHere = useMemo(() => ({ x: dressCellX * 12, z: dressCellZ * 12 }), [dressCellX, dressCellZ]);
   const cache = useRef(new Map<string, BuiltTile>());
   const queue = useRef<WorldTileData[]>([]);
   const uploads = useRef<{ tile: WorldTileData; packed: PackedTile; layer: number }[]>([]);
@@ -709,21 +714,21 @@ export default function WorldScene({
   }, []);
 
   const lamps = useMemo(
-    () => lampsAlongRoads(tiles.flatMap((tile) => tile.roads), here, slim ? 5 : 8),
-    [here, slim, tiles],
+    () => lampsAlongRoads(tiles.flatMap((tile) => tile.roads), dressHere, slim ? 5 : 8),
+    [dressHere, slim, tiles],
   );
   const plantMax = slim ? 28 : 48;
   const plants = useMemo(
-    () => dressPlants(tiles.flatMap((tile) => tile.parks), tiles.flatMap((tile) => tile.roads), here, plantMax),
-    [here, plantMax, tiles],
+    () => dressPlants(tiles.flatMap((tile) => tile.parks), tiles.flatMap((tile) => tile.roads), dressHere, plantMax),
+    [dressHere, plantMax, tiles],
   );
   const benches = useMemo(
     () => plants.filter((plant) => plant.kind === 'bush').slice(0, slim ? 3 : 6),
     [plants, slim],
   );
   const crossings = useMemo(
-    () => crossingsAtIntersections(tiles.flatMap((tile) => tile.roads), here, slim ? 3 : 5),
-    [here, slim, tiles],
+    () => crossingsAtIntersections(tiles.flatMap((tile) => tile.roads), dressHere, slim ? 3 : 5),
+    [dressHere, slim, tiles],
   );
   const crossingGeo = useMemo(() => crossingMesh(crossings), [crossings]);
 

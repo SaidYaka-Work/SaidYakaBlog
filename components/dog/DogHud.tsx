@@ -46,6 +46,7 @@ export default function DogHud({
   queueAhead = 0,
   neighborCount = 0,
   youHold = false,
+  wantLeash = false,
   flying = false,
   leashWaitMs = 0,
   leashTaking = false,
@@ -88,6 +89,7 @@ export default function DogHud({
   queueAhead?: number;
   neighborCount?: number;
   youHold?: boolean;
+  wantLeash?: boolean;
   flying?: boolean;
   leashWaitMs?: number;
   leashTaking?: boolean;
@@ -96,10 +98,12 @@ export default function DogHud({
 }) {
   const leashPill =
     !empty && !flying ? (
-      <p className={`dog-leash${youHold || youNext ? ' is-next' : ''}`} role="status">
+      <p className={`dog-leash${youHold || youNext || wantLeash ? ' is-next' : ''}`} role="status">
         {youHold
           ? 'You have the leash'
-          : leashTaking
+          : wantLeash
+            ? 'Waiting for the leash'
+            : leashTaking
             ? 'Taking the leash…'
             : leashWaitMs > 0
               ? `Give him a moment · ${Math.max(1, Math.ceil(leashWaitMs / 1000))}s`
@@ -156,13 +160,15 @@ export default function DogHud({
         {!empty && onTakeLeash && (
           <button
             type="button"
-            className={`dog-chip${youHold || youNext ? ' is-leash' : ''}`}
+            className={`dog-chip${youHold || youNext || wantLeash ? ' is-leash' : ''}`}
             onClick={onTakeLeash}
             aria-pressed={youHold}
           >
             {youHold
               ? 'Leash yours'
-              : leashTaking
+              : wantLeash
+                ? 'Waiting for leash'
+                : leashTaking
                 ? 'Taking the leash…'
                 : leashWaitMs > 0
                   ? `Wait ${Math.max(1, Math.ceil(leashWaitMs / 1000))}s`

@@ -9,7 +9,17 @@ import {
   steerToward,
   tickYardAi,
 } from '../workers/dog/src/room.ts';
-import { hopHeight, insideYard, plantOnFloor, sampleBuffer, type PoseSample } from '../components/dog/motion.ts';
+import {
+  hopHeight,
+  insideYard,
+  plantOnFloor,
+  pushTrail,
+  reconcileDriver,
+  sampleBuffer,
+  type PoseSample,
+  type TrailPoint,
+} from '../components/dog/motion.ts';
+import { dressCell } from '../components/dog/world/dress.ts';
 
 function assert(cond: unknown, message: string) {
   if (!cond) throw new Error(message);
@@ -87,5 +97,25 @@ assert(Math.hypot(around.ax, around.az) > 0.4, 'steerToward returns a heading');
 
 const driven = applyDrive(createYard(0), 0, 1, false, 0.1, 10);
 assert(driven.pose.x === driven.pose.x && !('y' in driven.pose), 'sim pose has no y');
+
+const idle = { x: 4, z: -8, yaw: 0, vx: 0, vz: 0, gait: 'walk' as const };
+const stale = { ...idle, z: -7.2 };
+const naive = reconcileDriver(idle, stale);
+assert(Math.abs(naive.z - idle.z) > 0.05, 'without a trail, a 0.8 m echo still tugs');
+
+const trail: TrailPoint[] = [];
+pushTrail(trail, 1000, 4, -7.2);
+pushTrail(trail, 1250, 4, -7.6);
+pushTrail(trail, 1500, 4, -8);
+const matched = reconcileDriver(idle, stale, trail);
+assert(matched.z === idle.z && matched.x === idle.x, `trail match must not pull back, got z=${matched.z}`);
+pushTrail(trail, 4000, 4, -12);
+assert(trail[0].at >= 2500, 'trail drops samples older than 1.5 s');
+
+const far = reconcileDriver(idle, { ...idle, x: 10, z: 10 }, trail);
+assert(far.x === 10 && trail.length === 0, 'a >2 m snap clears the trail');
+
+assert(dressCell({ x: 5, z: -5 }).x === 0 && dressCell({ x: 5, z: -5 }).z === 0, 'dress stays on the 12 m cell');
+assert(dressCell({ x: 13, z: -20 }).x === 12 && dressCell({ x: 13, z: -20 }).z === -24, 'dress hops only after 12 m');
 
 console.log('dog-motion-check ok');
