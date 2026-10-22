@@ -19,5 +19,12 @@ export const camFade = {
 
 export const liveBuildingGrid: { current: unknown } = { current: null };
 
+/** Live dog XZ from the rig. Spawn/QA lat/lng stay at the spawn; shared-dog lat/lng lag the pose. */
+export const liveHere = { x: 0, z: 0, ready: false };
+
+export function dogHere(fallback: { x: number; z: number }) {
+  return liveHere.ready ? { x: liveHere.x, z: liveHere.z } : fallback;
+}
+
 /** Shared pixel-ratio cap. PerfProbe lowers this when p95 stays high. */
 export const renderScale = { dpr: 1.25 };

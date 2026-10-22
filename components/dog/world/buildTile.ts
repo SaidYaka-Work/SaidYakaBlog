@@ -3,14 +3,13 @@
  * without mounting React — every dress stage must advance or the job is dropped.
  */
 import {
-  BoxGeometry,
   BufferAttribute,
   ExtrudeGeometry,
   Shape,
   type BufferGeometry,
 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { centroid, facadeTint, isDressRoad, isMajorRoad, pointInRing, ringBounds } from './dress';
+import { centroid, facadeTint, isDressRoad, isMajorRoad, pointInRing } from './dress';
 import type { TileBounds, WorldTileData } from './decode';
 
 export type BuiltTile = {
@@ -196,7 +195,9 @@ export function pushBuilding(
     const height = Math.max(3.2, building.height - building.min);
     const mid = centroid(building.ring);
     const tint = facadeTint(mid.x, mid.z);
-    const ring = cheap ? cheapRing(building.ring) : building.ring;
+    // decode() already simplifies rings to ~8 points; cheapRing moved walls up to 25 m off the collider.
+    const ring = building.ring;
+    void cheap;
     const geo = new ExtrudeGeometry(shapeFrom(ring), {
       depth: height,
       bevelEnabled: false,
@@ -207,12 +208,14 @@ export function pushBuilding(
     paintBuilding(geo, tint, height);
     walls.push(geo);
     if (!withRoof) return;
-    const box = ringBounds(building.ring);
-    if (box.w > 1.2 && box.d > 1.2) {
-      const cap = new BoxGeometry(box.w + 0.2, 0.32, box.d + 0.2);
-      cap.translate((box.minX + box.maxX) / 2, building.min + height + 0.1, (box.minZ + box.maxZ) / 2);
-      roofs.push(cap);
-    }
+    const cap = new ExtrudeGeometry(shapeFrom(ring), {
+      depth: 0.32,
+      bevelEnabled: false,
+      curveSegments: 1,
+    });
+    cap.rotateX(-Math.PI / 2);
+    cap.translate(0, building.min + height + 0.1, 0);
+    roofs.push(cap);
   } catch {
     // skip a broken ring
   }
@@ -376,8 +379,8 @@ export function createBuildJob(
   here: { x: number; z: number },
   lod = tileIsLod(tile, here),
 ): BuildJob {
-  // Far tiles still draw every collision footprint — just cheaper (no roofs / parks / sidewalks).
-  const list = lod ? tile.buildings : tile.buildings.filter((building) => building.area >= 12).slice(0, 96);
+  // Draw exactly the collision set at both details, so there are no invisible walls.
+  const list = tile.buildings;
   const visualRoads = lod
     ? tile.roads.filter((road) => isMajorRoad(road.width, road.klass)).slice(0, 36)
     : tile.roads.filter((road) => isDressRoad(road.width, road.klass));

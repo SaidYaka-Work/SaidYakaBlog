@@ -12,7 +12,7 @@ import DogRig, { type DriveControl } from './DogRig';
 import WorldBowl from './WorldBowl';
 import { asFootprintGrid, footprintClearance, resolveCameraXZ, HOME_PLACE } from '../../workers/dog/src/world';
 import type { TileStatus, WorldColliders } from './world/useWorldTiles';
-import { camFade, frameMark, liveBuildingGrid, renderScale } from './world/frameMark';
+import { camFade, frameMark, liveBuildingGrid, liveHere, renderScale } from './world/frameMark';
 
 const WorldLayer = lazy(() => import('./world/WorldLayer'));
 
@@ -210,20 +210,31 @@ function FramedCamera({
         const box = node.getBoundingClientRect();
         if (event.clientX - box.left < 168 && box.bottom - event.clientY < 176) return;
       }
+      event.preventDefault();
       down = true;
       pointerId = event.pointerId;
       lastX = event.clientX;
       lastY = event.clientY;
       node.setPointerCapture(event.pointerId);
+      const canvas = node.querySelector('canvas');
+      try {
+        canvas?.setPointerCapture(event.pointerId);
+      } catch {
+        // ignore
+      }
     };
     const onMove = (event: PointerEvent) => {
       if (!down || pointerId !== event.pointerId) return;
+      event.preventDefault();
       const dx = event.clientX - lastX;
       const dy = event.clientY - lastY;
       orbit.current.yaw -= dx * 0.005;
       orbit.current.pitch = clampOrbitPitchOffset(orbit.current.pitch + dy * 0.0035);
       lastX = event.clientX;
       lastY = event.clientY;
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      if (down) event.preventDefault();
     };
     const onUp = (event: PointerEvent) => {
       if (pointerId !== null && event.pointerId !== pointerId) return;
@@ -235,21 +246,26 @@ function FramedCamera({
         // ignore
       }
     };
-    node.addEventListener('pointerdown', onDown);
-    node.addEventListener('pointermove', onMove);
+    node.addEventListener('pointerdown', onDown, { passive: false });
+    node.addEventListener('pointermove', onMove, { passive: false });
     node.addEventListener('pointerup', onUp);
     node.addEventListener('pointercancel', onUp);
+    node.addEventListener('touchmove', onTouchMove, { passive: false });
     return () => {
       node.removeEventListener('pointerdown', onDown);
       node.removeEventListener('pointermove', onMove);
       node.removeEventListener('pointerup', onUp);
       node.removeEventListener('pointercancel', onUp);
+      node.removeEventListener('touchmove', onTouchMove);
     };
   }, [host]);
 
   useFrame((_, dt) => {
     const object = target.current;
     if (!object) return;
+    liveHere.x = object.position.x;
+    liveHere.z = object.position.z;
+    liveHere.ready = true;
     camera.aspect = size.width / Math.max(1, size.height);
     from.current.copy(camera.position);
     if (world) {

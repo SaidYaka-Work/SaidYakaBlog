@@ -26,6 +26,12 @@
   border-radius: 0;
 }
 
+.biscuit-scene,
+.biscuit-scene canvas {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
 .biscuit-scene canvas {
   display: block;
   width: 100% !important;
@@ -129,6 +135,8 @@
   min-height: 100dvh;
   height: 100dvh;
   overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
   background: linear-gradient(180deg, #eef3f8 0%, #f7f1e6 46%, #f3d2b0 100%);
   container-type: inline-size;
   container-name: dog;
@@ -400,8 +408,9 @@
 }
 
 .dog-thought.is-anchored {
-  left: clamp(11.2rem, var(--thought-x, 50%), calc(100% - 5.5rem));
-  top: clamp(calc(9.6rem + env(safe-area-inset-top)), var(--thought-y, 42%), calc(100% - 7.5rem));
+  left: clamp(12.4rem, var(--thought-x, 50%), calc(100% - 5.5rem));
+  top: clamp(calc(10.8rem + env(safe-area-inset-top)), var(--thought-y, 42%), calc(100% - 8rem));
+  transform: none;
 }
 
 .dog-thought span + span::before {
@@ -1192,4 +1201,31 @@
 
 .dog-game.is-compact .dog-chips {
   max-width: min(13rem, 52%);
+}
+
+.dog-game.is-compact .dog-thought,
+.dog-game.is-compact .dog-thought.is-anchored {
+  left: max(12.4rem, 46%);
+  right: 12px;
+  top: calc(104px + env(safe-area-inset-top));
+  transform: none;
+  max-width: min(11rem, calc(100% - 13.6rem));
+}
+
+.dog-game.is-compact .dog-attrib {
+  left: 8px;
+  right: auto;
+  bottom: calc(98px + env(safe-area-inset-bottom));
+  max-width: min(11rem, 42vw);
+  font-size: 0.52rem;
+  z-index: 3;
+}
+
+.dog-game.is-compact .dog-credit {
+  left: 8px;
+  right: auto;
+  bottom: calc(118px + env(safe-area-inset-bottom));
+  max-width: min(12rem, 46vw);
+  font-size: 0.56rem;
+  z-index: 3;
 }

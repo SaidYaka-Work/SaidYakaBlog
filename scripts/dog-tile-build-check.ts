@@ -266,6 +266,19 @@ const fixtureBuilt = runBuildJob(decodedFixture, { x: 0, z: 0 }).built;
 assertMeshMatchesFootprint(fixtureBuilt, decodedFixture, 'OpenFreeMap fixture 14/4823/6157');
 const fixtureLod = runBuildJob(decodedFixture, { x: 4000, z: 0 }).built;
 assert.equal(fixtureLod.sidewalks, null, 'far fixture drops sidewalks');
+assert.deepEqual(
+  createBuildJob(decodedFixture, { x: 0, z: 0 }).list,
+  decodedFixture.buildings,
+  'near fixture draws every collision building',
+);
+assert.deepEqual(
+  createBuildJob(decodedFixture, { x: 4000, z: 0 }).list,
+  decodedFixture.buildings,
+  'far fixture draws every collision building',
+);
+assert.ok(decodedFixture.focus, 'decode records the trim focus');
+assert.equal(decodedFixture.focus?.x, 0);
+assert.equal(decodedFixture.focus?.z, 0);
 
 const diamond: WorldTileData = {
   key: '14/lod/diamond',
@@ -302,6 +315,48 @@ for (let i = 0; i < diamondPos.count; i += 1) {
 }
 assert.equal(nearCorner, 0, 'lod walls must follow the diamond, not the AABB corner at (8,10)');
 assert.ok(nearTip > 0, 'lod walls keep the real footprint tips');
+
+const diamondNear = runBuildJob(diamond, { x: 0, z: 0 }).built;
+const diamondRoof = diamondNear.roofs[0]?.getAttribute('position');
+assert.ok(diamondRoof, 'near diamond has a footprint roof');
+let roofCorner = 0;
+let roofTip = 0;
+for (let i = 0; i < diamondRoof.count; i += 1) {
+  const x = diamondRoof.getX(i);
+  const z = diamondRoof.getZ(i);
+  if (Math.hypot(x - 8, z - 10) < 1.2) roofCorner += 1;
+  if (Math.hypot(x, z - 10) < 1.2 || Math.hypot(x - 8, z) < 1.2) roofTip += 1;
+}
+assert.equal(roofCorner, 0, 'roof caps follow the footprint, not the AABB corner at (8,10)');
+assert.ok(roofTip > 0, 'roof caps keep the real footprint tips');
+
+const skipped: WorldTileData = {
+  key: '14/skip/filter',
+  bounds: { minX: -20, maxX: 620, minZ: -20, maxZ: 20 },
+  buildings: [
+    { ring: box(0, 0, 1, 1), height: 8, min: 0, area: 4 },
+    ...Array.from({ length: 100 }, (_, i) => ({
+      ring: box(6 + i * 6, 0, 3, 3),
+      height: 10,
+      min: 0,
+      area: 36,
+    })),
+  ],
+  roads: [],
+  water: [],
+  parks: [],
+  labels: [],
+};
+assert.equal(
+  createBuildJob(skipped, { x: 0, z: 0 }).list.length,
+  skipped.buildings.length,
+  'near dress cannot drop small or overflow collision buildings',
+);
+assert.equal(
+  createBuildJob(skipped, { x: 4000, z: 0 }).list.length,
+  skipped.buildings.length,
+  'far dress cannot drop small or overflow collision buildings',
+);
 
 const crowd: WorldTileData = {
   key: '14/lod/crowd',

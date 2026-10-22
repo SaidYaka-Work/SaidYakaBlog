@@ -14,6 +14,8 @@ export type WorldTileData = {
   parks: Ring[];
   labels: { x: number; z: number; name: string }[];
   bounds?: TileBounds;
+  /** Local point the near/far trim was made for. */
+  focus?: { x: number; z: number };
   packed?: PackedTile;
 };
 
@@ -245,5 +247,5 @@ export function decodeTile(
     }
   }
 
-  return { key: `${z}/${x}/${y}`, buildings, roads, water, parks, labels, bounds };
+  return { key: `${z}/${x}/${y}`, buildings, roads, water, parks, labels, bounds, focus };
 }

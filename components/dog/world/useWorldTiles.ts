@@ -9,6 +9,7 @@ import {
   buildFootprintGrid,
   emptyFootprintGrid,
   lngLatToLocal,
+  localToLngLat,
   resolveTileTemplate,
   type FootprintGrid,
   type Ring,
@@ -16,7 +17,8 @@ import {
 import { decodeTile, type WorldTileData } from './decode';
 import type { PackedTile } from './packTile';
 import { KEEP_RING, MAX_CACHED_TILES, TILE_RING, evictTileCache, stableTileCenter, wantedTiles, type TileCoord } from './tileWindow';
-import { liveBuildingGrid } from './frameMark';
+import { LOD_BUILD_M, pointToAabb } from './buildTile';
+import { liveBuildingGrid, liveHere } from './frameMark';
 
 export type WorldColliders = {
   buildings: Ring[];
@@ -32,6 +34,9 @@ export type TileStatus = 'loading' | 'ready' | 'failed';
 const MAX_INFLIGHT = 2;
 const DECODE_MS = 8_000;
 const FETCH_TRIES = 3;
+/** Same as LOD_BUILD_M: a tile this close must hold its full building set. */
+const REDECODE_NEAR_M = LOD_BUILD_M;
+const REDECODE_MS = 800;
 
 let templatePromise: Promise<string> | null = null;
 
@@ -145,9 +150,10 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
     label: '',
   });
   const cache = useRef(new Map<string, WorldTileData>());
+  const buffers = useRef(new Map<string, ArrayBuffer>());
   const origin = useRef(`${originLat},${originLng}`);
   const focusRef = useRef({ lat, lng });
-  focusRef.current = { lat, lng };
+  if (!liveHere.ready) focusRef.current = { lat, lng };
   const stableRef = useRef<TileCoord | null>(null);
   const center = stableTileCenter(lat, lng, stableRef.current, WORLD_TILE_ZOOM);
   stableRef.current = center;
@@ -157,6 +163,7 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
     if (!enabled) return;
     if (origin.current !== `${originLat},${originLng}`) {
       cache.current.clear();
+      buffers.current.clear();
       origin.current = `${originLat},${originLng}`;
     }
     let dead = false;
@@ -191,7 +198,31 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
     worker?.addEventListener('message', onMessage);
     worker?.addEventListener('error', onWorkerError);
 
+    function syncFocus() {
+      if (liveHere.ready) {
+        focusRef.current = localToLngLat(liveHere.x, liveHere.z, originLat, originLng);
+      } else {
+        focusRef.current = { lat, lng };
+      }
+      return focusRef.current;
+    }
+
+    function staleDisplayKeys(displayKeys: Set<string>) {
+      const geo = syncFocus();
+      const here = lngLatToLocal(geo.lat, geo.lng, originLat, originLng);
+      const stale = new Set<string>();
+      for (const key of Array.from(displayKeys)) {
+        const old = cache.current.get(key);
+        if (!old?.focus || !old.bounds) continue;
+        if (pointToAabb(old.focus.x, old.focus.z, old.bounds) > REDECODE_NEAR_M && pointToAabb(here.x, here.z, old.bounds) <= REDECODE_NEAR_M) {
+          stale.add(key);
+        }
+      }
+      return stale;
+    }
+
     async function decode(buffer: ArrayBuffer, z: number, x: number, y: number) {
+      syncFocus();
       if (!worker || workerHost().__DOG_TILE_WORKER_BROKEN__) {
         return decodeOnMain(
           buffer,
@@ -311,7 +342,13 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
       const displayKeys = new Set(display.map((tile) => tile.key));
       const keepKeys = new Set(keep.map((tile) => tile.key));
       evictTileCache(cache.current, keepKeys, undefined, MAX_CACHED_TILES);
-      const queue = keep.filter((tile) => !cache.current.has(tile.key));
+      for (const key of Array.from(buffers.current.keys())) {
+        if (!keepKeys.has(key)) buffers.current.delete(key);
+      }
+      // Tiles decoded while the dog was far keep only 40 buildings. Re-decode them for the current
+      // focus once the dog is near; the old data stays on screen until the new decode lands.
+      const stale = staleDisplayKeys(displayKeys);
+      const queue = keep.filter((tile) => !cache.current.has(tile.key) || stale.has(tile.key));
       publish(displayKeys, keepKeys);
       let inflight = 0;
       await new Promise<void>((resolve) => {
@@ -324,7 +361,14 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
             if (!tile) break;
             inflight += 1;
             const url = template.replace('{z}', String(tile.z)).replace('{x}', String(tile.x)).replace('{y}', String(tile.y));
-            fetchTileBuffer(url)
+            const cached = buffers.current.get(tile.key);
+            (cached
+              ? Promise.resolve(cached)
+              : fetchTileBuffer(url).then((buffer) => {
+                  buffers.current.set(tile.key, buffer);
+                  return buffer;
+                })
+            )
               .then((buffer) => decode(buffer, tile.z, tile.x, tile.y))
               .then((data) => {
                 loaded += 1;
@@ -353,8 +397,35 @@ export default function useWorldTiles(originLat: number, originLng: number, lat:
     }
 
     void run();
+    const redoing = new Set<string>();
+    const redo = window.setInterval(() => {
+      if (dead) return;
+      const display = wantedTiles(center, TILE_RING).map((tile) => `${tile.z}/${tile.x}/${tile.y}`);
+      const displayKeys = new Set(display);
+      const keepKeys = new Set(wantedTiles(center, KEEP_RING).map((tile) => `${tile.z}/${tile.x}/${tile.y}`));
+      const stale = staleDisplayKeys(displayKeys);
+      for (const key of Array.from(stale)) {
+        const buffer = buffers.current.get(key);
+        if (!buffer || redoing.has(key)) continue;
+        const [z, x, y] = key.split('/').map(Number);
+        redoing.add(key);
+        decode(buffer, z, x, y)
+          .then((data) => {
+            cache.current.set(key, data);
+            if (!dead) publish(displayKeys, keepKeys);
+          })
+          .catch((error) => {
+            console.warn('[dog] tile re-decode failed', key, error);
+          })
+          .finally(() => {
+            redoing.delete(key);
+          });
+        break;
+      }
+    }, REDECODE_MS);
     return () => {
       dead = true;
+      window.clearInterval(redo);
       worker?.removeEventListener('message', onMessage);
       worker?.removeEventListener('error', onWorkerError);
       releaseWorker();

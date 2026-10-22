@@ -38,7 +38,7 @@ import {
 } from './buildTile';
 import { unpackGeometry, type PackedTile } from './packTile';
 import { KEEP_RING, MAX_CACHED_TILES, evictTileCache, wantedTileKeys } from './tileWindow';
-import { camFade, frameMark } from './frameMark';
+import { camFade, dogHere, frameMark } from './frameMark';
 
 export const FOG_NEAR = 28;
 export const FOG_FAR = 130;
@@ -177,7 +177,9 @@ function facadeMaterial(night: boolean) {
         float nearCam = uFade * (1.0 - smoothstep(0.35, 2.4, distCam));
         float fade = max(corridor, nearCam);
         litCol = mix(litCol, uFogColor, fade * 0.78);
-        gl_FragColor = vec4(mix(litCol, uFogColor, fog), 1.0 - fade * 0.55);
+        gl_FragColor = vec4(mix(litCol, uFogColor, fog), (1.0 - fade * 0.55) * (1.0 - smoothstep(0.8, 1.0, fog)));
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
       }
     `,
   });
@@ -225,6 +227,8 @@ function roadMaterial(night: boolean, marked: boolean) {
         vec3 col = mix(asphalt, paint, clamp(center * dash + edge * 0.42 + walk * 0.82, 0.0, 1.0));
         float fog = smoothstep(uFogNear, uFogFar, length(vWorldPos - cameraPosition));
         gl_FragColor = vec4(mix(col, uFogColor, fog), 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
       }
     `,
   });
@@ -265,6 +269,8 @@ function waterMaterial(night: boolean) {
         vec3 col = mix(deep, crest, 0.5 + 0.5 * w);
         float fog = smoothstep(uFogNear, uFogFar, vDist);
         gl_FragColor = vec4(mix(col, uFogColor, fog), 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
       }
     `,
   });
@@ -296,6 +302,8 @@ function crossingMaterial(night: boolean) {
         vec3 paint = mix(vec3(0.93, 0.91, 0.84), vec3(1.0, 0.9, 0.55), uNight * 0.4);
         vec3 asphalt = mix(vec3(0.34, 0.33, 0.31), vec3(0.17, 0.18, 0.2), uNight);
         gl_FragColor = vec4(mix(asphalt, paint, stripe), 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
       }
     `,
   });
@@ -334,6 +342,7 @@ function SkyDome({ night }: { night: boolean }) {
           uTop: { value: new Color(night ? '#2a4570' : '#8eb8dc') },
           uHorizon: { value: new Color(night ? '#7a6888' : '#f2d4b0') },
           uNight: { value: night ? 1 : 0 },
+          uFog: { value: new Color(night ? '#4a5c7a' : '#c8d6e4') },
         }}
         vertexShader={`
           varying vec3 vPos;
@@ -346,14 +355,19 @@ function SkyDome({ night }: { night: boolean }) {
           uniform vec3 uTop;
           uniform vec3 uHorizon;
           uniform float uNight;
+          uniform vec3 uFog;
           varying vec3 vPos;
           void main() {
             vec3 dir = normalize(vPos);
             float h = clamp(dir.y * 0.5 + 0.5, 0.0, 1.0);
             vec3 col = mix(uHorizon, uTop, pow(h, 0.82));
+            // Fully fogged geometry is uFog; match it at and below the horizon so it never silhouettes.
+            col = mix(uFog, col, smoothstep(0.02, 0.3, dir.y));
             float star = step(0.9965, fract(sin(dot(dir.xz * 72.0, vec2(12.9898, 78.233))) * 43758.5453));
             col += vec3(0.85, 0.9, 1.0) * star * uNight * smoothstep(0.35, 0.7, h);
             gl_FragColor = vec4(col, 1.0);
+            #include <tonemapping_fragment>
+            #include <colorspace_fragment>
           }
         `}
       />
@@ -635,6 +649,8 @@ export default function WorldScene({
   const queue = useRef<WorldTileData[]>([]);
   const uploads = useRef<{ tile: WorldTileData; packed: PackedTile; layer: number }[]>([]);
   const pending = useRef<BuildJob | null>(null);
+  const builtFrom = useRef(new Map<string, WorldTileData>());
+  const stale = useRef(new Set<string>());
   const [ready, setReady] = useState<BuiltTile[]>([]);
 
   useEffect(() => {
@@ -645,11 +661,24 @@ export default function WorldScene({
       ? new Set(wantedTileKeys({ z: centerKey[0], x: centerKey[1], y: centerKey[2] }, KEEP_RING))
       : new Set(warming.map((tile) => tile.key));
     const evicted = evictTileCache(cache.current, keep, (_key, built) => disposeBuilt(built), MAX_CACHED_TILES);
-    queue.current = queue.current.filter((tile) => keep.has(tile.key) && !cache.current.has(tile.key));
+    for (const key of evicted) {
+      builtFrom.current.delete(key);
+      stale.current.delete(key);
+    }
+    // Keep queued LOD swaps and rebuilds: their tile is already cached on purpose.
+    queue.current = queue.current.filter((tile) => keep.has(tile.key));
     // Keep half-uploaded tiles: their cache entry exists, but layers are still pending.
     uploads.current = uploads.current.filter((item) => keep.has(item.tile.key));
     if (pending.current && !keep.has(pending.current.tile.key)) pending.current = null;
     for (const tile of tiles) {
+      const prev = builtFrom.current.get(tile.key);
+      builtFrom.current.set(tile.key, tile);
+      if (prev && prev !== tile && cache.current.has(tile.key)) {
+        // Re-decoded for a nearer focus: rebuild in place; the old build stays up until the new one is done.
+        stale.current.add(tile.key);
+        if (!queue.current.some((item) => item.key === tile.key)) queue.current.push(tile);
+        continue;
+      }
       if (cache.current.has(tile.key)) continue;
       if (tile.packed) {
         if (!uploads.current.some((item) => item.tile.key === tile.key)) {
@@ -661,14 +690,12 @@ export default function WorldScene({
       if (pending.current?.tile.key === tile.key) continue;
       queue.current.push(tile);
     }
-    queue.current.sort(
-      (a, b) => tileDistanceToPoint(a, hereRef.current) - tileDistanceToPoint(b, hereRef.current),
-    );
+    const hereNow = dogHere(hereRef.current);
+    queue.current.sort((a, b) => tileDistanceToPoint(a, hereNow) - tileDistanceToPoint(b, hereNow));
     uploads.current.sort(
-      (a, b) => tileDistanceToPoint(a.tile, hereRef.current) - tileDistanceToPoint(b.tile, hereRef.current),
+      (a, b) => tileDistanceToPoint(a.tile, hereNow) - tileDistanceToPoint(b.tile, hereNow),
     );
     setReady(Array.from(cache.current.values()).filter((tile) => wanted.has(tile.key)));
-    void evicted;
   }, [tiles, warmTiles]);
 
   useEffect(() => () => {
@@ -677,6 +704,8 @@ export default function WorldScene({
     queue.current = [];
     uploads.current = [];
     pending.current = null;
+    builtFrom.current.clear();
+    stale.current.clear();
   }, []);
 
   const lamps = useMemo(
@@ -783,7 +812,7 @@ export default function WorldScene({
       host.__DOG_PERF.textures = gl.info.memory.textures;
     }
     let changed = false;
-    const hereNow = hereRef.current;
+    const hereNow = dogHere(hereRef.current);
     if (Math.hypot(hereNow.x - lastLodCheck.current.x, hereNow.z - lastLodCheck.current.z) > 6) {
       lastLodCheck.current = { x: hereNow.x, z: hereNow.z };
       for (const tile of tiles) {
@@ -838,7 +867,8 @@ export default function WorldScene({
         if (next) {
           const existing = cache.current.get(next.key);
           const wantedLod = tileLodWanted(next, hereNow, existing?.lod);
-          if (!existing || existing.lod !== wantedLod) {
+          const rebuild = stale.current.delete(next.key);
+          if (!existing || existing.lod !== wantedLod || rebuild) {
             pending.current = createBuildJob(next, hereNow, wantedLod);
           }
         }
@@ -899,7 +929,7 @@ export default function WorldScene({
 
   return (
     <group>
-      <SkyDome night={night} />
+      <SkyDome key={night ? 'night' : 'day'} night={night} />
       <mesh ref={ground} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]} material={groundMat}>
         <planeGeometry args={[360, 360]} />
       </mesh>
