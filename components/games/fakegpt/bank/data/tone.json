@@ -1,0 +1,548 @@
+[
+  {
+    "id": "tone-tone-0",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a coworker spilled coffee on a report. which reply is the kind one?",
+    "options": [
+      "You ruin everything.",
+      "I can help reprint it.",
+      "Wow. clumsy.",
+      "Not my problem."
+    ],
+    "answer": "I can help reprint it."
+  },
+  {
+    "id": "tone-tone-1",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "someone is late to a meeting. which reply is professional?",
+    "options": [
+      "Thanks for coming — let's catch you up.",
+      "We started without the slacker.",
+      "Don't bother sitting.",
+      "Finally."
+    ],
+    "answer": "Thanks for coming — let's catch you up."
+  },
+  {
+    "id": "tone-tone-2",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a friend forgot your birthday. which reply is gentle?",
+    "options": [
+      "Unfriend incoming.",
+      "I expected this.",
+      "You never care.",
+      "No stress — want to celebrate this weekend?"
+    ],
+    "answer": "No stress — want to celebrate this weekend?"
+  },
+  {
+    "id": "tone-tone-3",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a waiter brought the wrong dish. which reply is polite?",
+    "options": [
+      "Take it back, obviously.",
+      "This place is a joke.",
+      "Sorry, I ordered the other one.",
+      "Are you kidding me?"
+    ],
+    "answer": "Sorry, I ordered the other one."
+  },
+  {
+    "id": "tone-tone-4",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "you need a file from a teammate. which line is clear and kind?",
+    "options": [
+      "Do your job.",
+      "Could you send the draft when you have a minute?",
+      "Send it. now.",
+      "Why is this always late?"
+    ],
+    "answer": "Could you send the draft when you have a minute?"
+  },
+  {
+    "id": "tone-tone-5",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "someone holds a door. which reply is the gracious one?",
+    "options": [
+      "Thank you — I appreciate it.",
+      "I had it.",
+      "Whatever.",
+      "Took you long enough."
+    ],
+    "answer": "Thank you — I appreciate it."
+  },
+  {
+    "id": "tone-tone-6",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a group chat needs a decision. which line is collaborative?",
+    "options": [
+      "This thread is useless.",
+      "I already decided.",
+      "Do what I said.",
+      "What if we pick Friday and adjust if needed?"
+    ],
+    "answer": "What if we pick Friday and adjust if needed?"
+  },
+  {
+    "id": "tone-tone-7",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a kid dropped ice cream. which reply is comforting?",
+    "options": [
+      "That's what you get.",
+      "Stop crying.",
+      "Accidents happen. we can get another.",
+      "You should have been careful."
+    ],
+    "answer": "Accidents happen. we can get another."
+  },
+  {
+    "id": "tone-tone-8",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "an email is too sharp. which rewrite is the better tone?",
+    "options": [
+      "No.",
+      "Could we revisit this tomorrow?",
+      "Your plan is bad.",
+      "Read it again."
+    ],
+    "answer": "Could we revisit this tomorrow?"
+  },
+  {
+    "id": "tone-tone-9",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "someone mispronounced your name. which reply is kind?",
+    "options": [
+      "It's close — it's said like this.",
+      "People never try.",
+      "Forget it.",
+      "Were you even listening?"
+    ],
+    "answer": "It's close — it's said like this."
+  },
+  {
+    "id": "tone-tone-10",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a roommate left dishes. which note is firm but fair?",
+    "options": [
+      "Do it or else.",
+      "You are a slob.",
+      "I live with a raccoon.",
+      "Please wash these tonight so we keep the sink clear."
+    ],
+    "answer": "Please wash these tonight so we keep the sink clear."
+  },
+  {
+    "id": "tone-tone-11",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a teacher asks for quiet. which reply is respectful?",
+    "options": [
+      "This class is boring.",
+      "Talk to the wall.",
+      "Sorry — we'll keep it down.",
+      "Make us."
+    ],
+    "answer": "Sorry — we'll keep it down."
+  },
+  {
+    "id": "tone-tone-12",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "you disagree in a review. which line stays civil?",
+    "options": [
+      "Try again, amateur.",
+      "I see it differently — here's why.",
+      "That take is nonsense.",
+      "You missed the point."
+    ],
+    "answer": "I see it differently — here's why."
+  },
+  {
+    "id": "tone-tone-13",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a delivery is a day late. which reply is calm?",
+    "options": [
+      "Thanks for the update — when should it arrive?",
+      "I will ruin you online.",
+      "Fire everyone.",
+      "Unacceptable. forever."
+    ],
+    "answer": "Thanks for the update — when should it arrive?"
+  },
+  {
+    "id": "tone-tone-14",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "someone shared good news. which reply is the warm one?",
+    "options": [
+      "Anyway.",
+      "Must be nice.",
+      "Cool I guess.",
+      "That's wonderful — I'm really glad."
+    ],
+    "answer": "That's wonderful — I'm really glad."
+  },
+  {
+    "id": "tone-tone-15",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "you need to say no to extra work. which line is honest and polite?",
+    "options": [
+      "Do it yourself.",
+      "That's a you problem.",
+      "I can't take this on this week.",
+      "Absolutely not, ever."
+    ],
+    "answer": "I can't take this on this week."
+  },
+  {
+    "id": "tone-tone-16",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a stranger stepped on your bag. which reply de-escalates?",
+    "options": [
+      "Pay me.",
+      "All good — I'll move it.",
+      "Watch it.",
+      "Are you blind?"
+    ],
+    "answer": "All good — I'll move it."
+  },
+  {
+    "id": "tone-tone-17",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a meeting ran long. which close is considerate?",
+    "options": [
+      "Let's stop here and pick up tomorrow.",
+      "I'm leaving. bye.",
+      "This was pointless.",
+      "You people wasted my time."
+    ],
+    "answer": "Let's stop here and pick up tomorrow."
+  },
+  {
+    "id": "tone-tone-18",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "someone asked for feedback. which reply is useful?",
+    "options": [
+      "I hated it.",
+      "It's bad.",
+      "Start over.",
+      "The opening is strong; the middle needs one example."
+    ],
+    "answer": "The opening is strong; the middle needs one example."
+  },
+  {
+    "id": "tone-tone-19",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a neighbor's music is loud. which note is neighborly?",
+    "options": [
+      "I called the cops already.",
+      "Move out.",
+      "Hey — could you turn it down after 10?",
+      "Shut up."
+    ],
+    "answer": "Hey — could you turn it down after 10?"
+  },
+  {
+    "id": "tone-tone-20",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "someone joined a call late. which line is welcoming?",
+    "options": [
+      "Mute yourself.",
+      "Glad you made it — we are on slide four.",
+      "Nice of you to show.",
+      "We almost cancelled."
+    ],
+    "answer": "Glad you made it — we are on slide four."
+  },
+  {
+    "id": "tone-tone-21",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a classmate asked to borrow a pencil. which reply is generous?",
+    "options": [
+      "Sure — keep it for the test.",
+      "This is why you fail.",
+      "No. ever.",
+      "Buy your own."
+    ],
+    "answer": "Sure — keep it for the test."
+  },
+  {
+    "id": "tone-tone-22",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "you need to cancel lunch. which text is considerate?",
+    "options": [
+      "You'll live.",
+      "Not coming. bye.",
+      "I have better plans.",
+      "Can we move lunch? something came up."
+    ],
+    "answer": "Can we move lunch? something came up."
+  },
+  {
+    "id": "tone-tone-23",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a store clerk looks busy. which line is patient?",
+    "options": [
+      "I will talk to your manager.",
+      "This is ridiculous.",
+      "No rush — I can wait.",
+      "Hello?? service?"
+    ],
+    "answer": "No rush — I can wait."
+  },
+  {
+    "id": "tone-tone-24",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "someone offered help you do not need. which reply is gracious?",
+    "options": [
+      "You'd only mess it up.",
+      "Thanks — I've got it, but I appreciate it.",
+      "I said I'm fine.",
+      "Stop hovering."
+    ],
+    "answer": "Thanks — I've got it, but I appreciate it."
+  },
+  {
+    "id": "tone-tone-25",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a team won a small prize. which note is encouraging?",
+    "options": [
+      "Nice work — that was a real team win.",
+      "About time.",
+      "Don't get cocky.",
+      "It was luck."
+    ],
+    "answer": "Nice work — that was a real team win."
+  },
+  {
+    "id": "tone-tone-26",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "you received a kind review. which reply is humble?",
+    "options": [
+      "Tell me something I don't know.",
+      "I know.",
+      "Obviously.",
+      "Thank you — that means a lot."
+    ],
+    "answer": "Thank you — that means a lot."
+  },
+  {
+    "id": "tone-tone-27",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "someone is nervous before a talk. which line helps?",
+    "options": [
+      "I would be nervous too, you're bad at this.",
+      "Good luck, you'll need it.",
+      "You've practiced this. I'll be in the back.",
+      "Don't blow it."
+    ],
+    "answer": "You've practiced this. I'll be in the back."
+  },
+  {
+    "id": "tone-tone-28",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a package arrived damaged. which note to the seller is fair?",
+    "options": [
+      "Never shopping here.",
+      "The box arrived crushed — can we arrange a replacement?",
+      "Scam.",
+      "I will end you."
+    ],
+    "answer": "The box arrived crushed — can we arrange a replacement?"
+  },
+  {
+    "id": "tone-tone-29",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "you walked into the wrong room. which line is easy?",
+    "options": [
+      "Sorry — I have the wrong room.",
+      "You people.",
+      "Whatever.",
+      "Why is this not labeled?"
+    ],
+    "answer": "Sorry — I have the wrong room."
+  },
+  {
+    "id": "tone-tone-30",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a friend is learning to cook. which feedback is kind?",
+    "options": [
+      "Never cook again.",
+      "Inedible.",
+      "Order takeout.",
+      "The sauce is close — a pinch less salt next time."
+    ],
+    "answer": "The sauce is close — a pinch less salt next time."
+  },
+  {
+    "id": "tone-tone-31",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "someone used the last of the milk. which note is practical?",
+    "options": [
+      "I hate living here.",
+      "Pay me back in guilt.",
+      "Could you grab milk later? we are out.",
+      "You always do this."
+    ],
+    "answer": "Could you grab milk later? we are out."
+  },
+  {
+    "id": "tone-tone-32",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a visitor asked for the wifi. which reply is helpful?",
+    "options": [
+      "Use your data.",
+      "Network is Oak, password is on the fridge.",
+      "Figure it out.",
+      "We don't share."
+    ],
+    "answer": "Network is Oak, password is on the fridge."
+  },
+  {
+    "id": "tone-tone-33",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "you need a quieter seat. which ask is polite?",
+    "options": [
+      "Would you mind if I moved to a quieter table?",
+      "This seat is trash.",
+      "I can't stand you.",
+      "Move. now."
+    ],
+    "answer": "Would you mind if I moved to a quieter table?"
+  },
+  {
+    "id": "tone-tone-34",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a volunteer forgot a shift. which reply is firm and kind?",
+    "options": [
+      "Thanks for nothing.",
+      "You're unreliable.",
+      "Don't come back.",
+      "Please text next time — we had to cover last minute."
+    ],
+    "answer": "Please text next time — we had to cover last minute."
+  },
+  {
+    "id": "tone-tone-35",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "someone sent a long email. which reply is clear?",
+    "options": [
+      "Didn't read.",
+      "Use bullets or don't write me.",
+      "Got it — I'll reply by Thursday.",
+      "Wall of text."
+    ],
+    "answer": "Got it — I'll reply by Thursday."
+  },
+  {
+    "id": "tone-tone-36",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a child showed you a drawing. which reply is encouraging?",
+    "options": [
+      "My kid is better.",
+      "I love the colors — tell me about it.",
+      "What is that?",
+      "Looks messy."
+    ],
+    "answer": "I love the colors — tell me about it."
+  },
+  {
+    "id": "tone-tone-37",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "you need to leave a party early. which line is graceful?",
+    "options": [
+      "Thanks for having me — I need to head out.",
+      "I'm escaping.",
+      "Don't walk me out.",
+      "This is dull."
+    ],
+    "answer": "Thanks for having me — I need to head out."
+  },
+  {
+    "id": "tone-tone-38",
+    "kind": "tone",
+    "category": "tone",
+    "difficulty": 1,
+    "text": "a coworker shared credit. which reply is classy?",
+    "options": [
+      "About time you noticed.",
+      "Finally.",
+      "I did more.",
+      "Appreciate you mentioning the team."
+    ],
+    "answer": "Appreciate you mentioning the team."
+  }
+]

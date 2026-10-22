@@ -1,0 +1,2396 @@
+[
+  {
+    "id": "translate-spanish-hola",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"hola\" means hello. which language is that?",
+    "options": [
+      "Chinese",
+      "Spanish",
+      "Portuguese",
+      "Japanese"
+    ],
+    "answer": "Spanish"
+  },
+  {
+    "id": "translate-spanish-gracias",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"gracias\" means thank you. which language is that?",
+    "options": [
+      "Spanish",
+      "Japanese",
+      "Chinese",
+      "Russian"
+    ],
+    "answer": "Spanish"
+  },
+  {
+    "id": "translate-spanish-adios",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"adios\" means goodbye. which language is that?",
+    "options": [
+      "Chinese",
+      "Russian",
+      "Arabic",
+      "Spanish"
+    ],
+    "answer": "Spanish"
+  },
+  {
+    "id": "translate-spanish-por-favor",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"por favor\" means please. which language is that?",
+    "options": [
+      "Arabic",
+      "Hindi",
+      "Spanish",
+      "Russian"
+    ],
+    "answer": "Spanish"
+  },
+  {
+    "id": "translate-spanish-si",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"si\" means yes. which language is that?",
+    "options": [
+      "Turkish",
+      "Spanish",
+      "Arabic",
+      "Hindi"
+    ],
+    "answer": "Spanish"
+  },
+  {
+    "id": "translate-spanish-agua",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"agua\" means water. which language is that?",
+    "options": [
+      "Spanish",
+      "Hindi",
+      "Turkish",
+      "Swedish"
+    ],
+    "answer": "Spanish"
+  },
+  {
+    "id": "translate-spanish-perro",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"perro\" means dog. which language is that?",
+    "options": [
+      "Turkish",
+      "Swedish",
+      "Polish",
+      "Spanish"
+    ],
+    "answer": "Spanish"
+  },
+  {
+    "id": "translate-spanish-gato",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"gato\" means cat. which language is that?",
+    "options": [
+      "Polish",
+      "Finnish",
+      "Spanish",
+      "Swedish"
+    ],
+    "answer": "Spanish"
+  },
+  {
+    "id": "translate-spanish-libro",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"libro\" means book. which language is that?",
+    "options": [
+      "Dutch",
+      "Spanish",
+      "Polish",
+      "Finnish"
+    ],
+    "answer": "Spanish"
+  },
+  {
+    "id": "translate-spanish-amigo",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"amigo\" means friend. which language is that?",
+    "options": [
+      "Spanish",
+      "Finnish",
+      "Dutch",
+      "Korean"
+    ],
+    "answer": "Spanish"
+  },
+  {
+    "id": "translate-spanish-casa",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"casa\" means house. which language is that?",
+    "options": [
+      "Dutch",
+      "Korean",
+      "Greek",
+      "Spanish"
+    ],
+    "answer": "Spanish"
+  },
+  {
+    "id": "translate-spanish-rojo",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"rojo\" means red. which language is that?",
+    "options": [
+      "Greek",
+      "Hebrew",
+      "Spanish",
+      "Korean"
+    ],
+    "answer": "Spanish"
+  },
+  {
+    "id": "translate-french-merci",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"merci\" means thank you. which language is that?",
+    "options": [
+      "Thai",
+      "French",
+      "Greek",
+      "Hebrew"
+    ],
+    "answer": "French"
+  },
+  {
+    "id": "translate-french-bonjour",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"bonjour\" means hello. which language is that?",
+    "options": [
+      "French",
+      "Hebrew",
+      "Thai",
+      "Vietnamese"
+    ],
+    "answer": "French"
+  },
+  {
+    "id": "translate-french-au-revoir",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"au revoir\" means goodbye. which language is that?",
+    "options": [
+      "Thai",
+      "Vietnamese",
+      "Indonesian",
+      "French"
+    ],
+    "answer": "French"
+  },
+  {
+    "id": "translate-french-oui",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"oui\" means yes. which language is that?",
+    "options": [
+      "Indonesian",
+      "Swahili",
+      "French",
+      "Vietnamese"
+    ],
+    "answer": "French"
+  },
+  {
+    "id": "translate-french-eau",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"eau\" means water. which language is that?",
+    "options": [
+      "Norwegian",
+      "French",
+      "Indonesian",
+      "Swahili"
+    ],
+    "answer": "French"
+  },
+  {
+    "id": "translate-french-maison",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"maison\" means house. which language is that?",
+    "options": [
+      "French",
+      "Swahili",
+      "Norwegian",
+      "Danish"
+    ],
+    "answer": "French"
+  },
+  {
+    "id": "translate-french-chat",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"chat\" means cat. which language is that?",
+    "options": [
+      "Norwegian",
+      "Danish",
+      "Czech",
+      "French"
+    ],
+    "answer": "French"
+  },
+  {
+    "id": "translate-french-chien",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"chien\" means dog. which language is that?",
+    "options": [
+      "Czech",
+      "Spanish",
+      "French",
+      "Danish"
+    ],
+    "answer": "French"
+  },
+  {
+    "id": "translate-french-livre",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"livre\" means book. which language is that?",
+    "options": [
+      "German",
+      "French",
+      "Czech",
+      "Spanish"
+    ],
+    "answer": "French"
+  },
+  {
+    "id": "translate-french-fromage",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"fromage\" means cheese. which language is that?",
+    "options": [
+      "French",
+      "Spanish",
+      "German",
+      "Italian"
+    ],
+    "answer": "French"
+  },
+  {
+    "id": "translate-french-pain",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"pain\" means bread. which language is that?",
+    "options": [
+      "German",
+      "Italian",
+      "Portuguese",
+      "French"
+    ],
+    "answer": "French"
+  },
+  {
+    "id": "translate-french-merci-beaucoup",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"merci beaucoup\" means thank you very much. which language is that?",
+    "options": [
+      "Italian",
+      "Portuguese",
+      "French",
+      "German"
+    ],
+    "answer": "French"
+  },
+  {
+    "id": "translate-german-danke",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"danke\" means thank you. which language is that?",
+    "options": [
+      "Japanese",
+      "German",
+      "Italian",
+      "Portuguese"
+    ],
+    "answer": "German"
+  },
+  {
+    "id": "translate-german-bitte",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"bitte\" means please. which language is that?",
+    "options": [
+      "German",
+      "Portuguese",
+      "Japanese",
+      "Chinese"
+    ],
+    "answer": "German"
+  },
+  {
+    "id": "translate-german-ja",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"ja\" means yes. which language is that?",
+    "options": [
+      "Japanese",
+      "Chinese",
+      "Russian",
+      "German"
+    ],
+    "answer": "German"
+  },
+  {
+    "id": "translate-german-nein",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"nein\" means no. which language is that?",
+    "options": [
+      "Russian",
+      "Arabic",
+      "German",
+      "Chinese"
+    ],
+    "answer": "German"
+  },
+  {
+    "id": "translate-german-wasser",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"wasser\" means water. which language is that?",
+    "options": [
+      "Hindi",
+      "German",
+      "Russian",
+      "Arabic"
+    ],
+    "answer": "German"
+  },
+  {
+    "id": "translate-german-haus",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"haus\" means house. which language is that?",
+    "options": [
+      "German",
+      "Arabic",
+      "Hindi",
+      "Turkish"
+    ],
+    "answer": "German"
+  },
+  {
+    "id": "translate-german-hund",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"hund\" means dog. which language is that?",
+    "options": [
+      "Hindi",
+      "Turkish",
+      "Swedish",
+      "German"
+    ],
+    "answer": "German"
+  },
+  {
+    "id": "translate-german-katze",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"katze\" means cat. which language is that?",
+    "options": [
+      "Swedish",
+      "Polish",
+      "German",
+      "Turkish"
+    ],
+    "answer": "German"
+  },
+  {
+    "id": "translate-german-buch",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"buch\" means book. which language is that?",
+    "options": [
+      "Finnish",
+      "German",
+      "Swedish",
+      "Polish"
+    ],
+    "answer": "German"
+  },
+  {
+    "id": "translate-german-freund",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"freund\" means friend. which language is that?",
+    "options": [
+      "German",
+      "Polish",
+      "Finnish",
+      "Dutch"
+    ],
+    "answer": "German"
+  },
+  {
+    "id": "translate-german-brot",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"brot\" means bread. which language is that?",
+    "options": [
+      "Finnish",
+      "Dutch",
+      "Korean",
+      "German"
+    ],
+    "answer": "German"
+  },
+  {
+    "id": "translate-german-guten-tag",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"guten tag\" means good day. which language is that?",
+    "options": [
+      "Korean",
+      "Greek",
+      "German",
+      "Dutch"
+    ],
+    "answer": "German"
+  },
+  {
+    "id": "translate-italian-ciao",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"ciao\" means hello. which language is that?",
+    "options": [
+      "Hebrew",
+      "Italian",
+      "Korean",
+      "Greek"
+    ],
+    "answer": "Italian"
+  },
+  {
+    "id": "translate-italian-grazie",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"grazie\" means thank you. which language is that?",
+    "options": [
+      "Italian",
+      "Greek",
+      "Hebrew",
+      "Thai"
+    ],
+    "answer": "Italian"
+  },
+  {
+    "id": "translate-italian-acqua",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"acqua\" means water. which language is that?",
+    "options": [
+      "Hebrew",
+      "Thai",
+      "Vietnamese",
+      "Italian"
+    ],
+    "answer": "Italian"
+  },
+  {
+    "id": "translate-italian-ciao-ciao",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"ciao ciao\" means goodbye. which language is that?",
+    "options": [
+      "Vietnamese",
+      "Indonesian",
+      "Italian",
+      "Thai"
+    ],
+    "answer": "Italian"
+  },
+  {
+    "id": "translate-italian-si",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"si\" means yes. which language is that?",
+    "options": [
+      "Swahili",
+      "Italian",
+      "Vietnamese",
+      "Indonesian"
+    ],
+    "answer": "Italian"
+  },
+  {
+    "id": "translate-italian-cane",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"cane\" means dog. which language is that?",
+    "options": [
+      "Italian",
+      "Indonesian",
+      "Swahili",
+      "Norwegian"
+    ],
+    "answer": "Italian"
+  },
+  {
+    "id": "translate-italian-gatto",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"gatto\" means cat. which language is that?",
+    "options": [
+      "Swahili",
+      "Norwegian",
+      "Danish",
+      "Italian"
+    ],
+    "answer": "Italian"
+  },
+  {
+    "id": "translate-italian-libro",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"libro\" means book. which language is that?",
+    "options": [
+      "Danish",
+      "Czech",
+      "Italian",
+      "Norwegian"
+    ],
+    "answer": "Italian"
+  },
+  {
+    "id": "translate-italian-pane",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"pane\" means bread. which language is that?",
+    "options": [
+      "Spanish",
+      "Italian",
+      "Danish",
+      "Czech"
+    ],
+    "answer": "Italian"
+  },
+  {
+    "id": "translate-italian-amico",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"amico\" means friend. which language is that?",
+    "options": [
+      "Italian",
+      "Czech",
+      "Spanish",
+      "French"
+    ],
+    "answer": "Italian"
+  },
+  {
+    "id": "translate-italian-casa",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"casa\" means house. which language is that?",
+    "options": [
+      "Spanish",
+      "French",
+      "German",
+      "Italian"
+    ],
+    "answer": "Italian"
+  },
+  {
+    "id": "translate-italian-buongiorno",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"buongiorno\" means good morning. which language is that?",
+    "options": [
+      "German",
+      "Portuguese",
+      "Italian",
+      "French"
+    ],
+    "answer": "Italian"
+  },
+  {
+    "id": "translate-portuguese-obrigado",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"obrigado\" means thank you. which language is that?",
+    "options": [
+      "Japanese",
+      "Portuguese",
+      "German",
+      "Italian"
+    ],
+    "answer": "Portuguese"
+  },
+  {
+    "id": "translate-portuguese-ola",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"ola\" means hello. which language is that?",
+    "options": [
+      "Portuguese",
+      "Italian",
+      "Japanese",
+      "Chinese"
+    ],
+    "answer": "Portuguese"
+  },
+  {
+    "id": "translate-portuguese-agua",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"agua\" means water. which language is that?",
+    "options": [
+      "Japanese",
+      "Chinese",
+      "Russian",
+      "Portuguese"
+    ],
+    "answer": "Portuguese"
+  },
+  {
+    "id": "translate-portuguese-cao",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"cao\" means dog. which language is that?",
+    "options": [
+      "Chinese",
+      "Russian",
+      "Portuguese",
+      "Japanese"
+    ],
+    "answer": "Portuguese"
+  },
+  {
+    "id": "translate-portuguese-gato",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"gato\" means cat. which language is that?",
+    "options": [
+      "Arabic",
+      "Portuguese",
+      "Chinese",
+      "Russian"
+    ],
+    "answer": "Portuguese"
+  },
+  {
+    "id": "translate-portuguese-livro",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"livro\" means book. which language is that?",
+    "options": [
+      "Portuguese",
+      "Russian",
+      "Arabic",
+      "Hindi"
+    ],
+    "answer": "Portuguese"
+  },
+  {
+    "id": "translate-portuguese-pao",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"pao\" means bread. which language is that?",
+    "options": [
+      "Arabic",
+      "Hindi",
+      "Turkish",
+      "Portuguese"
+    ],
+    "answer": "Portuguese"
+  },
+  {
+    "id": "translate-portuguese-amigo",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"amigo\" means friend. which language is that?",
+    "options": [
+      "Turkish",
+      "Swedish",
+      "Portuguese",
+      "Hindi"
+    ],
+    "answer": "Portuguese"
+  },
+  {
+    "id": "translate-portuguese-casa",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"casa\" means house. which language is that?",
+    "options": [
+      "Polish",
+      "Portuguese",
+      "Turkish",
+      "Swedish"
+    ],
+    "answer": "Portuguese"
+  },
+  {
+    "id": "translate-portuguese-sim",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"sim\" means yes. which language is that?",
+    "options": [
+      "Portuguese",
+      "Swedish",
+      "Polish",
+      "Finnish"
+    ],
+    "answer": "Portuguese"
+  },
+  {
+    "id": "translate-portuguese-tchau",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"tchau\" means goodbye. which language is that?",
+    "options": [
+      "Polish",
+      "Finnish",
+      "Dutch",
+      "Portuguese"
+    ],
+    "answer": "Portuguese"
+  },
+  {
+    "id": "translate-japanese-arigato",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"arigato\" means thank you. which language is that?",
+    "options": [
+      "Dutch",
+      "Korean",
+      "Japanese",
+      "Finnish"
+    ],
+    "answer": "Japanese"
+  },
+  {
+    "id": "translate-japanese-konnichiwa",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"konnichiwa\" means hello. which language is that?",
+    "options": [
+      "Greek",
+      "Japanese",
+      "Dutch",
+      "Korean"
+    ],
+    "answer": "Japanese"
+  },
+  {
+    "id": "translate-japanese-sayonara",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"sayonara\" means goodbye. which language is that?",
+    "options": [
+      "Japanese",
+      "Korean",
+      "Greek",
+      "Hebrew"
+    ],
+    "answer": "Japanese"
+  },
+  {
+    "id": "translate-japanese-hai",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"hai\" means yes. which language is that?",
+    "options": [
+      "Greek",
+      "Hebrew",
+      "Thai",
+      "Japanese"
+    ],
+    "answer": "Japanese"
+  },
+  {
+    "id": "translate-japanese-mizu",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"mizu\" means water. which language is that?",
+    "options": [
+      "Thai",
+      "Vietnamese",
+      "Japanese",
+      "Hebrew"
+    ],
+    "answer": "Japanese"
+  },
+  {
+    "id": "translate-japanese-inu",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"inu\" means dog. which language is that?",
+    "options": [
+      "Indonesian",
+      "Japanese",
+      "Thai",
+      "Vietnamese"
+    ],
+    "answer": "Japanese"
+  },
+  {
+    "id": "translate-japanese-neko",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"neko\" means cat. which language is that?",
+    "options": [
+      "Japanese",
+      "Vietnamese",
+      "Indonesian",
+      "Swahili"
+    ],
+    "answer": "Japanese"
+  },
+  {
+    "id": "translate-japanese-hon",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"hon\" means book. which language is that?",
+    "options": [
+      "Indonesian",
+      "Swahili",
+      "Norwegian",
+      "Japanese"
+    ],
+    "answer": "Japanese"
+  },
+  {
+    "id": "translate-japanese-pan",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"pan\" means bread. which language is that?",
+    "options": [
+      "Norwegian",
+      "Danish",
+      "Japanese",
+      "Swahili"
+    ],
+    "answer": "Japanese"
+  },
+  {
+    "id": "translate-japanese-ie",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"ie\" means house. which language is that?",
+    "options": [
+      "Czech",
+      "Japanese",
+      "Norwegian",
+      "Danish"
+    ],
+    "answer": "Japanese"
+  },
+  {
+    "id": "translate-japanese-tomodachi",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"tomodachi\" means friend. which language is that?",
+    "options": [
+      "Japanese",
+      "Danish",
+      "Czech",
+      "Spanish"
+    ],
+    "answer": "Japanese"
+  },
+  {
+    "id": "translate-chinese-xie-xie",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"xie xie\" means thank you. which language is that?",
+    "options": [
+      "Czech",
+      "Spanish",
+      "French",
+      "Chinese"
+    ],
+    "answer": "Chinese"
+  },
+  {
+    "id": "translate-chinese-ni-hao",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"ni hao\" means hello. which language is that?",
+    "options": [
+      "French",
+      "German",
+      "Chinese",
+      "Spanish"
+    ],
+    "answer": "Chinese"
+  },
+  {
+    "id": "translate-chinese-zai-jian",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"zai jian\" means goodbye. which language is that?",
+    "options": [
+      "Italian",
+      "Chinese",
+      "French",
+      "German"
+    ],
+    "answer": "Chinese"
+  },
+  {
+    "id": "translate-chinese-shui",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"shui\" means water. which language is that?",
+    "options": [
+      "Chinese",
+      "German",
+      "Italian",
+      "Portuguese"
+    ],
+    "answer": "Chinese"
+  },
+  {
+    "id": "translate-chinese-gou",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"gou\" means dog. which language is that?",
+    "options": [
+      "Italian",
+      "Portuguese",
+      "Japanese",
+      "Chinese"
+    ],
+    "answer": "Chinese"
+  },
+  {
+    "id": "translate-chinese-mao",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"mao\" means cat. which language is that?",
+    "options": [
+      "Japanese",
+      "Russian",
+      "Chinese",
+      "Portuguese"
+    ],
+    "answer": "Chinese"
+  },
+  {
+    "id": "translate-chinese-shu",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"shu\" means book. which language is that?",
+    "options": [
+      "Arabic",
+      "Chinese",
+      "Japanese",
+      "Russian"
+    ],
+    "answer": "Chinese"
+  },
+  {
+    "id": "translate-chinese-mian-bao",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"mian bao\" means bread. which language is that?",
+    "options": [
+      "Chinese",
+      "Russian",
+      "Arabic",
+      "Hindi"
+    ],
+    "answer": "Chinese"
+  },
+  {
+    "id": "translate-chinese-peng-you",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"peng you\" means friend. which language is that?",
+    "options": [
+      "Russian",
+      "Arabic",
+      "Hindi",
+      "Chinese"
+    ],
+    "answer": "Chinese"
+  },
+  {
+    "id": "translate-chinese-shi",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"shi\" means yes. which language is that?",
+    "options": [
+      "Hindi",
+      "Turkish",
+      "Chinese",
+      "Arabic"
+    ],
+    "answer": "Chinese"
+  },
+  {
+    "id": "translate-russian-spasibo",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"spasibo\" means thank you. which language is that?",
+    "options": [
+      "Swedish",
+      "Russian",
+      "Hindi",
+      "Turkish"
+    ],
+    "answer": "Russian"
+  },
+  {
+    "id": "translate-russian-privet",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"privet\" means hello. which language is that?",
+    "options": [
+      "Russian",
+      "Turkish",
+      "Swedish",
+      "Polish"
+    ],
+    "answer": "Russian"
+  },
+  {
+    "id": "translate-russian-da",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"da\" means yes. which language is that?",
+    "options": [
+      "Swedish",
+      "Polish",
+      "Finnish",
+      "Russian"
+    ],
+    "answer": "Russian"
+  },
+  {
+    "id": "translate-russian-net",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"net\" means no. which language is that?",
+    "options": [
+      "Finnish",
+      "Dutch",
+      "Russian",
+      "Polish"
+    ],
+    "answer": "Russian"
+  },
+  {
+    "id": "translate-russian-voda",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"voda\" means water. which language is that?",
+    "options": [
+      "Korean",
+      "Russian",
+      "Finnish",
+      "Dutch"
+    ],
+    "answer": "Russian"
+  },
+  {
+    "id": "translate-russian-sobaka",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"sobaka\" means dog. which language is that?",
+    "options": [
+      "Russian",
+      "Dutch",
+      "Korean",
+      "Greek"
+    ],
+    "answer": "Russian"
+  },
+  {
+    "id": "translate-russian-koshka",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"koshka\" means cat. which language is that?",
+    "options": [
+      "Korean",
+      "Greek",
+      "Hebrew",
+      "Russian"
+    ],
+    "answer": "Russian"
+  },
+  {
+    "id": "translate-russian-kniga",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"kniga\" means book. which language is that?",
+    "options": [
+      "Hebrew",
+      "Thai",
+      "Russian",
+      "Greek"
+    ],
+    "answer": "Russian"
+  },
+  {
+    "id": "translate-russian-khleb",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"khleb\" means bread. which language is that?",
+    "options": [
+      "Vietnamese",
+      "Russian",
+      "Hebrew",
+      "Thai"
+    ],
+    "answer": "Russian"
+  },
+  {
+    "id": "translate-russian-dom",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"dom\" means house. which language is that?",
+    "options": [
+      "Russian",
+      "Thai",
+      "Vietnamese",
+      "Indonesian"
+    ],
+    "answer": "Russian"
+  },
+  {
+    "id": "translate-russian-drug",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"drug\" means friend. which language is that?",
+    "options": [
+      "Vietnamese",
+      "Indonesian",
+      "Swahili",
+      "Russian"
+    ],
+    "answer": "Russian"
+  },
+  {
+    "id": "translate-arabic-shukran",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"shukran\" means thank you. which language is that?",
+    "options": [
+      "Swahili",
+      "Norwegian",
+      "Arabic",
+      "Indonesian"
+    ],
+    "answer": "Arabic"
+  },
+  {
+    "id": "translate-arabic-marhaba",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"marhaba\" means hello. which language is that?",
+    "options": [
+      "Danish",
+      "Arabic",
+      "Swahili",
+      "Norwegian"
+    ],
+    "answer": "Arabic"
+  },
+  {
+    "id": "translate-arabic-naam",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"naam\" means yes. which language is that?",
+    "options": [
+      "Arabic",
+      "Norwegian",
+      "Danish",
+      "Czech"
+    ],
+    "answer": "Arabic"
+  },
+  {
+    "id": "translate-arabic-maa",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"maa\" means water. which language is that?",
+    "options": [
+      "Danish",
+      "Czech",
+      "Spanish",
+      "Arabic"
+    ],
+    "answer": "Arabic"
+  },
+  {
+    "id": "translate-arabic-kalb",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"kalb\" means dog. which language is that?",
+    "options": [
+      "Spanish",
+      "French",
+      "Arabic",
+      "Czech"
+    ],
+    "answer": "Arabic"
+  },
+  {
+    "id": "translate-arabic-qitt",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"qitt\" means cat. which language is that?",
+    "options": [
+      "German",
+      "Arabic",
+      "Spanish",
+      "French"
+    ],
+    "answer": "Arabic"
+  },
+  {
+    "id": "translate-arabic-kitab",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"kitab\" means book. which language is that?",
+    "options": [
+      "Arabic",
+      "French",
+      "German",
+      "Italian"
+    ],
+    "answer": "Arabic"
+  },
+  {
+    "id": "translate-arabic-khubz",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"khubz\" means bread. which language is that?",
+    "options": [
+      "German",
+      "Italian",
+      "Portuguese",
+      "Arabic"
+    ],
+    "answer": "Arabic"
+  },
+  {
+    "id": "translate-arabic-bayt",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"bayt\" means house. which language is that?",
+    "options": [
+      "Portuguese",
+      "Japanese",
+      "Arabic",
+      "Italian"
+    ],
+    "answer": "Arabic"
+  },
+  {
+    "id": "translate-arabic-sadiq",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"sadiq\" means friend. which language is that?",
+    "options": [
+      "Chinese",
+      "Arabic",
+      "Portuguese",
+      "Japanese"
+    ],
+    "answer": "Arabic"
+  },
+  {
+    "id": "translate-hindi-dhanyavaad",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"dhanyavaad\" means thank you. which language is that?",
+    "options": [
+      "Hindi",
+      "Japanese",
+      "Chinese",
+      "Russian"
+    ],
+    "answer": "Hindi"
+  },
+  {
+    "id": "translate-hindi-namaste",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"namaste\" means hello. which language is that?",
+    "options": [
+      "Chinese",
+      "Russian",
+      "Arabic",
+      "Hindi"
+    ],
+    "answer": "Hindi"
+  },
+  {
+    "id": "translate-hindi-haan",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"haan\" means yes. which language is that?",
+    "options": [
+      "Arabic",
+      "Turkish",
+      "Hindi",
+      "Russian"
+    ],
+    "answer": "Hindi"
+  },
+  {
+    "id": "translate-hindi-paani",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"paani\" means water. which language is that?",
+    "options": [
+      "Swedish",
+      "Hindi",
+      "Arabic",
+      "Turkish"
+    ],
+    "answer": "Hindi"
+  },
+  {
+    "id": "translate-hindi-kutta",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"kutta\" means dog. which language is that?",
+    "options": [
+      "Hindi",
+      "Turkish",
+      "Swedish",
+      "Polish"
+    ],
+    "answer": "Hindi"
+  },
+  {
+    "id": "translate-hindi-billi",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"billi\" means cat. which language is that?",
+    "options": [
+      "Turkish",
+      "Swedish",
+      "Polish",
+      "Hindi"
+    ],
+    "answer": "Hindi"
+  },
+  {
+    "id": "translate-hindi-kitaab",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"kitaab\" means book. which language is that?",
+    "options": [
+      "Polish",
+      "Finnish",
+      "Hindi",
+      "Swedish"
+    ],
+    "answer": "Hindi"
+  },
+  {
+    "id": "translate-hindi-roti",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"roti\" means bread. which language is that?",
+    "options": [
+      "Dutch",
+      "Hindi",
+      "Polish",
+      "Finnish"
+    ],
+    "answer": "Hindi"
+  },
+  {
+    "id": "translate-hindi-ghar",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"ghar\" means house. which language is that?",
+    "options": [
+      "Hindi",
+      "Finnish",
+      "Dutch",
+      "Korean"
+    ],
+    "answer": "Hindi"
+  },
+  {
+    "id": "translate-hindi-dost",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"dost\" means friend. which language is that?",
+    "options": [
+      "Dutch",
+      "Korean",
+      "Greek",
+      "Hindi"
+    ],
+    "answer": "Hindi"
+  },
+  {
+    "id": "translate-turkish-tesekkurler",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"tesekkurler\" means thank you. which language is that?",
+    "options": [
+      "Greek",
+      "Hebrew",
+      "Turkish",
+      "Korean"
+    ],
+    "answer": "Turkish"
+  },
+  {
+    "id": "translate-turkish-merhaba",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"merhaba\" means hello. which language is that?",
+    "options": [
+      "Thai",
+      "Turkish",
+      "Greek",
+      "Hebrew"
+    ],
+    "answer": "Turkish"
+  },
+  {
+    "id": "translate-turkish-evet",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"evet\" means yes. which language is that?",
+    "options": [
+      "Turkish",
+      "Hebrew",
+      "Thai",
+      "Vietnamese"
+    ],
+    "answer": "Turkish"
+  },
+  {
+    "id": "translate-turkish-su",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"su\" means water. which language is that?",
+    "options": [
+      "Thai",
+      "Vietnamese",
+      "Indonesian",
+      "Turkish"
+    ],
+    "answer": "Turkish"
+  },
+  {
+    "id": "translate-turkish-kopek",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"kopek\" means dog. which language is that?",
+    "options": [
+      "Indonesian",
+      "Swahili",
+      "Turkish",
+      "Vietnamese"
+    ],
+    "answer": "Turkish"
+  },
+  {
+    "id": "translate-turkish-kedi",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"kedi\" means cat. which language is that?",
+    "options": [
+      "Norwegian",
+      "Turkish",
+      "Indonesian",
+      "Swahili"
+    ],
+    "answer": "Turkish"
+  },
+  {
+    "id": "translate-turkish-kitap",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"kitap\" means book. which language is that?",
+    "options": [
+      "Turkish",
+      "Swahili",
+      "Norwegian",
+      "Danish"
+    ],
+    "answer": "Turkish"
+  },
+  {
+    "id": "translate-turkish-ekmek",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"ekmek\" means bread. which language is that?",
+    "options": [
+      "Norwegian",
+      "Danish",
+      "Czech",
+      "Turkish"
+    ],
+    "answer": "Turkish"
+  },
+  {
+    "id": "translate-turkish-ev",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"ev\" means house. which language is that?",
+    "options": [
+      "Czech",
+      "Spanish",
+      "Turkish",
+      "Danish"
+    ],
+    "answer": "Turkish"
+  },
+  {
+    "id": "translate-turkish-arkadas",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"arkadas\" means friend. which language is that?",
+    "options": [
+      "French",
+      "Turkish",
+      "Czech",
+      "Spanish"
+    ],
+    "answer": "Turkish"
+  },
+  {
+    "id": "translate-swedish-tack",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"tack\" means thank you. which language is that?",
+    "options": [
+      "Swedish",
+      "Spanish",
+      "French",
+      "German"
+    ],
+    "answer": "Swedish"
+  },
+  {
+    "id": "translate-swedish-hej",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"hej\" means hello. which language is that?",
+    "options": [
+      "French",
+      "German",
+      "Italian",
+      "Swedish"
+    ],
+    "answer": "Swedish"
+  },
+  {
+    "id": "translate-swedish-ja",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"ja\" means yes. which language is that?",
+    "options": [
+      "Italian",
+      "Portuguese",
+      "Swedish",
+      "German"
+    ],
+    "answer": "Swedish"
+  },
+  {
+    "id": "translate-swedish-vatten",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"vatten\" means water. which language is that?",
+    "options": [
+      "Japanese",
+      "Swedish",
+      "Italian",
+      "Portuguese"
+    ],
+    "answer": "Swedish"
+  },
+  {
+    "id": "translate-swedish-hund",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"hund\" means dog. which language is that?",
+    "options": [
+      "Swedish",
+      "Portuguese",
+      "Japanese",
+      "Chinese"
+    ],
+    "answer": "Swedish"
+  },
+  {
+    "id": "translate-swedish-katt",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"katt\" means cat. which language is that?",
+    "options": [
+      "Japanese",
+      "Chinese",
+      "Russian",
+      "Swedish"
+    ],
+    "answer": "Swedish"
+  },
+  {
+    "id": "translate-swedish-bok",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"bok\" means book. which language is that?",
+    "options": [
+      "Russian",
+      "Arabic",
+      "Swedish",
+      "Chinese"
+    ],
+    "answer": "Swedish"
+  },
+  {
+    "id": "translate-swedish-brod",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"brod\" means bread. which language is that?",
+    "options": [
+      "Hindi",
+      "Swedish",
+      "Russian",
+      "Arabic"
+    ],
+    "answer": "Swedish"
+  },
+  {
+    "id": "translate-swedish-hus",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"hus\" means house. which language is that?",
+    "options": [
+      "Swedish",
+      "Arabic",
+      "Hindi",
+      "Turkish"
+    ],
+    "answer": "Swedish"
+  },
+  {
+    "id": "translate-swedish-van",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"van\" means friend. which language is that?",
+    "options": [
+      "Hindi",
+      "Turkish",
+      "Polish",
+      "Swedish"
+    ],
+    "answer": "Swedish"
+  },
+  {
+    "id": "translate-polish-tak",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"tak\" means thank you. which language is that?",
+    "options": [
+      "Swedish",
+      "Finnish",
+      "Polish",
+      "Turkish"
+    ],
+    "answer": "Polish"
+  },
+  {
+    "id": "translate-polish-czesc",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"czesc\" means hello. which language is that?",
+    "options": [
+      "Dutch",
+      "Polish",
+      "Swedish",
+      "Finnish"
+    ],
+    "answer": "Polish"
+  },
+  {
+    "id": "translate-polish-tak-493",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"tak\" means yes. which language is that?",
+    "options": [
+      "Polish",
+      "Finnish",
+      "Dutch",
+      "Korean"
+    ],
+    "answer": "Polish"
+  },
+  {
+    "id": "translate-polish-woda",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"woda\" means water. which language is that?",
+    "options": [
+      "Finnish",
+      "Dutch",
+      "Korean",
+      "Polish"
+    ],
+    "answer": "Polish"
+  },
+  {
+    "id": "translate-polish-pies",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"pies\" means dog. which language is that?",
+    "options": [
+      "Korean",
+      "Greek",
+      "Polish",
+      "Dutch"
+    ],
+    "answer": "Polish"
+  },
+  {
+    "id": "translate-polish-kot",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"kot\" means cat. which language is that?",
+    "options": [
+      "Hebrew",
+      "Polish",
+      "Korean",
+      "Greek"
+    ],
+    "answer": "Polish"
+  },
+  {
+    "id": "translate-polish-ksiazka",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"ksiazka\" means book. which language is that?",
+    "options": [
+      "Polish",
+      "Greek",
+      "Hebrew",
+      "Thai"
+    ],
+    "answer": "Polish"
+  },
+  {
+    "id": "translate-polish-chleb",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"chleb\" means bread. which language is that?",
+    "options": [
+      "Hebrew",
+      "Thai",
+      "Vietnamese",
+      "Polish"
+    ],
+    "answer": "Polish"
+  },
+  {
+    "id": "translate-polish-dom",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"dom\" means house. which language is that?",
+    "options": [
+      "Vietnamese",
+      "Indonesian",
+      "Polish",
+      "Thai"
+    ],
+    "answer": "Polish"
+  },
+  {
+    "id": "translate-polish-przyjaciel",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"przyjaciel\" means friend. which language is that?",
+    "options": [
+      "Swahili",
+      "Polish",
+      "Vietnamese",
+      "Indonesian"
+    ],
+    "answer": "Polish"
+  },
+  {
+    "id": "translate-finnish-kiitos",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"kiitos\" means thank you. which language is that?",
+    "options": [
+      "Finnish",
+      "Indonesian",
+      "Swahili",
+      "Norwegian"
+    ],
+    "answer": "Finnish"
+  },
+  {
+    "id": "translate-finnish-hei",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"hei\" means hello. which language is that?",
+    "options": [
+      "Swahili",
+      "Norwegian",
+      "Danish",
+      "Finnish"
+    ],
+    "answer": "Finnish"
+  },
+  {
+    "id": "translate-finnish-kylla",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"kylla\" means yes. which language is that?",
+    "options": [
+      "Danish",
+      "Czech",
+      "Finnish",
+      "Norwegian"
+    ],
+    "answer": "Finnish"
+  },
+  {
+    "id": "translate-finnish-vesi",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"vesi\" means water. which language is that?",
+    "options": [
+      "Spanish",
+      "Finnish",
+      "Danish",
+      "Czech"
+    ],
+    "answer": "Finnish"
+  },
+  {
+    "id": "translate-finnish-koira",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"koira\" means dog. which language is that?",
+    "options": [
+      "Finnish",
+      "Czech",
+      "Spanish",
+      "French"
+    ],
+    "answer": "Finnish"
+  },
+  {
+    "id": "translate-finnish-kissa",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"kissa\" means cat. which language is that?",
+    "options": [
+      "Spanish",
+      "French",
+      "German",
+      "Finnish"
+    ],
+    "answer": "Finnish"
+  },
+  {
+    "id": "translate-finnish-kirja",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"kirja\" means book. which language is that?",
+    "options": [
+      "German",
+      "Italian",
+      "Finnish",
+      "French"
+    ],
+    "answer": "Finnish"
+  },
+  {
+    "id": "translate-finnish-leipa",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"leipa\" means bread. which language is that?",
+    "options": [
+      "Portuguese",
+      "Finnish",
+      "German",
+      "Italian"
+    ],
+    "answer": "Finnish"
+  },
+  {
+    "id": "translate-finnish-talo",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"talo\" means house. which language is that?",
+    "options": [
+      "Finnish",
+      "Italian",
+      "Portuguese",
+      "Japanese"
+    ],
+    "answer": "Finnish"
+  },
+  {
+    "id": "translate-finnish-ystava",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"ystava\" means friend. which language is that?",
+    "options": [
+      "Portuguese",
+      "Japanese",
+      "Chinese",
+      "Finnish"
+    ],
+    "answer": "Finnish"
+  },
+  {
+    "id": "translate-dutch-dank-je",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"dank je\" means thank you. which language is that?",
+    "options": [
+      "Chinese",
+      "Russian",
+      "Dutch",
+      "Japanese"
+    ],
+    "answer": "Dutch"
+  },
+  {
+    "id": "translate-dutch-hallo",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"hallo\" means hello. which language is that?",
+    "options": [
+      "Arabic",
+      "Dutch",
+      "Chinese",
+      "Russian"
+    ],
+    "answer": "Dutch"
+  },
+  {
+    "id": "translate-dutch-ja",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"ja\" means yes. which language is that?",
+    "options": [
+      "Dutch",
+      "Russian",
+      "Arabic",
+      "Hindi"
+    ],
+    "answer": "Dutch"
+  },
+  {
+    "id": "translate-dutch-water",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"water\" means water. which language is that?",
+    "options": [
+      "Arabic",
+      "Hindi",
+      "Turkish",
+      "Dutch"
+    ],
+    "answer": "Dutch"
+  },
+  {
+    "id": "translate-dutch-hond",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"hond\" means dog. which language is that?",
+    "options": [
+      "Turkish",
+      "Swedish",
+      "Dutch",
+      "Hindi"
+    ],
+    "answer": "Dutch"
+  },
+  {
+    "id": "translate-dutch-kat",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"kat\" means cat. which language is that?",
+    "options": [
+      "Polish",
+      "Dutch",
+      "Turkish",
+      "Swedish"
+    ],
+    "answer": "Dutch"
+  },
+  {
+    "id": "translate-dutch-boek",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"boek\" means book. which language is that?",
+    "options": [
+      "Dutch",
+      "Swedish",
+      "Polish",
+      "Finnish"
+    ],
+    "answer": "Dutch"
+  },
+  {
+    "id": "translate-dutch-brood",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"brood\" means bread. which language is that?",
+    "options": [
+      "Polish",
+      "Finnish",
+      "Korean",
+      "Dutch"
+    ],
+    "answer": "Dutch"
+  },
+  {
+    "id": "translate-dutch-huis",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"huis\" means house. which language is that?",
+    "options": [
+      "Korean",
+      "Greek",
+      "Dutch",
+      "Finnish"
+    ],
+    "answer": "Dutch"
+  },
+  {
+    "id": "translate-dutch-vriend",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"vriend\" means friend. which language is that?",
+    "options": [
+      "Hebrew",
+      "Dutch",
+      "Korean",
+      "Greek"
+    ],
+    "answer": "Dutch"
+  },
+  {
+    "id": "translate-korean-gomawo",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"gomawo\" means thank you. which language is that?",
+    "options": [
+      "Korean",
+      "Greek",
+      "Hebrew",
+      "Thai"
+    ],
+    "answer": "Korean"
+  },
+  {
+    "id": "translate-korean-annyeong",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"annyeong\" means hello. which language is that?",
+    "options": [
+      "Greek",
+      "Hebrew",
+      "Thai",
+      "Korean"
+    ],
+    "answer": "Korean"
+  },
+  {
+    "id": "translate-korean-ne",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"ne\" means yes. which language is that?",
+    "options": [
+      "Thai",
+      "Vietnamese",
+      "Korean",
+      "Hebrew"
+    ],
+    "answer": "Korean"
+  },
+  {
+    "id": "translate-korean-mul",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"mul\" means water. which language is that?",
+    "options": [
+      "Indonesian",
+      "Korean",
+      "Thai",
+      "Vietnamese"
+    ],
+    "answer": "Korean"
+  },
+  {
+    "id": "translate-korean-gae",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"gae\" means dog. which language is that?",
+    "options": [
+      "Korean",
+      "Vietnamese",
+      "Indonesian",
+      "Swahili"
+    ],
+    "answer": "Korean"
+  },
+  {
+    "id": "translate-korean-goyangi",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"goyangi\" means cat. which language is that?",
+    "options": [
+      "Indonesian",
+      "Swahili",
+      "Norwegian",
+      "Korean"
+    ],
+    "answer": "Korean"
+  },
+  {
+    "id": "translate-korean-chaek",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"chaek\" means book. which language is that?",
+    "options": [
+      "Norwegian",
+      "Danish",
+      "Korean",
+      "Swahili"
+    ],
+    "answer": "Korean"
+  },
+  {
+    "id": "translate-korean-ppang",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"ppang\" means bread. which language is that?",
+    "options": [
+      "Czech",
+      "Korean",
+      "Norwegian",
+      "Danish"
+    ],
+    "answer": "Korean"
+  },
+  {
+    "id": "translate-korean-jip",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"jip\" means house. which language is that?",
+    "options": [
+      "Korean",
+      "Danish",
+      "Czech",
+      "Spanish"
+    ],
+    "answer": "Korean"
+  },
+  {
+    "id": "translate-korean-chingu",
+    "kind": "translate",
+    "category": "translate",
+    "difficulty": 1,
+    "text": "\"chingu\" means friend. which language is that?",
+    "options": [
+      "Czech",
+      "Spanish",
+      "French",
+      "Korean"
+    ],
+    "answer": "Korean"
+  }
+]

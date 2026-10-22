@@ -1,0 +1,1178 @@
+[
+  {
+    "id": "weekday-wd-a-sunday-1",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 1 day after Sunday?",
+    "options": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday"
+    ],
+    "answer": "Monday"
+  },
+  {
+    "id": "weekday-wd-b-sunday-1",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 1 day before Sunday?",
+    "options": [
+      "Sunday",
+      "Saturday",
+      "Thursday",
+      "Friday"
+    ],
+    "answer": "Saturday"
+  },
+  {
+    "id": "weekday-wd-a-sunday-2",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 2 days after Sunday?",
+    "options": [
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Tuesday"
+    ],
+    "answer": "Tuesday"
+  },
+  {
+    "id": "weekday-wd-b-sunday-2",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 2 days before Sunday?",
+    "options": [
+      "Friday",
+      "Saturday",
+      "Sunday",
+      "Monday"
+    ],
+    "answer": "Friday"
+  },
+  {
+    "id": "weekday-wd-a-sunday-3",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 3 days after Sunday?",
+    "options": [
+      "Friday",
+      "Saturday",
+      "Wednesday",
+      "Thursday"
+    ],
+    "answer": "Wednesday"
+  },
+  {
+    "id": "weekday-wd-b-sunday-3",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 3 days before Sunday?",
+    "options": [
+      "Saturday",
+      "Sunday",
+      "Monday",
+      "Thursday"
+    ],
+    "answer": "Thursday"
+  },
+  {
+    "id": "weekday-wd-a-sunday-4",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 4 days after Sunday?",
+    "options": [
+      "Sunday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ],
+    "answer": "Thursday"
+  },
+  {
+    "id": "weekday-wd-b-sunday-4",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 4 days before Sunday?",
+    "options": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Sunday"
+    ],
+    "answer": "Wednesday"
+  },
+  {
+    "id": "weekday-wd-a-sunday-5",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 5 days after Sunday?",
+    "options": [
+      "Friday",
+      "Saturday",
+      "Sunday",
+      "Monday"
+    ],
+    "answer": "Friday"
+  },
+  {
+    "id": "weekday-wd-b-sunday-5",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 5 days before Sunday?",
+    "options": [
+      "Thursday",
+      "Tuesday",
+      "Monday",
+      "Wednesday"
+    ],
+    "answer": "Tuesday"
+  },
+  {
+    "id": "weekday-wd-a-sunday-6",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 6 days after Sunday?",
+    "options": [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Saturday"
+    ],
+    "answer": "Saturday"
+  },
+  {
+    "id": "weekday-wd-b-sunday-6",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 6 days before Sunday?",
+    "options": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday"
+    ],
+    "answer": "Monday"
+  },
+  {
+    "id": "weekday-wd-a-monday-1",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 1 day after Monday?",
+    "options": [
+      "Friday",
+      "Saturday",
+      "Tuesday",
+      "Thursday"
+    ],
+    "answer": "Tuesday"
+  },
+  {
+    "id": "weekday-wd-b-monday-1",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 1 day before Monday?",
+    "options": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Sunday"
+    ],
+    "answer": "Sunday"
+  },
+  {
+    "id": "weekday-wd-a-monday-2",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 2 days after Monday?",
+    "options": [
+      "Sunday",
+      "Wednesday",
+      "Friday",
+      "Saturday"
+    ],
+    "answer": "Wednesday"
+  },
+  {
+    "id": "weekday-wd-b-monday-2",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 2 days before Monday?",
+    "options": [
+      "Tuesday",
+      "Wednesday",
+      "Saturday",
+      "Monday"
+    ],
+    "answer": "Saturday"
+  },
+  {
+    "id": "weekday-wd-a-monday-3",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 3 days after Monday?",
+    "options": [
+      "Thursday",
+      "Saturday",
+      "Sunday",
+      "Monday"
+    ],
+    "answer": "Thursday"
+  },
+  {
+    "id": "weekday-wd-b-monday-3",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 3 days before Monday?",
+    "options": [
+      "Thursday",
+      "Friday",
+      "Tuesday",
+      "Wednesday"
+    ],
+    "answer": "Friday"
+  },
+  {
+    "id": "weekday-wd-a-monday-4",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 4 days after Monday?",
+    "options": [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Friday"
+    ],
+    "answer": "Friday"
+  },
+  {
+    "id": "weekday-wd-b-monday-4",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 4 days before Monday?",
+    "options": [
+      "Thursday",
+      "Wednesday",
+      "Friday",
+      "Saturday"
+    ],
+    "answer": "Thursday"
+  },
+  {
+    "id": "weekday-wd-a-monday-5",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 5 days after Monday?",
+    "options": [
+      "Tuesday",
+      "Wednesday",
+      "Saturday",
+      "Monday"
+    ],
+    "answer": "Saturday"
+  },
+  {
+    "id": "weekday-wd-b-monday-5",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 5 days before Monday?",
+    "options": [
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Wednesday"
+    ],
+    "answer": "Wednesday"
+  },
+  {
+    "id": "weekday-wd-a-monday-6",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 6 days after Monday?",
+    "options": [
+      "Thursday",
+      "Sunday",
+      "Tuesday",
+      "Wednesday"
+    ],
+    "answer": "Sunday"
+  },
+  {
+    "id": "weekday-wd-b-monday-6",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 6 days before Monday?",
+    "options": [
+      "Saturday",
+      "Sunday",
+      "Tuesday",
+      "Friday"
+    ],
+    "answer": "Tuesday"
+  },
+  {
+    "id": "weekday-wd-a-tuesday-1",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 1 day after Tuesday?",
+    "options": [
+      "Wednesday",
+      "Sunday",
+      "Monday",
+      "Tuesday"
+    ],
+    "answer": "Wednesday"
+  },
+  {
+    "id": "weekday-wd-b-tuesday-1",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 1 day before Tuesday?",
+    "options": [
+      "Friday",
+      "Monday",
+      "Wednesday",
+      "Thursday"
+    ],
+    "answer": "Monday"
+  },
+  {
+    "id": "weekday-wd-a-tuesday-2",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 2 days after Tuesday?",
+    "options": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday"
+    ],
+    "answer": "Thursday"
+  },
+  {
+    "id": "weekday-wd-b-tuesday-2",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 2 days before Tuesday?",
+    "options": [
+      "Sunday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ],
+    "answer": "Sunday"
+  },
+  {
+    "id": "weekday-wd-a-tuesday-3",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 3 days after Tuesday?",
+    "options": [
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Tuesday"
+    ],
+    "answer": "Friday"
+  },
+  {
+    "id": "weekday-wd-b-tuesday-3",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 3 days before Tuesday?",
+    "options": [
+      "Friday",
+      "Sunday",
+      "Monday",
+      "Saturday"
+    ],
+    "answer": "Saturday"
+  },
+  {
+    "id": "weekday-wd-a-tuesday-4",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 4 days after Tuesday?",
+    "options": [
+      "Friday",
+      "Saturday",
+      "Wednesday",
+      "Thursday"
+    ],
+    "answer": "Saturday"
+  },
+  {
+    "id": "weekday-wd-b-tuesday-4",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 4 days before Tuesday?",
+    "options": [
+      "Sunday",
+      "Monday",
+      "Friday",
+      "Saturday"
+    ],
+    "answer": "Friday"
+  },
+  {
+    "id": "weekday-wd-a-tuesday-5",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 5 days after Tuesday?",
+    "options": [
+      "Sunday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ],
+    "answer": "Sunday"
+  },
+  {
+    "id": "weekday-wd-b-tuesday-5",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 5 days before Tuesday?",
+    "options": [
+      "Tuesday",
+      "Thursday",
+      "Sunday",
+      "Monday"
+    ],
+    "answer": "Thursday"
+  },
+  {
+    "id": "weekday-wd-a-tuesday-6",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 6 days after Tuesday?",
+    "options": [
+      "Friday",
+      "Saturday",
+      "Sunday",
+      "Monday"
+    ],
+    "answer": "Monday"
+  },
+  {
+    "id": "weekday-wd-b-tuesday-6",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 6 days before Tuesday?",
+    "options": [
+      "Wednesday",
+      "Monday",
+      "Tuesday",
+      "Thursday"
+    ],
+    "answer": "Wednesday"
+  },
+  {
+    "id": "weekday-wd-a-wednesday-1",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 1 day after Wednesday?",
+    "options": [
+      "Friday",
+      "Saturday",
+      "Thursday",
+      "Wednesday"
+    ],
+    "answer": "Thursday"
+  },
+  {
+    "id": "weekday-wd-b-wednesday-1",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 1 day before Wednesday?",
+    "options": [
+      "Saturday",
+      "Sunday",
+      "Monday",
+      "Tuesday"
+    ],
+    "answer": "Tuesday"
+  },
+  {
+    "id": "weekday-wd-a-wednesday-2",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 2 days after Wednesday?",
+    "options": [
+      "Sunday",
+      "Friday",
+      "Thursday",
+      "Saturday"
+    ],
+    "answer": "Friday"
+  },
+  {
+    "id": "weekday-wd-b-wednesday-2",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 2 days before Wednesday?",
+    "options": [
+      "Tuesday",
+      "Wednesday",
+      "Monday",
+      "Sunday"
+    ],
+    "answer": "Monday"
+  },
+  {
+    "id": "weekday-wd-a-wednesday-3",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 3 days after Wednesday?",
+    "options": [
+      "Saturday",
+      "Friday",
+      "Sunday",
+      "Monday"
+    ],
+    "answer": "Saturday"
+  },
+  {
+    "id": "weekday-wd-b-wednesday-3",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 3 days before Wednesday?",
+    "options": [
+      "Wednesday",
+      "Sunday",
+      "Monday",
+      "Tuesday"
+    ],
+    "answer": "Sunday"
+  },
+  {
+    "id": "weekday-wd-a-wednesday-4",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 4 days after Wednesday?",
+    "options": [
+      "Saturday",
+      "Monday",
+      "Tuesday",
+      "Sunday"
+    ],
+    "answer": "Sunday"
+  },
+  {
+    "id": "weekday-wd-b-wednesday-4",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 4 days before Wednesday?",
+    "options": [
+      "Saturday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday"
+    ],
+    "answer": "Saturday"
+  },
+  {
+    "id": "weekday-wd-a-wednesday-5",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 5 days after Wednesday?",
+    "options": [
+      "Tuesday",
+      "Wednesday",
+      "Monday",
+      "Sunday"
+    ],
+    "answer": "Monday"
+  },
+  {
+    "id": "weekday-wd-b-wednesday-5",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 5 days before Wednesday?",
+    "options": [
+      "Wednesday",
+      "Thursday",
+      "Saturday",
+      "Friday"
+    ],
+    "answer": "Friday"
+  },
+  {
+    "id": "weekday-wd-a-wednesday-6",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 6 days after Wednesday?",
+    "options": [
+      "Thursday",
+      "Tuesday",
+      "Monday",
+      "Wednesday"
+    ],
+    "answer": "Tuesday"
+  },
+  {
+    "id": "weekday-wd-b-wednesday-6",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 6 days before Wednesday?",
+    "options": [
+      "Saturday",
+      "Sunday",
+      "Thursday",
+      "Friday"
+    ],
+    "answer": "Thursday"
+  },
+  {
+    "id": "weekday-wd-a-thursday-1",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 1 day after Thursday?",
+    "options": [
+      "Friday",
+      "Saturday",
+      "Sunday",
+      "Monday"
+    ],
+    "answer": "Friday"
+  },
+  {
+    "id": "weekday-wd-b-thursday-1",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 1 day before Thursday?",
+    "options": [
+      "Friday",
+      "Wednesday",
+      "Tuesday",
+      "Thursday"
+    ],
+    "answer": "Wednesday"
+  },
+  {
+    "id": "weekday-wd-a-thursday-2",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 2 days after Thursday?",
+    "options": [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Saturday"
+    ],
+    "answer": "Saturday"
+  },
+  {
+    "id": "weekday-wd-b-thursday-2",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 2 days before Thursday?",
+    "options": [
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday"
+    ],
+    "answer": "Tuesday"
+  },
+  {
+    "id": "weekday-wd-a-thursday-3",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 3 days after Thursday?",
+    "options": [
+      "Tuesday",
+      "Wednesday",
+      "Sunday",
+      "Monday"
+    ],
+    "answer": "Sunday"
+  },
+  {
+    "id": "weekday-wd-b-thursday-3",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 3 days before Thursday?",
+    "options": [
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Monday"
+    ],
+    "answer": "Monday"
+  },
+  {
+    "id": "weekday-wd-a-thursday-4",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 4 days after Thursday?",
+    "options": [
+      "Thursday",
+      "Monday",
+      "Tuesday",
+      "Wednesday"
+    ],
+    "answer": "Monday"
+  },
+  {
+    "id": "weekday-wd-b-thursday-4",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 4 days before Thursday?",
+    "options": [
+      "Saturday",
+      "Monday",
+      "Sunday",
+      "Friday"
+    ],
+    "answer": "Sunday"
+  },
+  {
+    "id": "weekday-wd-a-thursday-5",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 5 days after Thursday?",
+    "options": [
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday"
+    ],
+    "answer": "Tuesday"
+  },
+  {
+    "id": "weekday-wd-b-thursday-5",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 5 days before Thursday?",
+    "options": [
+      "Tuesday",
+      "Saturday",
+      "Sunday",
+      "Monday"
+    ],
+    "answer": "Saturday"
+  },
+  {
+    "id": "weekday-wd-a-thursday-6",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 6 days after Thursday?",
+    "options": [
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Wednesday"
+    ],
+    "answer": "Wednesday"
+  },
+  {
+    "id": "weekday-wd-b-thursday-6",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 6 days before Thursday?",
+    "options": [
+      "Friday",
+      "Sunday",
+      "Monday",
+      "Tuesday"
+    ],
+    "answer": "Friday"
+  },
+  {
+    "id": "weekday-wd-a-friday-1",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 1 day after Friday?",
+    "options": [
+      "Wednesday",
+      "Thursday",
+      "Saturday",
+      "Tuesday"
+    ],
+    "answer": "Saturday"
+  },
+  {
+    "id": "weekday-wd-b-friday-1",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 1 day before Friday?",
+    "options": [
+      "Friday",
+      "Saturday",
+      "Sunday",
+      "Thursday"
+    ],
+    "answer": "Thursday"
+  },
+  {
+    "id": "weekday-wd-a-friday-2",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 2 days after Friday?",
+    "options": [
+      "Friday",
+      "Sunday",
+      "Wednesday",
+      "Thursday"
+    ],
+    "answer": "Sunday"
+  },
+  {
+    "id": "weekday-wd-b-friday-2",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 2 days before Friday?",
+    "options": [
+      "Sunday",
+      "Monday",
+      "Wednesday",
+      "Saturday"
+    ],
+    "answer": "Wednesday"
+  },
+  {
+    "id": "weekday-wd-a-friday-3",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 3 days after Friday?",
+    "options": [
+      "Monday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ],
+    "answer": "Monday"
+  },
+  {
+    "id": "weekday-wd-b-friday-3",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 3 days before Friday?",
+    "options": [
+      "Wednesday",
+      "Tuesday",
+      "Sunday",
+      "Monday"
+    ],
+    "answer": "Tuesday"
+  },
+  {
+    "id": "weekday-wd-a-friday-4",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 4 days after Friday?",
+    "options": [
+      "Friday",
+      "Saturday",
+      "Sunday",
+      "Tuesday"
+    ],
+    "answer": "Tuesday"
+  },
+  {
+    "id": "weekday-wd-b-friday-4",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 4 days before Friday?",
+    "options": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday"
+    ],
+    "answer": "Monday"
+  },
+  {
+    "id": "weekday-wd-a-friday-5",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 5 days after Friday?",
+    "options": [
+      "Sunday",
+      "Monday",
+      "Wednesday",
+      "Saturday"
+    ],
+    "answer": "Wednesday"
+  },
+  {
+    "id": "weekday-wd-b-friday-5",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 5 days before Friday?",
+    "options": [
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Sunday"
+    ],
+    "answer": "Sunday"
+  },
+  {
+    "id": "weekday-wd-a-friday-6",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 6 days after Friday?",
+    "options": [
+      "Tuesday",
+      "Thursday",
+      "Sunday",
+      "Monday"
+    ],
+    "answer": "Thursday"
+  },
+  {
+    "id": "weekday-wd-b-friday-6",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 6 days before Friday?",
+    "options": [
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Wednesday"
+    ],
+    "answer": "Saturday"
+  },
+  {
+    "id": "weekday-wd-a-saturday-1",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 1 day after Saturday?",
+    "options": [
+      "Sunday",
+      "Friday",
+      "Saturday",
+      "Monday"
+    ],
+    "answer": "Sunday"
+  },
+  {
+    "id": "weekday-wd-b-saturday-1",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 1 day before Saturday?",
+    "options": [
+      "Wednesday",
+      "Friday",
+      "Monday",
+      "Tuesday"
+    ],
+    "answer": "Friday"
+  },
+  {
+    "id": "weekday-wd-a-saturday-2",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 2 days after Saturday?",
+    "options": [
+      "Saturday",
+      "Sunday",
+      "Tuesday",
+      "Monday"
+    ],
+    "answer": "Monday"
+  },
+  {
+    "id": "weekday-wd-b-saturday-2",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 2 days before Saturday?",
+    "options": [
+      "Thursday",
+      "Tuesday",
+      "Wednesday",
+      "Friday"
+    ],
+    "answer": "Thursday"
+  },
+  {
+    "id": "weekday-wd-a-saturday-3",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 3 days after Saturday?",
+    "options": [
+      "Monday",
+      "Wednesday",
+      "Tuesday",
+      "Sunday"
+    ],
+    "answer": "Tuesday"
+  },
+  {
+    "id": "weekday-wd-b-saturday-3",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 1,
+    "text": "what day is 3 days before Saturday?",
+    "options": [
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Wednesday"
+    ],
+    "answer": "Wednesday"
+  },
+  {
+    "id": "weekday-wd-a-saturday-4",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 4 days after Saturday?",
+    "options": [
+      "Thursday",
+      "Wednesday",
+      "Monday",
+      "Tuesday"
+    ],
+    "answer": "Wednesday"
+  },
+  {
+    "id": "weekday-wd-b-saturday-4",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 4 days before Saturday?",
+    "options": [
+      "Friday",
+      "Saturday",
+      "Tuesday",
+      "Thursday"
+    ],
+    "answer": "Tuesday"
+  },
+  {
+    "id": "weekday-wd-a-saturday-5",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 5 days after Saturday?",
+    "options": [
+      "Thursday",
+      "Tuesday",
+      "Wednesday",
+      "Friday"
+    ],
+    "answer": "Thursday"
+  },
+  {
+    "id": "weekday-wd-b-saturday-5",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 5 days before Saturday?",
+    "options": [
+      "Sunday",
+      "Monday",
+      "Friday",
+      "Saturday"
+    ],
+    "answer": "Monday"
+  },
+  {
+    "id": "weekday-wd-a-saturday-6",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 6 days after Saturday?",
+    "options": [
+      "Wednesday",
+      "Thursday",
+      "Saturday",
+      "Friday"
+    ],
+    "answer": "Friday"
+  },
+  {
+    "id": "weekday-wd-b-saturday-6",
+    "kind": "weekday",
+    "category": "weekday",
+    "difficulty": 2,
+    "text": "what day is 6 days before Saturday?",
+    "options": [
+      "Sunday",
+      "Saturday",
+      "Monday",
+      "Tuesday"
+    ],
+    "answer": "Sunday"
+  }
+]

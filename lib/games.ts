@@ -44,9 +44,9 @@ export const games: GameMeta[] = [
     title: 'FakeGPT',
     tagline: 'You are the chatbot. Answer before the user rage-quits.',
     description:
-      'You are the AI, secretly doing every job by hand. Juggle customers on tabs as they join, each with a queue and a patience meter. Trivia is only one task. Offline mode never leaves the browser.',
+      'You are the AI, secretly tapping the right answer. Juggle customers on tabs as they join, each with a queue and a patience meter. Every job is multiple choice from a huge on-device bank. No server.',
     howTo:
-      'Play the daily shift. Level 1 starts with one or two customers; more join as levels get harder, each on their own tab with a queue and a patience meter. Serve requests or survive the clock to level up. Multiple choice is local. Typed jobs are checked on device first. Arrow keys, [ ], or Ctrl/Alt+1–5 switch tabs. 1–4 tap answers.',
+      'Play the daily shift. Level 1 starts with one or two customers; more join as levels get harder, each on their own tab. Every request is four options. Serve or survive the clock to level up. Arrow keys, [ ], or Ctrl/Alt+1–5 switch tabs. 1–4 tap answers.',
     genre: 'Daily',
     kind: 'react',
     href: englishPath('/fakegpt'),

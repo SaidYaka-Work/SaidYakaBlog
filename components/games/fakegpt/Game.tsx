@@ -4,10 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import GameShell from '../GameShell';
 import { useGameChrome } from '../useGameChrome';
 import { getGameBySlug } from '@/lib/games';
-import DrawPad, { type DrawPadHandle } from './DrawPad';
-import SoundPad, { replayHits, type MicMode, type SoundPadHandle } from './SoundPad';
-import { fetchDailySet, readOffline, requestGrade, requestJudge, writeOffline } from './api';
-import { checkJob, isBonusKind, isChoiceKind, jobKindLabel } from './jobs';
+import { replayHits } from './SoundPad';
+import { fetchDailySet } from './api';
+import { checkJob, jobKindLabel } from './jobs';
 import {
   MAX_STRIKES,
   applyStrike,
@@ -34,9 +33,8 @@ import {
   tickRequest,
   type PlannedCustomer,
 } from './lanes';
-import { STORAGE_KEY, formatTimer, nextNudge, scoreJob, scoreRound, scoreWithJudge } from './logic';
-import { capAudio, downscaleImage } from './media';
-import type { Artifact, ChatMessage, Prompt, SynthHit } from './types';
+import { STORAGE_KEY, formatTimer, nextNudge, scoreJob } from './logic';
+import type { Artifact, ChatMessage, Prompt } from './types';
 import { dateSeed, formatUtcDate, utcDate, type DailySet } from '../../../workers/fakegpt/src/schema';
 
 const meta = getGameBySlug('fakegpt')!;
@@ -202,18 +200,12 @@ export default function FakeGptGame() {
   const [levelLeftMs, setLevelLeftMs] = useState(0);
   const [plan, setPlan] = useState<PlannedCustomer<Prompt>[]>([]);
   const [seed, setSeed] = useState(1);
-  const [typed, setTyped] = useState('');
-  const typedRef = useRef('');
   const [busy, setBusy] = useState(false);
-  const [offline, setOffline] = useState(false);
   const [daily, setDaily] = useState<DailySet | null>(null);
-  const [micMode, setMicMode] = useState<MicMode>('unknown');
   const [shake, setShake] = useState(false);
   const [confetti, setConfetti] = useState(false);
   const [shared, setShared] = useState(false);
 
-  const drawRef = useRef<DrawPadHandle>(null);
-  const soundRef = useRef<SoundPadHandle>(null);
   const logRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const finishingIds = useRef(new Set<string>());
@@ -265,8 +257,7 @@ export default function FakeGptGame() {
   useEffect(() => () => clearTimers(), [clearTimers]);
 
   useEffect(() => {
-    setOffline(readOffline());
-    void fetchDailySet(readOffline()).then(setDaily);
+    setDaily(fetchDailySet());
   }, []);
 
   useEffect(() => {
@@ -310,8 +301,6 @@ export default function FakeGptGame() {
       setLevelLeftMs(0);
       setLanes(nextLanes);
       setFocusedId(nextLanes[0]?.id ?? '');
-      typedRef.current = '';
-      setTyped('');
       setBusy(false);
       setPhase('playing');
       nextLanes.forEach((lane, index) => {
@@ -333,7 +322,7 @@ export default function FakeGptGame() {
     for (const item of artifactsRef.current) {
       if (item.audioUrl) URL.revokeObjectURL(item.audioUrl);
     }
-    const pack = daily ?? (await fetchDailySet(offline));
+    const pack = daily ?? fetchDailySet();
     setDaily(pack);
     const nextSeed = dateSeed(pack.date);
     const nextPlan = planRun(pack.personas, pack.rounds, nextSeed);
@@ -347,10 +336,10 @@ export default function FakeGptGame() {
     setJoinName(null);
     setPop(null);
     openLevel(1, nextPlan, nextSeed);
-  }, [clearTimers, daily, offline, openLevel]);
+  }, [clearTimers, daily, openLevel]);
 
   const finishLane = useCallback(
-    async (laneId: string, submittedInTime: boolean, choice?: string) => {
+    (laneId: string, submittedInTime: boolean, choice?: string) => {
       if (phaseRef.current !== 'playing' || finishingIds.current.has(laneId)) return;
       const lane = lanesRef.current.find((row) => row.id === laneId);
       const current = lane?.current;
@@ -358,136 +347,53 @@ export default function FakeGptGame() {
       finishingIds.current.add(laneId);
       setBusy(true);
       const clock = tickRequest(lane.startedAt, lane.totalMs, Date.now());
-      const playerAnswer =
-        (choice ?? (isChoiceKind(current.kind, current.options) || isBonusKind(current.kind) ? '' : typedRef.current)).trim();
-      const draw = current.kind === 'draw' ? drawRef.current?.snapshot() : null;
-      const sound =
-        current.kind === 'sound'
-          ? await Promise.race([
-              soundRef.current?.finalize() ?? Promise.resolve(null),
-              new Promise<null>((resolve) => {
-                window.setTimeout(() => resolve(null), 1500);
-              }),
-            ])
-          : null;
-      const attempt = {
-        kind: current.kind,
-        submittedInTime,
-        remainingMs: submittedInTime ? clock.remainingMs : 0,
-        totalMs: lane.totalMs,
-        strokeCount: draw?.strokeCount ?? 0,
-        uniqueColors: draw?.uniqueColors ?? 0,
-        coverage: draw?.coverage ?? 0,
-        audioMs: sound?.audioMs ?? 0,
-        peakLevel: sound?.peakLevel ?? 0,
-        padHits: sound?.padHits ?? 0,
-        correct: false,
-        empty: false,
-      };
-      let result = scoreRound(attempt);
-      let seen = '';
-      let heard = '';
-      let judged = false;
-      if (!isBonusKind(current.kind)) {
-        const verdict = checkJob(current.kind, playerAnswer, current.answer, current.aliases, current.options);
-        let correct = verdict === 'correct';
-        if (verdict === 'ambiguous' && !offline && (current.kind === 'typed' || current.kind === 'fill')) {
-          const graded = await requestGrade(
-            {
-              date: daily?.date ?? utcDate(),
-              roundId: current.id,
-              persona: lane.name,
-              question: current.text,
-              answer: current.answer,
-              aliases: current.aliases,
-              playerText: playerAnswer,
-            },
-            offline,
-          );
-          correct = Boolean(graded && !graded.fallback && graded.correct);
-        }
-        const nextComboValue = nextCombo(comboRef.current, correct, submittedInTime && !clock.expired);
-        result = scoreJob(
-          {
-            submittedInTime,
-            remainingMs: attempt.remainingMs,
-            totalMs: lane.totalMs,
-            correct,
-            empty: verdict === 'empty' || !submittedInTime && !playerAnswer,
-          },
-          nextComboValue,
-        );
-        if (!correct && !result.empty) result = { ...result, reaction: current.bad || result.reaction };
-        else if (correct) result = { ...result, reaction: current.good || result.reaction };
-        setCombo(nextComboValue);
-        setMaxCombo((currentMax) => Math.max(currentMax, nextComboValue));
-        if (nextComboValue >= 3) {
-          setConfetti(true);
-          later(() => setConfetti(false), 900);
-          setPop(`x${nextComboValue} combo`);
-          later(() => setPop(null), 900);
-        }
-        if (!correct) {
-          const hit = applyStrike(strikesRef.current);
-          setStrikes(hit.strikes);
-          setShake(true);
-          later(() => setShake(false), 420);
-          if (hit.over) {
-            const artifact: Artifact = {
-              prompt: current,
-              customer: lane.name,
-              points: result.points,
-              thumbs: result.thumbs,
-              reaction: result.reaction,
-              stars: result.stars,
-              empty: result.empty,
-              late: result.late,
-              playerAnswer: playerAnswer || '',
-              correctAnswer: current.answer,
-            };
-            const nextScore = scoreRef.current + result.points;
-            setScore(nextScore);
-            setArtifacts((currentArtifacts) => [...currentArtifacts, artifact]);
-            endRun(nextScore);
-            return;
-          }
-        }
-      } else if (!offline && !result.empty) {
-        const image = current.kind === 'draw' && draw?.dataUrl ? await downscaleImage(draw.dataUrl) : undefined;
-        const audio = current.kind === 'sound' && sound?.usedMic && sound.blob ? await capAudio(sound.blob) : undefined;
-        const judgedRemote = await requestJudge(
-          {
-            date: daily?.date ?? utcDate(),
-            roundId: current.id,
-            kind: current.kind === 'sound' ? 'sound' : 'draw',
-            request: current.text,
-            persona: lane.name,
-            submittedInTime,
-            remainingMs: attempt.remainingMs,
-            totalMs: lane.totalMs,
-            image,
-            audio: audio || undefined,
-            pads: sound?.hits.map((hit) => ({ padId: hit.padId, holdMs: hit.holdMs })),
-            features: sound
-              ? {
-                  durationMs: sound.audioMs,
-                  rms: sound.rms,
-                  peakLevel: sound.peakLevel,
-                  pitchLo: sound.pitchLo,
-                  pitchHi: sound.pitchHi,
-                  silenceRatio: sound.silenceRatio,
-                  padHits: sound.padHits,
-                }
-              : undefined,
-          },
-          offline,
-        );
-        if (judgedRemote && !judgedRemote.fallback) {
-          result = scoreWithJudge(attempt, judgedRemote.score);
-          seen = judgedRemote.seen;
-          heard = judgedRemote.heard;
-          judged = true;
-          if (judgedRemote.messages[0]) result = { ...result, reaction: judgedRemote.messages.join(' ') };
+      const playerAnswer = (choice ?? '').trim();
+      const verdict = checkJob(current.kind, playerAnswer, current.answer, current.aliases, current.options);
+      const correct = verdict === 'correct';
+      const nextComboValue = nextCombo(comboRef.current, correct, submittedInTime && !clock.expired);
+      let result = scoreJob(
+        {
+          submittedInTime,
+          remainingMs: submittedInTime ? clock.remainingMs : 0,
+          totalMs: lane.totalMs,
+          correct,
+          empty: verdict === 'empty' || !playerAnswer,
+        },
+        nextComboValue,
+      );
+      if (!correct && !result.empty) result = { ...result, reaction: current.bad || result.reaction };
+      else if (correct) result = { ...result, reaction: current.good || result.reaction };
+      setCombo(nextComboValue);
+      setMaxCombo((currentMax) => Math.max(currentMax, nextComboValue));
+      if (nextComboValue >= 3) {
+        setConfetti(true);
+        later(() => setConfetti(false), 900);
+        setPop(`x${nextComboValue} combo`);
+        later(() => setPop(null), 900);
+      }
+      if (!correct) {
+        const hit = applyStrike(strikesRef.current);
+        setStrikes(hit.strikes);
+        setShake(true);
+        later(() => setShake(false), 420);
+        if (hit.over) {
+          const artifact: Artifact = {
+            prompt: current,
+            customer: lane.name,
+            points: result.points,
+            thumbs: result.thumbs,
+            reaction: result.reaction,
+            stars: result.stars,
+            empty: result.empty,
+            late: result.late,
+            playerAnswer: playerAnswer || '',
+            correctAnswer: current.answer,
+          };
+          const nextScore = scoreRef.current + result.points;
+          setScore(nextScore);
+          setArtifacts((currentArtifacts) => [...currentArtifacts, artifact]);
+          endRun(nextScore);
+          return;
         }
       }
 
@@ -502,28 +408,16 @@ export default function FakeGptGame() {
         late: result.late,
         playerAnswer: playerAnswer || (result.empty ? '' : undefined),
         correctAnswer: current.answer,
-        drawingUrl: draw?.dataUrl || undefined,
-        audioUrl: sound?.usedMic && sound.blobUrl ? sound.blobUrl : undefined,
-        replayHits: sound?.hits,
-        seen,
-        heard,
-        judged,
       };
       const assistant: ChatMessage = result.empty
         ? { id: uid('miss'), role: 'assistant', kind: 'miss', text: '…' }
-        : !isBonusKind(current.kind)
-          ? { id: uid('ans'), role: 'assistant', kind: 'answer', text: playerAnswer || '…' }
-          : current.kind === 'draw' && artifact.drawingUrl
-            ? { id: uid('draw'), role: 'assistant', kind: 'drawing', src: artifact.drawingUrl }
-            : { id: uid('audio'), role: 'assistant', kind: 'audio', src: artifact.audioUrl ?? '', hits: artifact.replayHits };
+        : { id: uid('ans'), role: 'assistant', kind: 'answer', text: playerAnswer || '…' };
 
       const nextScore = scoreRef.current + result.points;
       setScore(nextScore);
       setArtifacts((currentArtifacts) => [...currentArtifacts, artifact]);
       setServed((value) => value + 1);
       setServedTotal((value) => value + 1);
-      typedRef.current = '';
-      setTyped('');
       setPop(result.thumbs === 'up' ? `+${result.points}` : result.empty ? 'miss' : 'wrong');
       later(() => setPop(null), 800);
       beep(result.thumbs === 'up' ? 740 : 180, 0.1);
@@ -560,7 +454,7 @@ export default function FakeGptGame() {
         );
       }, 520);
     },
-    [beep, daily?.date, endRun, later, offline],
+    [beep, endRun, later],
   );
 
   const failExpired = useCallback(
@@ -646,8 +540,6 @@ export default function FakeGptGame() {
   const focusLane = useCallback((id: string, moveDomFocus = false) => {
     setFocusedId(id);
     setLanes((current) => current.map((lane) => (lane.id === id ? { ...lane, unread: 0 } : lane)));
-    typedRef.current = '';
-    setTyped('');
     if (moveDomFocus) {
       requestAnimationFrame(() => tabRefs.current[id]?.focus());
     }
@@ -705,9 +597,9 @@ export default function FakeGptGame() {
       }
       if (!prompt || busy) return;
       if (event.altKey || event.ctrlKey || event.metaKey) return;
-      if (isChoiceKind(prompt.kind, prompt.options) && ['1', '2', '3', '4'].includes(event.key)) {
+      if (['1', '2', '3', '4'].includes(event.key) && prompt.options?.length) {
         const option = prompt.options[Number(event.key) - 1];
-        if (option) void finishLane(focusedId, true, option);
+        if (option) finishLane(focusedId, true, option);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -720,7 +612,7 @@ export default function FakeGptGame() {
         correct: item.thumbs === 'up',
         empty: item.empty,
         late: item.late,
-        bonus: isBonusKind(item.prompt.kind),
+        bonus: false,
       }),
     );
     const text = `FakeGPT ${daily?.date ?? utcDate()}\n${rank.title} · ${score} pts · Lv ${level}\n${buildShareGrid(glyphs)}`;
@@ -757,20 +649,6 @@ export default function FakeGptGame() {
       onMute={toggleMute}
       onRestart={phase === 'intro' ? undefined : () => void startRun()}
       restartLabel={phase === 'results' ? 'Play again' : 'Restart'}
-      extraActions={
-        <button
-          type="button"
-          onClick={() => {
-            const next = !offline;
-            setOffline(next);
-            writeOffline(next);
-            void fetchDailySet(next).then(setDaily);
-          }}
-          className="pressable rounded-full border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--ink)]"
-        >
-          {offline ? 'Offline' : 'Online'}
-        </button>
-      }
       tight
       wide
       hud="line"
@@ -786,8 +664,8 @@ export default function FakeGptGame() {
             <p className="text-sm font-medium text-[var(--ink)]">FakeGPT</p>
             <p className="truncate text-xs text-[var(--faint)]">
               {phase === 'playing'
-                ? `Shift ${formatUtcDate(daily?.date ?? utcDate())}${daily?.source === 'ai' ? '' : ' · local set'}`
-                : `Today's customers · ${formatUtcDate(daily?.date ?? utcDate())}${daily?.source === 'ai' ? '' : ' · local set'}`}
+                ? `Shift ${formatUtcDate(daily?.date ?? utcDate())}`
+                : `Today's customers · ${formatUtcDate(daily?.date ?? utcDate())}`}
             </p>
           </div>
           <div className="fgpt-hud-stats">
@@ -829,12 +707,12 @@ export default function FakeGptGame() {
           <div className="fgpt-intro">
             <p className="fgpt-daily">Daily shift · {formatUtcDate(daily?.date ?? utcDate())}</p>
             <p className="fgpt-assistant">
-              You are not a model. You are a person doing every job by hand while the users think you are AI.
+              You are not a model. You are a person tapping the right answer while the users think you are AI.
               Start with {startCustomerCount(dateSeed(daily?.date ?? utcDate())) === 2 ? 'two customers' : 'one customer'}. More join as levels get harder.
-              Each has a queue and a patience meter. Three hallucinations and they walk.
+              Each has a tab, a queue, and a patience meter. Every job is multiple choice. Three hallucinations and they walk.
             </p>
             <p className="fgpt-user">
-              Translate, trivia, math, spelling, tone — locally checked. Tabs juggle chats. Arrow keys, [ ], or Ctrl/Alt+1–5 switch. 1–4 tap answers.
+              Translate, trivia, math, units, spelling, tone — all four options, all on device. Tabs juggle chats. Arrow keys, [ ], or Ctrl/Alt+1–5 switch. 1–4 tap answers.
             </p>
             <button
               type="button"
@@ -882,7 +760,6 @@ export default function FakeGptGame() {
             <div className="fgpt-lanes" data-count={lanes.length}>
               {lanes.map((lane) => {
                 const active = lane.id === focusedId;
-                const kind = lane.current?.kind;
                 return (
                   <article
                     key={lane.id}
@@ -921,84 +798,30 @@ export default function FakeGptGame() {
                     </div>
                     {phase === 'playing' && lane.current ? (
                       <div className="fgpt-composer">
-                        {isChoiceKind(lane.current.kind, lane.current.options) ? (
-                          <div className="fgpt-choices">
-                            {lane.current.options.map((option, index) => (
-                              <button
-                                key={option}
-                                type="button"
-                                disabled={busy && active}
-                                onPointerDown={(event) => {
-                                  event.stopPropagation();
-                                  focusLane(lane.id);
-                                  void finishLane(lane.id, true, option);
-                                }}
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  focusLane(lane.id);
-                                  void finishLane(lane.id, true, option);
-                                }}
-                                className="fgpt-choice pressable"
-                              >
-                                <span className="fgpt-key">{index + 1}</span>
-                                {option}
-                              </button>
-                            ))}
-                          </div>
-                        ) : null}
-                        {kind && !isChoiceKind(kind, lane.current.options) && !isBonusKind(kind) ? (
-                          <form
-                            className="fgpt-typed"
-                            onSubmit={(event) => {
-                              event.preventDefault();
-                              void finishLane(lane.id, true);
-                            }}
-                          >
-                            <input
-                              value={active ? typed : ''}
-                              maxLength={80}
-                              onChange={(event) => {
-                                typedRef.current = event.target.value;
-                                setTyped(event.target.value);
-                              }}
-                              onFocus={() => focusLane(lane.id)}
-                              placeholder="type it, fast"
-                              disabled={busy && active}
-                              className="min-w-0 flex-1 rounded-full border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm"
-                              aria-label="Short answer"
-                            />
+                        <div className="fgpt-choices">
+                          {lane.current.options.map((option, index) => (
                             <button
-                              type="submit"
-                              disabled={busy}
-                              className="pressable rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm text-[var(--bg)] disabled:opacity-50"
-                            >
-                              Send
-                            </button>
-                          </form>
-                        ) : null}
-                        {kind === 'draw' ? <DrawPad key={lane.current.id} ref={drawRef} disabled={busy} /> : null}
-                        {kind === 'sound' ? (
-                          <SoundPad
-                            key={lane.current.id}
-                            ref={soundRef}
-                            disabled={busy}
-                            preferredMode={micMode}
-                            onMode={setMicMode}
-                          />
-                        ) : null}
-                        {kind === 'draw' || kind === 'sound' ? (
-                          <div className="flex justify-end px-3 pb-3">
-                            <button
+                              key={option}
                               type="button"
-                              disabled={busy}
-                              onClick={() => void finishLane(lane.id, true)}
-                              className="pressable rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm text-[var(--bg)] disabled:opacity-50"
+                              disabled={busy && active}
+                              onPointerDown={(event) => {
+                                event.stopPropagation();
+                                focusLane(lane.id);
+                                finishLane(lane.id, true, option);
+                              }}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                focusLane(lane.id);
+                                finishLane(lane.id, true, option);
+                              }}
+                              className="fgpt-choice pressable"
                             >
-                              Send
+                              <span className="fgpt-key">{index + 1}</span>
+                              {option}
                             </button>
-                          </div>
-                        ) : null}
+                          ))}
+                        </div>
                       </div>
                     ) : null}
                   </article>
@@ -1047,7 +870,7 @@ export default function FakeGptGame() {
                     correct: item.thumbs === 'up',
                     empty: item.empty,
                     late: item.late,
-                    bonus: isBonusKind(item.prompt.kind),
+                    bonus: false,
                   }),
                 ),
               ) || '⬛'}
@@ -1082,18 +905,6 @@ export default function FakeGptGame() {
                     </p>
                   ) : null}
                   <p className="mt-1 text-sm text-[var(--muted)]">{item.reaction}</p>
-                  {item.seen ? <p className="mt-1 text-sm text-[var(--ink)]">I see: {item.seen}</p> : null}
-                  {item.heard ? <p className="mt-1 text-sm text-[var(--ink)]">I heard: {item.heard}</p> : null}
-                  {item.drawingUrl || item.audioUrl || item.replayHits?.length ? (
-                    <div className="mt-3">
-                      {item.drawingUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={item.drawingUrl} alt="" className="fgpt-drawing" />
-                      ) : (
-                        <AudioBubble src={item.audioUrl} hits={item.replayHits} />
-                      )}
-                    </div>
-                  ) : null}
                 </li>
               ))}
             </ul>

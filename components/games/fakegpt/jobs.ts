@@ -27,8 +27,8 @@ export const TYPED_JOB_KINDS = new Set<PromptKind>([
 ]);
 
 export function isChoiceKind(kind: PromptKind, options: readonly string[] = []): boolean {
-  if (CHOICE_KINDS.has(kind)) return true;
-  return kind === 'fill' && options.length === 4;
+  if (options.length === 4) return true;
+  return CHOICE_KINDS.has(kind);
 }
 
 export function isBonusKind(kind: PromptKind): boolean {

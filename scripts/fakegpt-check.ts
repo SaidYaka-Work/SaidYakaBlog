@@ -32,6 +32,11 @@ import {
 } from '../components/games/fakegpt/lanes.ts';
 import { matchChoice, matchTypedAnswer } from '../components/games/fakegpt/match.ts';
 import { BONUS, TRIVIA } from '../components/games/fakegpt/trivia.ts';
+import { BANK } from '../components/games/fakegpt/bank/index.ts';
+import { validateBank } from '../components/games/fakegpt/bank/validate.ts';
+import { pickDailyQuestions } from '../components/games/fakegpt/bank/select.ts';
+import { DAILY_ROUND_COUNT } from '../components/games/fakegpt/bank/types.ts';
+import { buildDailySet } from '../components/games/fakegpt/daily.ts';
 import { fallbackDailySet } from '../workers/fakegpt/src/fallback';
 import { takeBudget } from '../workers/fakegpt/src/budget';
 import { dateSeed, parseJudgeRequest, utcDate, validateDailySet } from '../workers/fakegpt/src/schema';
@@ -161,6 +166,17 @@ assert.equal(jobs.length, 20);
 assert.equal(planRun([], jobs, 3).length, 5);
 assert.ok(scoreJob({ submittedInTime: true, remainingMs: 8000, totalMs: 16000, correct: true, empty: false }, 3, () => 0).points > 100);
 
+const bankReport = validateBank(BANK);
+assert.ok(BANK.length >= 1500, `need 1500+ bank questions, got ${BANK.length}`);
+assert.equal(bankReport.issues.length, 0, bankReport.issues.slice(0, 6).map((row) => `${row.id}: ${row.reason}`).join('; '));
+const localDaily = buildDailySet('2026-10-22');
+assert.deepEqual(
+  localDaily.rounds.map((round) => round.id),
+  buildDailySet('2026-10-22').rounds.map((round) => round.id),
+);
+assert.equal(pickDailyQuestions(BANK, '2026-10-22').length, DAILY_ROUND_COUNT);
+assert.ok(localDaily.rounds.every((round) => round.options.length === 4 && round.kind !== 'draw' && round.kind !== 'sound'));
+
 console.log(
-  `fakegpt dataset ok: ${TRIVIA.length} trivia, ${JOBS.length} jobs, ${BONUS.length} bonus, run ${picked.length}, daily ${seeded.rounds.length}, customers ${seeded.personas.length}`,
+  `fakegpt dataset ok: bank ${BANK.length}, trivia ${TRIVIA.length}, jobs ${JOBS.length}, bonus ${BONUS.length}, run ${picked.length}, workerDaily ${seeded.rounds.length}, localDaily ${localDaily.rounds.length}, customers ${localDaily.personas.length}`,
 );
