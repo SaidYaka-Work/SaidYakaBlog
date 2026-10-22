@@ -138,23 +138,42 @@ async function readAttempt(env: Env, date: string): Promise<AttemptMarker> {
   return { count, at };
 }
 
-export async function clearGenerationLock(env: Env, date: string): Promise<void> {
-  await kvPutJson(env.FAKEGPT, dailyLockKey(date), { at: 0 }, 60);
+export type LockMarker = {
+  id: string;
+  at: number;
+};
+
+function newLockId(now: number): string {
+  const unique = globalThis.crypto?.randomUUID?.() ?? `lock-${now}-${Math.random().toString(36).slice(2)}`;
+  return unique;
 }
 
-export async function claimGeneration(env: Env, date: string, opts: { now?: number } = {}): Promise<GenerationClaim> {
+function lockIsHeld(lock: LockMarker | { at?: number; id?: string } | null, now: number): boolean {
+  if (!lock || typeof lock.at !== 'number' || lock.at <= 0) return false;
+  return now - lock.at < DAILY_GENERATE_LOCK_MS;
+}
+
+export async function clearGenerationLock(env: Env, date: string): Promise<void> {
+  await kvPutJson(env.FAKEGPT, dailyLockKey(date), { id: '', at: 0 }, 60);
+}
+
+export async function claimGeneration(
+  env: Env,
+  date: string,
+  opts: { now?: number; owner?: string } = {},
+): Promise<GenerationClaim> {
   const now = opts.now ?? Date.now();
+  const owner = opts.owner ?? newLockId(now);
   const cached = await kvGetJson<DailySet>(env.FAKEGPT, dailyCacheKey(date));
   const attempts = await readAttempt(env, date);
   if (cached?.rounds?.length && cached.source === 'ai') {
     return { claimed: false, attempts: attempts.count, reason: 'have-ai' };
   }
 
-  const lock = await kvGetJson<{ at?: number }>(env.FAKEGPT, dailyLockKey(date));
-  if (typeof lock?.at === 'number' && now - lock.at < DAILY_GENERATE_LOCK_MS) {
+  const lock = await kvGetJson<LockMarker>(env.FAKEGPT, dailyLockKey(date));
+  if (lockIsHeld(lock, now)) {
     return { claimed: false, attempts: attempts.count, reason: 'locked' };
   }
-
   if (attempts.count >= DAILY_GENERATE_ATTEMPTS_MAX) {
     return { claimed: false, attempts: attempts.count, reason: 'capped' };
   }
@@ -162,10 +181,38 @@ export async function claimGeneration(env: Env, date: string, opts: { now?: numb
     return { claimed: false, attempts: attempts.count, reason: 'backoff' };
   }
 
-  await kvPutJson(env.FAKEGPT, dailyLockKey(date), { at: now }, Math.ceil(DAILY_GENERATE_LOCK_MS / 1000) + 30);
-  const next = { count: attempts.count + 1, at: now };
+  await kvPutJson(env.FAKEGPT, dailyLockKey(date), { id: owner, at: now }, Math.ceil(DAILY_GENERATE_LOCK_MS / 1000) + 30);
+  const confirm = await kvGetJson<LockMarker>(env.FAKEGPT, dailyLockKey(date));
+  if (confirm?.id !== owner) {
+    return { claimed: false, attempts: attempts.count, reason: 'locked' };
+  }
+
+  const latestCache = await kvGetJson<DailySet>(env.FAKEGPT, dailyCacheKey(date));
+  if (latestCache?.rounds?.length && latestCache.source === 'ai') {
+    await clearGenerationLock(env, date);
+    return { claimed: false, attempts: attempts.count, reason: 'have-ai' };
+  }
+  const latestAttempt = await readAttempt(env, date);
+  if (latestAttempt.count >= DAILY_GENERATE_ATTEMPTS_MAX) {
+    await clearGenerationLock(env, date);
+    return { claimed: false, attempts: latestAttempt.count, reason: 'capped' };
+  }
+  if (latestAttempt.at > 0 && now - latestAttempt.at < DAILY_GENERATE_BACKOFF_MS) {
+    await clearGenerationLock(env, date);
+    return { claimed: false, attempts: latestAttempt.count, reason: 'backoff' };
+  }
+
+  const next = { count: latestAttempt.count + 1, at: now };
   await kvPutJson(env.FAKEGPT, dailyAttemptKey(date), next, AI_DAILY_CACHE_TTL_SEC);
   return { claimed: true, attempts: next.count };
+}
+
+export async function commitDailySet(env: Env, date: string, generated: DailySet): Promise<DailySet> {
+  const key = dailyCacheKey(date);
+  const latest = await kvGetJson<DailySet>(env.FAKEGPT, key);
+  const next = pickBetterDailySet(latest, generated);
+  await kvPutJson(env.FAKEGPT, key, next, dailyCacheTtlSec(next.source, dailyAiCount(next)));
+  return next;
 }
 
 export async function generateAndCache(
@@ -183,15 +230,11 @@ export async function generateAndCache(
     }
   }
 
-  const key = dailyCacheKey(date);
   try {
-    const cached = await kvGetJson<DailySet>(env.FAKEGPT, key);
     const generated = (await spend(env, date, DAILY_GENERATE_SPEND))
       ? await generateDailySet(env.AI, date, { timeoutMs })
       : fallbackDailySet(date);
-    const next = pickBetterDailySet(cached, generated);
-    await kvPutJson(env.FAKEGPT, key, next, dailyCacheTtlSec(next.source, dailyAiCount(next)));
-    return next;
+    return commitDailySet(env, date, generated);
   } finally {
     await clearGenerationLock(env, date);
   }

@@ -134,6 +134,18 @@ test('math and unit keys are recomputed and ambiguous ounces are dropped', () =>
   if (unparsed.ok) assert.equal(unparsed.round.answer, '144');
 });
 
+test('instruction echoes are dropped with a reason', () => {
+  const checked = validateAiRound(
+    round({
+      kind: 'translate',
+      text: 'name the target language: french',
+      answer: 'bonjour',
+    }),
+  );
+  assert.equal(checked.ok, false);
+  if (!checked.ok) assert.equal(checked.reason, 'instruction-echo');
+});
+
 test('time-sensitive, nonsense, and more-specific distractors are dropped', () => {
   assert.equal(isTimeSensitivePrompt('which planet has the most moons today'), true);
   assert.equal(isNonsensicalPrompt('mammal with a built-in umbrella called a dorsal fin'), true);

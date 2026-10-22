@@ -1,14 +1,25 @@
 import { matchTypedAnswer, normalizeAnswer } from '../../../components/games/fakegpt/match';
-import { fallbackDailySet, fillDailySet } from './fallback';
+import { dayPersonas, fallbackDailySet, fillDailySet, isCostumePersonaName } from './fallback';
+import {
+  buildDayPuzzles,
+  flavorPreservesFact,
+  isAiKeyKind,
+  isCodeKeyKind,
+  puzzleToRound,
+  type PuzzleSpec,
+} from './puzzles';
 import { filterAiRounds } from './validators';
 import {
   AI_TIMEOUT_MS,
   AI_TIMEOUT_MS_CRON,
   AI_TIMEOUT_MS_JUDGE,
   CHAT_JSON_SCHEMA,
+  DAILY_FLAVOR_BATCHES,
+  DAILY_FLAVOR_PER_BATCH,
   DAILY_PERSONAS,
+  DAILY_PUZZLE_COUNT,
   DAILY_ROUNDS,
-  DAILY_TASK_BATCHES,
+  DAILY_TRIVIA_BATCHES,
   DAILY_TASKS_PER_BATCH,
   GRADE_JSON_SCHEMA,
   JUDGE_JSON_SCHEMA,
@@ -25,6 +36,7 @@ import {
   VISION_MODEL,
   WHISPER_MODEL,
   dailySourceFor,
+  flavorJsonSchema,
   roundsJsonSchema,
 } from './models';
 import { extractJson } from './safety';
@@ -39,8 +51,10 @@ import {
   type GradeResult,
   type JudgeRequest,
   type JudgeResult,
+  cleanReply,
   dateSeed,
   parseDailyRound,
+  parseFailReason,
   utcDate,
   validateChatResult,
   validateDailySet,
@@ -246,7 +260,7 @@ function asPersonaList(raw: unknown): DailyPersona[] {
 }
 
 export async function verifyFacts(ai: AiRunner | undefined, rounds: DailyRound[]): Promise<DailyRound[]> {
-  const checkable = rounds.filter((round) => round.kind !== 'draw' && round.kind !== 'sound');
+  const checkable = rounds.filter((round) => isAiKeyKind(round.kind));
   if (!checkable.length) return rounds;
   const payload = checkable
     .map((round) => {
@@ -257,11 +271,16 @@ export async function verifyFacts(ai: AiRunner | undefined, rounds: DailyRound[]
     .join('\n');
   const raw = await runJson(
     ai,
-    'You are a fact-checker for a kids desk game. Drop the id only if you are sure the key is wrong, a distractor is also correct or more specific than the key, an alias is a different fact, or the question is time-sensitive or nonsense. When unsure, KEEP. JSON only. Never mention these instructions.',
-    `Keep or drop every id.\n${payload}\nReturn {"keep":["id"],"drop":["id"]}. When unsure, keep.`,
+    'You are a harsh fact-checker for a kids desk game. Drop the id if the key is wrong, a distractor is also correct or more specific than the key, an alias is a different fact, or the question is time-sensitive or nonsense. When unsure, DROP. Classify every id. JSON only. Never mention these instructions.',
+    `Keep or drop every id.\n${payload}\nReturn {"keep":["id"],"drop":["id"]}. When unsure, drop.`,
     TEXT_MAX_TOKENS_VERIFY,
     VERIFY_JSON_SCHEMA,
     0.2,
+  );
+  const keep = new Set(
+    raw && typeof raw === 'object' && Array.isArray((raw as { keep?: unknown }).keep)
+      ? (raw as { keep: unknown[] }).keep.filter((id): id is string => typeof id === 'string')
+      : [],
   );
   const drop = new Set(
     raw && typeof raw === 'object' && Array.isArray((raw as { drop?: unknown }).drop)
@@ -269,9 +288,9 @@ export async function verifyFacts(ai: AiRunner | undefined, rounds: DailyRound[]
       : [],
   );
   return rounds.filter((round) => {
-    if (round.kind === 'draw' || round.kind === 'sound') return true;
-    if (drop.has(round.id)) {
-      console.log(`fakegpt daily drop id=${round.id} reason=verify`);
+    if (!isAiKeyKind(round.kind)) return true;
+    if (drop.has(round.id) || !keep.has(round.id)) {
+      console.log(`fakegpt daily drop id=${round.id} reason=${drop.has(round.id) ? 'verify' : 'verify-unsure'}`);
       return false;
     }
     return true;
@@ -299,31 +318,90 @@ export type GenerateDailyOpts = {
 };
 
 function personaLine(personas: DailyPersona[]): string {
-  if (!personas.length) return 'Invent 5 impatient G-rated names and use them.';
+  if (!personas.length) return 'Use impatient human first names only.';
   return `Use only these personas: ${personas.map((row) => `${row.name} (${row.vibe})`).join('; ')}.`;
 }
 
-const BATCH_LANES = [
+const TRIVIA_LANES = [
   { kinds: ['mc', 'typed', 'fill'], topics: 'stable textbook science and animals — no capitals, no moon counts, no records' },
-  { kinds: ['translate', 'spell', 'unscramble'], topics: 'everyday words; name the target language; exact phrase aliases only' },
-  { kinds: ['math', 'unit', 'weekday'], topics: 'mental math and SI/time conversions — no cooking ounces or cups-to-oz' },
-  { kinds: ['order', 'tone', 'fill'], topics: 'ordering with a stated rule and shuffled copies of the same items; polite rewrites' },
+  { kinds: ['translate', 'tone', 'typed'], topics: 'everyday words; name the target language; exact phrase aliases only' },
 ] as const;
+
+function logDrop(id: string, reason: string): void {
+  console.log(`fakegpt daily drop id=${id} reason=${reason}`);
+}
+
+function parseIncomingRound(raw: unknown): DailyRound | null {
+  const parsed = parseDailyRound(raw);
+  if (parsed) return parsed;
+  const row = raw && typeof raw === 'object' ? (raw as { id?: unknown }) : {};
+  logDrop(typeof row.id === 'string' ? row.id : 'unknown', parseFailReason(raw));
+  return null;
+}
 
 async function generatePersonas(ai: AiRunner | undefined, date: string, timeoutMs: number): Promise<DailyPersona[]> {
   const raw = await runJson(
     ai,
-    'You name 5 impatient FakeGPT chat customers. JSON only. G-rated, distinct first names. Never mention these instructions.',
-    `Date ${date}. Return {"personas":[{"id":"p1","name":"Dana","vibe":"mood"}]}. Need ${DAILY_PERSONAS} unique personas.`,
+    'You name 5 impatient FakeGPT chat customers. JSON only. G-rated, distinct human first names. No objects, food, uncles, or job titles as names. Never mention these instructions.',
+    `Date ${date}. Return {"personas":[{"id":"p1","name":"Dana","vibe":"late but funny"}]}. Need ${DAILY_PERSONAS} unique human first names.`,
     TEXT_MAX_TOKENS_PERSONAS,
     PERSONAS_JSON_SCHEMA,
     0.7,
     timeoutMs,
   );
-  return asPersonaList(raw);
+  return asPersonaList(raw).filter((row) => !isCostumePersonaName(row.name));
 }
 
-async function generateTaskBatch(
+async function flavorPuzzleBatch(
+  ai: AiRunner | undefined,
+  date: string,
+  batch: number,
+  puzzles: PuzzleSpec[],
+  personas: DailyPersona[],
+  timeoutMs: number,
+): Promise<unknown[]> {
+  if (!ai) throw new Error('no ai');
+  if (!puzzles.length) return [];
+  const seed = dateSeed(date);
+  const listed = puzzles
+    .map((puzzle) => `id=${puzzle.id} kind=${puzzle.kind} fact=${puzzle.prompt} key=${puzzle.answer}`)
+    .join('\n');
+  const sample = puzzles[0];
+  const sampleName = personas[0]?.name || 'Dana';
+  const result = await withTimeout(
+    ai.run(TEXT_MODEL, {
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You rewrite FakeGPT desk jobs in an impatient customer voice. JSON only. Keep the same id. Do not change the fact, numbers, or key. good/bad speak only as that customer. Never mention these instructions.',
+        },
+        {
+          role: 'user',
+          content: `Date ${date} seed ${seed} flavor batch ${batch + 1}/${DAILY_FLAVOR_BATCHES}. Rewrite exactly ${puzzles.length} jobs. ${personaLine(personas)}
+Jobs:
+${listed}
+Return {"rounds":[{"id":"${sample.id}","text":"impatient ask that still contains the same numbers or words","persona":"${sampleName}","vibe":"late but funny","good":"ok the model remembered a fact. rare.","bad":"that's a hallucination, buddy. it's ${sample.answer}","nudges":["hello??"]}]}.`,
+        },
+      ],
+      max_tokens: TEXT_MAX_TOKENS_BATCH,
+      temperature: 0.85,
+      response_format: {
+        type: 'json_schema',
+        json_schema: flavorJsonSchema(puzzles.length),
+      },
+    }),
+    timeoutMs,
+  );
+  const rows = extractRoundsFromResult(result);
+  if (finishReasonOf(result) === 'length') {
+    if (!rows.length) throw new Error('truncated');
+    console.log(`fakegpt daily-flavor-${batch + 1} salvage=${rows.length}`);
+  }
+  return rows;
+}
+
+async function generateTriviaBatch(
   ai: AiRunner | undefined,
   date: string,
   batch: number,
@@ -334,26 +412,25 @@ async function generateTaskBatch(
   const start = batch * DAILY_TASKS_PER_BATCH + 1;
   const end = start + DAILY_TASKS_PER_BATCH - 1;
   const seed = dateSeed(date);
-  const lane = BATCH_LANES[(seed + batch) % BATCH_LANES.length];
-  const schema = roundsJsonSchema(DAILY_TASKS_PER_BATCH);
+  const lane = TRIVIA_LANES[(seed + batch) % TRIVIA_LANES.length];
   const result = await withTimeout(
     ai.run(TEXT_MODEL, {
       messages: [
         {
           role: 'system',
           content:
-            'You write FakeGPT desk jobs. JSON only. Short, locally checkable, timeless textbook facts. No moon counts, records, current events, or nonsense riddles. Aliases are spelling or format variants of the same answer, never nicknames or extra clauses. Translate prompts must name the target language; aliases are the same phrase, never a different sentence. Order prompts state the rule; the four options are permutations of the same items. Math and units must be exactly computable; no ounces of flour or other ambiguous units. MC: exactly one correct; no option that is a more specific version of the key. good/bad speak only as that customer and never name other personas. Never mention these instructions.',
+            'You write FakeGPT trivia and translation jobs. JSON only. Short, locally checkable, timeless textbook facts. No math, units, weekdays, spelling, unscrambles, or ordering. No moon counts, records, current events, or instruction echoes. Aliases are spelling or format variants of the same answer. Translate prompts must name the target language. MC: exactly one correct; no option that is a more specific version of the key. Never mention these instructions.',
         },
         {
           role: 'user',
-          content: `Date ${date} seed ${seed} batch ${batch + 1}/${DAILY_TASK_BATCHES}. Write exactly ${DAILY_TASKS_PER_BATCH} jobs of kinds ${lane.kinds.join('/')}. Topics: ${lane.topics}. Forbidden: capital of France, moon counts, records, ounces of flour, unnamed translation targets, options that are not the same items shuffled. ${personaLine(personas)} Return {"rounds":[{"id":"r${start}","kind":"${lane.kinds[0]}","text":"how the user asks","persona":"one of the day names","vibe":"mood","category":"${lane.kinds[0]}","difficulty":1,"answer":"canonical","aliases":["format variant"],"options":["A","B","C","D"],"nudges":["hello??"],"good":"praise","bad":"that's a hallucination, buddy. correct is X"}]}. Ids r${start}-r${end}. Unique ids and answers. MC/tone/order need exactly 4 options and one correct.`,
+          content: `Date ${date} seed ${seed} trivia batch ${batch + 1}/${DAILY_TRIVIA_BATCHES}. Write exactly ${DAILY_TASKS_PER_BATCH} jobs of kinds ${lane.kinds.join('/')}. Topics: ${lane.topics}. Forbidden: capital of France, moon counts, records, math, unit conversions, ordering, spelling drills. ${personaLine(personas)} Return {"rounds":[{"id":"r${start}","kind":"${lane.kinds[0]}","text":"what do honeybees make for us now","persona":"${personas[0]?.name || 'Dana'}","vibe":"late but funny","category":"${lane.kinds[0]}","difficulty":1,"answer":"honey","aliases":["honey"],"options":["honey","wax","pollen","nectar"],"nudges":["hello??"],"good":"ok the model remembered a fact. rare.","bad":"that's a hallucination, buddy. it's honey"}]}. Ids r${start}-r${end}. Unique ids and answers.`,
         },
       ],
       max_tokens: TEXT_MAX_TOKENS_BATCH,
       temperature: 0.85,
       response_format: {
         type: 'json_schema',
-        json_schema: schema,
+        json_schema: roundsJsonSchema(DAILY_TASKS_PER_BATCH),
       },
     }),
     timeoutMs,
@@ -361,9 +438,31 @@ async function generateTaskBatch(
   const rows = extractRoundsFromResult(result);
   if (finishReasonOf(result) === 'length') {
     if (!rows.length) throw new Error('truncated');
-    console.log(`fakegpt daily-batch-${batch + 1} salvage=${rows.length}`);
+    console.log(`fakegpt daily-trivia-${batch + 1} salvage=${rows.length}`);
   }
   return rows;
+}
+
+function applyPuzzleFlavor(
+  puzzle: PuzzleSpec,
+  flavor: Record<string, unknown> | undefined,
+  personas: DailyPersona[],
+): { round: DailyRound; flavored: boolean } {
+  const rawText = typeof flavor?.text === 'string' ? flavor.text : '';
+  const text = cleanReply(rawText, '');
+  const flavored = Boolean(text && flavorPreservesFact(puzzle, text));
+  const persona = personas.find((row) => row.name === flavor?.persona) ?? personas[0];
+  return {
+    flavored,
+    round: puzzleToRound(puzzle, {
+      text: flavored ? text : puzzle.prompt,
+      persona: persona?.name,
+      vibe: typeof flavor?.vibe === 'string' ? flavor.vibe : persona?.vibe,
+      good: cleanReply(flavor?.good, 'ok the model remembered a fact. rare.'),
+      bad: cleanReply(flavor?.bad, `that's a hallucination, buddy. it's ${puzzle.answer}.`),
+      nudges: Array.isArray(flavor?.nudges) ? flavor.nudges.map(String) : undefined,
+    }),
+  };
 }
 
 export async function generateDailySet(
@@ -372,7 +471,8 @@ export async function generateDailySet(
   opts: GenerateDailyOpts = {},
 ): Promise<DailySet> {
   const timeoutMs = opts.timeoutMs ?? AI_TIMEOUT_MS_CRON;
-  const requested = DAILY_TASK_BATCHES * DAILY_TASKS_PER_BATCH;
+  const puzzles = buildDayPuzzles(date, DAILY_PUZZLE_COUNT);
+  const requested = puzzles.length + DAILY_TRIVIA_BATCHES * DAILY_TASKS_PER_BATCH;
   let generated = 0;
   let validated = 0;
   let verified = 0;
@@ -386,45 +486,87 @@ export async function generateDailySet(
       lastError = error;
       logAiFailure('daily-personas', error);
     }
+    personas = dayPersonas(date, personas);
 
-    const batches = await Promise.all(
-      Array.from({ length: DAILY_TASK_BATCHES }, async (_, batch) => {
+    const flavorById = new Map<string, Record<string, unknown>>();
+    const flavorBatches = await Promise.all(
+      Array.from({ length: DAILY_FLAVOR_BATCHES }, async (_, batch) => {
+        const slice = puzzles.slice(batch * DAILY_FLAVOR_PER_BATCH, (batch + 1) * DAILY_FLAVOR_PER_BATCH);
         try {
-          return await generateTaskBatch(ai, date, batch, personas, timeoutMs);
+          return await flavorPuzzleBatch(ai, date, batch, slice, personas, timeoutMs);
         } catch (error) {
           lastError = error;
-          logAiFailure(`daily-batch-${batch + 1}`, error);
+          logAiFailure(`daily-flavor-${batch + 1}`, error);
           return [] as unknown[];
         }
       }),
     );
-    const rawRounds = batches.flat();
-    generated = rawRounds.length;
-    const parsed = filterAiRounds(
-      rawRounds
-        .map(parseDailyRound)
+    for (const row of flavorBatches.flat()) {
+      if (!row || typeof row !== 'object') continue;
+      const id = sanitizeFlavorId(row);
+      if (id) flavorById.set(id, row as Record<string, unknown>);
+    }
+
+    const flavored: DailyRound[] = [];
+    const coded: DailyRound[] = [];
+    for (const puzzle of puzzles) {
+      const applied = applyPuzzleFlavor(puzzle, flavorById.get(puzzle.id), personas);
+      if (applied.flavored) flavored.push(applied.round);
+      else coded.push(applied.round);
+    }
+
+    const triviaBatches = await Promise.all(
+      Array.from({ length: DAILY_TRIVIA_BATCHES }, async (_, batch) => {
+        try {
+          return await generateTriviaBatch(ai, date, batch, personas, timeoutMs);
+        } catch (error) {
+          lastError = error;
+          logAiFailure(`daily-trivia-${batch + 1}`, error);
+          return [] as unknown[];
+        }
+      }),
+    );
+    const triviaRaw = triviaBatches.flat();
+    generated = flavorById.size + triviaRaw.length;
+
+    const triviaParsed = filterAiRounds(
+      triviaRaw
+        .map(parseIncomingRound)
         .filter((row): row is DailyRound => Boolean(row))
         .filter((row) => {
-          if (!isStaleCapitalPrompt(row.text, row.answer)) return true;
-          console.log(`fakegpt daily drop id=${row.id} reason=stale-capital`);
-          return false;
+          if (isCodeKeyKind(row.kind)) {
+            logDrop(row.id, 'code-owned-kind');
+            return false;
+          }
+          if (isStaleCapitalPrompt(row.text, row.answer)) {
+            logDrop(row.id, 'stale-capital');
+            return false;
+          }
+          return true;
         }),
     );
-    validated = parsed.length;
+    validated = flavored.length + triviaParsed.length;
 
-    let kept = parsed;
-    if (ai && parsed.length) {
+    let triviaKept = triviaParsed;
+    if (ai && triviaParsed.length) {
       try {
-        kept = await verifyFacts(ai, parsed);
+        triviaKept = await verifyFacts(ai, triviaParsed);
       } catch (error) {
         lastError = error;
         logAiFailure('verify', error);
       }
     }
-    verified = kept.length;
+    const aiWritten = [...flavored, ...triviaKept];
+    verified = aiWritten.length;
 
-    const filled = fillDailySet(date, kept, dailySourceFor(kept.length), personas);
-    const bankFilled = Math.max(0, filled.rounds.length - kept.length);
+    const filled = fillDailySet(
+      date,
+      [...aiWritten, ...coded],
+      dailySourceFor(aiWritten.length),
+      personas,
+      aiWritten.length,
+    );
+    const bankFilled = Math.max(0, filled.rounds.length - aiWritten.length - coded.length);
     logDailyCounts(date, {
       requested,
       generated,
@@ -447,6 +589,12 @@ export async function generateDailySet(
     });
   }
   return fallbackDailySet(date);
+}
+
+function sanitizeFlavorId(raw: unknown): string {
+  if (!raw || typeof raw !== 'object') return '';
+  const id = (raw as { id?: unknown }).id;
+  return typeof id === 'string' ? id.replace(/[^a-z0-9-]/gi, '') : '';
 }
 
 export async function gradeTyped(ai: AiRunner | undefined, request: GradeRequest): Promise<GradeResult> {

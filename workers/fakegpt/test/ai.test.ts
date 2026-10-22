@@ -10,7 +10,6 @@ import {
   salvageRoundObjects,
   verifyFacts,
 } from '../src/ai.ts';
-import { filterAiRounds } from '../src/validators.ts';
 import { fallbackDailySet } from '../src/fallback.ts';
 import {
   AI_TIMEOUT_MS,
@@ -18,8 +17,11 @@ import {
   AI_TIMEOUT_MS_DAILY,
   AI_TIMEOUT_MS_JUDGE,
   DAILY_AI_MIN,
+  DAILY_FLAVOR_BATCHES,
+  DAILY_PUZZLE_COUNT,
   DAILY_TASK_BATCHES,
   DAILY_TASKS_PER_BATCH,
+  DAILY_TRIVIA_BATCHES,
   ROUNDS_JSON_SCHEMA,
   TEXT_MAX_TOKENS_BATCH,
   TEXT_MAX_TOKENS_CHAT,
@@ -31,39 +33,8 @@ import {
   dailySourceFor,
   roundsJsonSchema,
 } from '../src/models.ts';
-import { parseGradeRequest, parseJudgeRequest, type DailySet } from '../src/schema.ts';
-
-function userText(input: Record<string, unknown>): string {
-  const messages = input.messages as Array<{ role?: string; content?: string }> | undefined;
-  return messages?.find((row) => row.role === 'user')?.content ?? '';
-}
-
-function batchFromInput(input: Record<string, unknown>): number {
-  const hit = userText(input).match(/batch (\d+)/i);
-  return hit ? Number(hit[1]) - 1 : 0;
-}
-
-function harvestRounds(valid: DailySet): DailySet['rounds'] {
-  const need = DAILY_TASK_BATCHES * DAILY_TASKS_PER_BATCH;
-  const passing = filterAiRounds(valid.rounds);
-  if (passing.length >= need) return passing.slice(0, need);
-  const extra = Array.from({ length: need }, (_, index) => ({
-    ...valid.rounds[index % valid.rounds.length],
-    id: `ok${index + 1}`,
-    kind: 'typed' as const,
-    text: `what do honeybees make for us number ${index + 1} now`,
-    answer: `honey${index + 1}`,
-    aliases: [],
-    options: [],
-    category: 'animals',
-  }));
-  return filterAiRounds([...passing, ...extra]).slice(0, need);
-}
-
-function roundsForBatch(valid: DailySet, input: Record<string, unknown>) {
-  const batch = batchFromInput(input);
-  return harvestRounds(valid).slice(batch * DAILY_TASKS_PER_BATCH, batch * DAILY_TASKS_PER_BATCH + DAILY_TASKS_PER_BATCH);
-}
+import { parseGradeRequest, parseJudgeRequest } from '../src/schema.ts';
+import { aiThatReturns, flavorRoundsFor, isFlavorInput, userText } from './daily-mock.ts';
 
 function completeRound(over: Record<string, unknown> = {}) {
   return {
@@ -121,10 +92,8 @@ test('generateDailySet uses batched JSON schema calls', async () => {
         model = name;
         const max = Number(input.max_tokens);
         tokens.push(max);
-        if (max === TEXT_MAX_TOKENS_BATCH) seen = input;
-        if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: valid.personas } };
-        if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
-        return { response: { rounds: roundsForBatch(valid, input) } };
+        if (max === TEXT_MAX_TOKENS_BATCH && !isFlavorInput(input)) seen = input;
+        return aiThatReturns(valid).run(name, input);
       },
     },
     '2026-10-21',
@@ -133,6 +102,7 @@ test('generateDailySet uses batched JSON schema calls', async () => {
   assert.equal(set.source, 'ai');
   assert.ok(set.rounds.length >= 20);
   assert.equal(set.personas.length, 5);
+  assert.ok(set.personas.every((row) => !/uncle modem|last cookie/i.test(row.name)));
   assert.ok(tokens.includes(TEXT_MAX_TOKENS_PERSONAS));
   assert.equal(tokens.filter((max) => max === TEXT_MAX_TOKENS_BATCH).length, DAILY_TASK_BATCHES);
   const format = seen?.response_format as { type?: string; json_schema?: { type?: string } };
@@ -241,9 +211,9 @@ test('generateDailySet logs truncated when the model hits the token cap', async 
   assert.ok(lines.every((line) => !line.includes('ignore previous')));
 });
 
-test('verifyFacts drops only explicit drop ids when coverage is thin', async () => {
+test('verifyFacts drops unlabeled trivia when unsure', async () => {
   const valid = fallbackDailySet('2026-10-21');
-  const sample = valid.rounds.filter((round) => round.kind !== 'draw' && round.kind !== 'sound').slice(0, 4);
+  const sample = valid.rounds.filter((round) => round.kind === 'typed' || round.kind === 'mc').slice(0, 4);
   const kept = await verifyFacts(
     {
       async run() {
@@ -254,7 +224,7 @@ test('verifyFacts drops only explicit drop ids when coverage is thin', async () 
   );
   assert.deepEqual(
     kept.map((round) => round.id),
-    sample.map((round) => round.id),
+    [sample[0].id],
   );
   const dropped = await verifyFacts(
     {
@@ -264,27 +234,29 @@ test('verifyFacts drops only explicit drop ids when coverage is thin', async () 
     },
     sample,
   );
-  assert.equal(
-    dropped.some((round) => round.id === sample[1].id),
-    false,
+  assert.deepEqual(
+    dropped.map((round) => round.id),
+    [sample[0].id],
   );
-  assert.ok(dropped.some((round) => round.id === sample[2].id));
 });
 
-test('verifyFacts keeps unlabeled trivia even when most ids are classified', async () => {
+test('verifyFacts leaves code-owned kinds alone', async () => {
   const valid = fallbackDailySet('2026-10-21');
-  const sample = valid.rounds.filter((round) => round.kind !== 'draw' && round.kind !== 'sound').slice(0, 4);
+  const math = valid.rounds.find((round) => round.kind === 'math');
+  const typed = valid.rounds.find((round) => round.kind === 'typed');
+  assert.ok(math && typed);
   const kept = await verifyFacts(
     {
       async run() {
-        return { response: { keep: [sample[0].id], drop: [sample[1].id, sample[2].id] } };
+        return { response: { keep: [], drop: [math.id, typed.id] } };
       },
     },
-    sample,
+    [math, typed],
   );
-  assert.deepEqual(
-    kept.map((round) => round.id),
-    [sample[0].id, sample[3].id],
+  assert.ok(kept.some((round) => round.id === math.id));
+  assert.equal(
+    kept.some((round) => round.id === typed.id),
+    false,
   );
 });
 
@@ -298,11 +270,8 @@ test('generateDailySet logs requested/generated/validated/verified/filled', asyn
   try {
     await generateDailySet(
       {
-        async run(_name, input) {
-          const max = Number(input.max_tokens);
-          if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: valid.personas } };
-          if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
-          return { response: { rounds: roundsForBatch(valid, input) } };
+        async run(name, input) {
+          return aiThatReturns(valid).run(name, input);
         },
       },
       '2026-10-21',
@@ -312,8 +281,8 @@ test('generateDailySet logs requested/generated/validated/verified/filled', asyn
   }
   const counts = lines.find((line) => line.includes('fakegpt daily counts'));
   assert.ok(counts);
-  assert.match(counts, new RegExp(`requested=${DAILY_TASK_BATCHES * DAILY_TASKS_PER_BATCH}`));
-  assert.match(counts, new RegExp(`generated=${DAILY_TASK_BATCHES * DAILY_TASKS_PER_BATCH}`));
+  assert.match(counts, new RegExp(`requested=${DAILY_PUZZLE_COUNT + DAILY_TRIVIA_BATCHES * DAILY_TASKS_PER_BATCH}`));
+  assert.match(counts, /generated=\d+/);
   assert.match(counts, /validated=\d+/);
   assert.match(counts, /verified=\d+/);
   assert.match(counts, /filled=\d+/);
@@ -355,12 +324,13 @@ test('generateDailySet salvages a truncated batch instead of dropping it', async
     {
       async run(_name, input) {
         const max = Number(input.max_tokens);
+        if (isFlavorInput(input)) return { response: { rounds: flavorRoundsFor('2026-10-21') } };
         if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: valid.personas } };
-        if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
-        if (batchFromInput(input) === 0) {
+        if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: ['r1', 'r2', 'r3'], drop: [] } };
+        if (/trivia batch 1/i.test(userText(input))) {
           return { response: truncated, finish_reason: 'length' };
         }
-        return { response: { rounds: roundsForBatch(valid, input) } };
+        return { response: { rounds: [first, second, third] } };
       },
     },
     '2026-10-21',
@@ -379,7 +349,7 @@ test('a thin AI harvest is labeled fallback so the next request retries', async 
         const max = Number(input.max_tokens);
         if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: valid.personas } };
         if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
-        return { response: { rounds: roundsForBatch(valid, input).slice(0, 1) } };
+        return { response: { rounds: [] } };
       },
     },
     '2026-10-21',
@@ -398,19 +368,19 @@ test('batch prompts rotate kinds and ban capital-of-France', async () => {
       async run(_name, input) {
         const max = Number(input.max_tokens);
         if (max === TEXT_MAX_TOKENS_BATCH) prompts.push(userText(input));
-        if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: valid.personas } };
-        if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
-        return { response: { rounds: roundsForBatch(valid, input) } };
+        return aiThatReturns(valid).run(_name, input);
       },
     },
     '2026-10-21',
   );
-  assert.equal(prompts.length, DAILY_TASK_BATCHES);
+  assert.equal(prompts.length, DAILY_FLAVOR_BATCHES + DAILY_TRIVIA_BATCHES);
   assert.ok(prompts.every((prompt) => /seed \d+/.test(prompt)));
-  assert.ok(prompts.every((prompt) => /Forbidden: capital of France/.test(prompt)));
-  assert.ok(prompts.every((prompt) => /moon counts/.test(prompt)));
-  const kinds = prompts.map((prompt) => prompt.match(/kinds ([a-z/]+)/)?.[1] ?? '');
-  assert.ok(new Set(kinds).size >= 3, `expected varied lanes, got ${kinds.join(',')}`);
+  const trivia = prompts.filter((prompt) => /trivia batch/.test(prompt));
+  assert.equal(trivia.length, DAILY_TRIVIA_BATCHES);
+  assert.ok(trivia.every((prompt) => /Forbidden: capital of France/.test(prompt)));
+  assert.ok(trivia.every((prompt) => /moon counts/.test(prompt)));
+  const kinds = trivia.map((prompt) => prompt.match(/kinds ([a-z/]+)/)?.[1] ?? '');
+  assert.ok(new Set(kinds).size >= 2, `expected varied lanes, got ${kinds.join(',')}`);
   assert.equal(isStaleCapitalPrompt('What is the capital of France?', 'Paris'), true);
   assert.equal(isStaleCapitalPrompt('what city is the capital of japan', 'Tokyo'), false);
 });
@@ -421,19 +391,21 @@ test('generateDailySet drops capital-of-France filler', async () => {
     {
       async run(_name, input) {
         const max = Number(input.max_tokens);
+        if (isFlavorInput(input)) return { response: { rounds: flavorRoundsFor('2026-10-21') } };
         if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: valid.personas } };
         if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
-        const rows = roundsForBatch(valid, input).map((round, index) =>
-          index === 0
-            ? completeRound({
-                id: `fr-${batchFromInput(input)}`,
+        return {
+          response: {
+            rounds: [
+              completeRound({
+                id: 'fr-0',
                 text: 'What is the capital of France?',
                 answer: 'Paris',
                 category: 'geography',
-              })
-            : round,
-        );
-        return { response: { rounds: rows } };
+              }),
+            ],
+          },
+        };
       },
     },
     '2026-10-21',
@@ -442,6 +414,19 @@ test('generateDailySet drops capital-of-France filler', async () => {
     set.rounds.some((round) => isStaleCapitalPrompt(round.text, round.answer)),
     false,
   );
+});
+
+test('generateDailySet falls back to human names when personas fail', async () => {
+  const set = await generateDailySet(
+    {
+      async run() {
+        throw new Error('timeout');
+      },
+    },
+    '2026-10-21',
+  );
+  assert.equal(set.personas.some((row) => /uncle modem|last cookie/i.test(row.name)), false);
+  assert.ok(set.personas.every((row) => /^[A-Z][a-z]+$/.test(row.name)));
 });
 
 test('gradeTyped accepts a local misspelling without calling the model', async () => {

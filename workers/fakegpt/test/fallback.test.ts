@@ -52,3 +52,9 @@ test('fillDailySet records how many incoming AI rounds survived', () => {
   assert.equal(set.source, 'fallback');
   assert.ok(set.rounds.length >= 20);
 });
+
+test('daily persona fallback uses human names, not costume bank names', () => {
+  const set = fillDailySet('2026-10-21', [], 'fallback');
+  assert.equal(set.personas.some((row) => /uncle modem|last cookie/i.test(row.name)), false);
+  assert.ok(set.personas.every((row) => /^[A-Z][a-z]+$/.test(row.name)));
+});

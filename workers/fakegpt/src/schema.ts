@@ -228,13 +228,20 @@ function sourceLanguageCluster(terms: readonly string[]): Set<string> {
   return out;
 }
 
+/** Case, spacing, and punctuation only — not a reshuffled order. */
+export function isSpacingAlias(alias: string, answer: string): boolean {
+  const got = normalizeAnswer(alias);
+  const want = normalizeAnswer(answer);
+  if (!got || !want) return false;
+  return got === want || got.replace(/ /g, '') === want.replace(/ /g, '');
+}
+
 /** Spelling/format variants of the same answer, not nicknames like "City of Love". */
 export function isFormatAlias(alias: string, answer: string): boolean {
   const got = normalizeAnswer(alias);
   const want = normalizeAnswer(answer);
   if (!got || !want) return false;
-  if (got === want) return true;
-  if (got.replace(/ /g, '') === want.replace(/ /g, '')) return true;
+  if (isSpacingAlias(alias, answer)) return true;
   const gotWords = got.split(' ').filter(Boolean);
   const wantWords = want.split(' ').filter(Boolean);
   if (gotWords.every((word) => wantWords.includes(word)) || wantWords.every((word) => gotWords.includes(word))) {
@@ -254,9 +261,58 @@ export function filterAliases(kind: PromptKind, text: string, answer: string, al
     const normalized = normalizeAnswer(alias);
     if (!normalized) return false;
     if (source.includes(normalized) || cluster.has(normalized)) return false;
+    if (kind === 'order' || kind === 'math' || kind === 'unit') return isSpacingAlias(alias, answer);
     if (kind === 'translate') return true;
     return isFormatAlias(alias, answer);
   });
+}
+
+const PLACEHOLDER_REPLY =
+  /^(praise|good|bad|mood|canonical|format variant|how the user asks|one of the day names|x)$/i;
+
+export function isPlaceholderReply(value: string): boolean {
+  return PLACEHOLDER_REPLY.test(value.trim());
+}
+
+export function cleanReply(value: unknown, fallback: string): string {
+  const text = sanitizeLine(value, 160);
+  if (!text || isPlaceholderReply(text)) return fallback;
+  return text;
+}
+
+export function parseFailReason(raw: unknown): string {
+  if (!raw || typeof raw !== 'object') return 'parse-shape';
+  const row = raw as Record<string, unknown>;
+  if (!asKind(row.kind)) return 'parse-kind';
+  const text = sanitizeLine(row.text, 160);
+  if (text.length < 8) return 'parse-text';
+  if (!sanitizeLine(row.answer, 80)) return 'parse-answer';
+  if (!sanitizeLine(row.id, 32).replace(/[^a-z0-9-]/gi, '')) return 'parse-id';
+  const kind = asKind(row.kind);
+  const options = (Array.isArray(row.options) ? row.options : [])
+    .map((option) => sanitizeLine(option, 80))
+    .filter(Boolean)
+    .slice(0, 4);
+  if (kind && (kind === 'mc' || kind === 'tone' || kind === 'order' || (kind === 'fill' && options.length === 4))) {
+    if (options.length !== 4) return 'parse-options';
+    const answer = sanitizeLine(row.answer, 80);
+    const hits = options.filter((option) => matchChoice(option, answer)).length;
+    if (hits !== 1) return 'parse-mc-key';
+  }
+  return 'parse';
+}
+
+export function stripCrossOptionAliases(round: DailyRound): DailyRound {
+  if (!round.options.length) return round;
+  const answer = normalizeAnswer(round.answer);
+  const aliases = round.aliases.filter((alias) => {
+    const normalized = normalizeAnswer(alias);
+    return !round.options.some((option) => {
+      const opt = normalizeAnswer(option);
+      return Boolean(opt && opt !== answer && (opt === normalized || matchChoice(option, alias)));
+    });
+  });
+  return { ...round, aliases };
 }
 
 export function parseDailyRound(raw: unknown): DailyRound | null {
@@ -265,7 +321,7 @@ export function parseDailyRound(raw: unknown): DailyRound | null {
   const kind = asKind(row.kind);
   const text = sanitizeLine(row.text, 160);
   const answer = sanitizeLine(row.answer, 80);
-  const persona = sanitizeLine(row.persona, 40) || 'a impatient user';
+  const persona = sanitizeLine(row.persona, 40) || 'Dana';
   if (!kind || text.length < 8 || answer.length < 1) return null;
   const id = sanitizeLine(row.id, 32).replace(/[^a-z0-9-]/gi, '');
   if (!id) return null;
@@ -288,7 +344,7 @@ export function parseDailyRound(raw: unknown): DailyRound | null {
     .map((nudge) => sanitizeLine(nudge, 80))
     .filter(Boolean)
     .slice(0, 3);
-  return {
+  return stripCrossOptionAliases({
     id,
     kind,
     text,
@@ -300,9 +356,9 @@ export function parseDailyRound(raw: unknown): DailyRound | null {
     aliases,
     options: needsChoices(kind, options) ? options : [],
     nudges: nudges.length ? nudges : ['hello??', 'are you still generating?'],
-    good: sanitizeLine(row.good, 160) || 'ok the model remembered a fact. rare.',
-    bad: sanitizeLine(row.bad, 160) || `that's a hallucination, buddy. it's ${answer}.`,
-  };
+    good: cleanReply(row.good, 'ok the model remembered a fact. rare.'),
+    bad: cleanReply(row.bad, `that's a hallucination, buddy. it's ${answer}.`),
+  });
 }
 
 export function validateDailySet(raw: unknown, date: string): DailySet | null {

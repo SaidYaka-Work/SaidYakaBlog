@@ -1,9 +1,32 @@
 import { asTriviaItems, localJobPool } from '../../../components/games/fakegpt/jobs';
-import { PERSONA_BANK, fillPersonas } from '../../../components/games/fakegpt/lanes';
+import { fillPersonas, type DailyPersona } from '../../../components/games/fakegpt/lanes';
 import { mulberry32, pickJobs } from '../../../components/games/fakegpt/logic';
 import { DAILY_ROUNDS } from './models';
-import { dateSeed, parseDailyPersona, parseDailyRound, validateDailySet, type DailyPersona, type DailyRound, type DailySet } from './schema';
+import { dateSeed, parseDailyPersona, parseDailyRound, validateDailySet, type DailyRound, type DailySet } from './schema';
 import { sanitizeReplies } from './validators';
+
+export const DAY_PERSONA_FALLBACK: DailyPersona[] = [
+  { id: 'dana', name: 'Dana', vibe: 'calm until the spinner spins' },
+  { id: 'lily', name: 'Lily', vibe: 'already late' },
+  { id: 'jamie', name: 'Jamie', vibe: 'three tabs of panic' },
+  { id: 'ethan', name: 'Ethan', vibe: 'mute button philosopher' },
+  { id: 'ava', name: 'Ava', vibe: 'inbox on fire' },
+  { id: 'noah', name: 'Noah', vibe: 'caps lock of feelings' },
+  { id: 'mia', name: 'Mia', vibe: 'one more meeting' },
+  { id: 'owen', name: 'Owen', vibe: 'coffee then consequences' },
+];
+
+const COSTUME_PERSONA =
+  /uncle modem|last cookie|sentient stapler|\bthe microwave\b|roomba|fax from 1997|kira the intern|tired sysadmin/i;
+
+export function isCostumePersonaName(name: string): boolean {
+  return COSTUME_PERSONA.test(name);
+}
+
+export function dayPersonas(date: string, incoming: DailyPersona[] = []): DailyPersona[] {
+  const humans = incoming.filter((row) => row.name && !isCostumePersonaName(row.name));
+  return fillPersonas([...humans, ...DAY_PERSONA_FALLBACK], dateSeed(date));
+}
 
 export function fallbackDailySet(date: string): DailySet {
   return fillDailySet(date, [], 'fallback');
@@ -27,6 +50,7 @@ export function fillDailySet(
   incoming: DailyRound[],
   source: DailySet['source'] = 'ai',
   incomingPersonas: DailyPersona[] = [],
+  aiCountOverride?: number,
 ): DailySet {
   const random = mulberry32(dateSeed(date));
   const kept: DailyRound[] = [];
@@ -67,16 +91,13 @@ export function fillDailySet(
     }
   }
 
-  const personas = fillPersonas(
-    [
-      ...incomingPersonas.map(parseDailyPersona).filter((row): row is DailyPersona => Boolean(row)),
-      ...kept.map((row) => ({ id: '', name: row.persona, vibe: row.vibe })),
-      ...PERSONA_BANK,
-    ],
-    dateSeed(date),
-  );
+  const personas = dayPersonas(date, [
+    ...incomingPersonas.map(parseDailyPersona).filter((row): row is DailyPersona => Boolean(row)),
+    ...kept.map((row) => ({ id: '', name: row.persona, vibe: row.vibe })),
+  ]);
   const assigned = assignDayPersonas(kept, personas);
-  const aiCount = Math.min(incomingKept, assigned.length);
+  const counted = typeof aiCountOverride === 'number' ? aiCountOverride : incomingKept;
+  const aiCount = Math.max(0, Math.min(assigned.length, Math.round(counted)));
 
   const assembled = validateDailySet({ rounds: assigned, personas, source, aiCount }, date);
   if (assembled) return assembled;
@@ -86,7 +107,7 @@ export function fillDailySet(
     mulberry32(dateSeed(`${date}-local`)),
     dateSeed(date),
   );
-  const localPersonas = fillPersonas(PERSONA_BANK, dateSeed(`${date}-local`));
+  const localPersonas = dayPersonas(`${date}-local`);
   const fallback = validateDailySet(
     { rounds: assignDayPersonas(pureLocal, localPersonas), personas: localPersonas, source: 'fallback', aiCount: 0 },
     date,

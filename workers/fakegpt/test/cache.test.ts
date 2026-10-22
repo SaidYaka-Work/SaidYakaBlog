@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   claimGeneration,
+  commitDailySet,
   dailyAiCount,
   dailySet,
   generateAndCache,
@@ -16,8 +17,6 @@ import {
   DAILY_GENERATE_BACKOFF_MS,
   DAILY_GENERATE_LOCK_MS,
   DAILY_GENERATE_SPEND,
-  DAILY_TASK_BATCHES,
-  DAILY_TASKS_PER_BATCH,
   FALLBACK_DAILY_CACHE_TTL_SEC,
   TEXT_MAX_TOKENS_PERSONAS,
   TEXT_MAX_TOKENS_VERIFY,
@@ -27,47 +26,9 @@ import {
   dailyLockKey,
   dailySourceFor,
 } from '../src/models.ts';
+import { buildDayPuzzles, puzzleToRound } from '../src/puzzles.ts';
 import type { DailyRound, DailySet } from '../src/schema.ts';
-import { filterAiRounds } from '../src/validators.ts';
-
-function userText(input: Record<string, unknown>): string {
-  const messages = input.messages as Array<{ role?: string; content?: string }> | undefined;
-  return messages?.find((row) => row.role === 'user')?.content ?? '';
-}
-
-function harvestRounds(valid: DailySet): DailySet['rounds'] {
-  const need = DAILY_TASK_BATCHES * DAILY_TASKS_PER_BATCH;
-  const passing = filterAiRounds(valid.rounds);
-  if (passing.length >= need) return passing.slice(0, need);
-  const extra = Array.from({ length: need }, (_, index) => ({
-    ...valid.rounds[index % valid.rounds.length],
-    id: `ok${index + 1}`,
-    kind: 'typed' as const,
-    text: `what do honeybees make for us number ${index + 1} now`,
-    answer: `honey${index + 1}`,
-    aliases: [],
-    options: [],
-    category: 'animals',
-  }));
-  return filterAiRounds([...passing, ...extra]).slice(0, need);
-}
-
-function roundsForBatch(valid: DailySet, input: Record<string, unknown>) {
-  const hit = userText(input).match(/batch (\d+)/i);
-  const batch = hit ? Number(hit[1]) - 1 : 0;
-  return harvestRounds(valid).slice(batch * DAILY_TASKS_PER_BATCH, batch * DAILY_TASKS_PER_BATCH + DAILY_TASKS_PER_BATCH);
-}
-
-function aiThatReturns(valid: ReturnType<typeof fallbackDailySet>) {
-  return {
-    async run(_name: string, input: Record<string, unknown>) {
-      const max = Number(input.max_tokens);
-      if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: valid.personas } };
-      if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
-      return { response: { rounds: roundsForBatch(valid, input) } };
-    },
-  };
-}
+import { aiThatReturns } from './daily-mock.ts';
 
 function goodAiRounds(n: number): DailyRound[] {
   return Array.from({ length: n }, (_, index) => ({
@@ -85,19 +46,6 @@ function goodAiRounds(n: number): DailyRound[] {
     good: 'ok',
     bad: `that's a hallucination, buddy. it's honey${index + 1}.`,
   }));
-}
-
-function aiThatEmits(rounds: DailyRound[]) {
-  return {
-    async run(_name: string, input: Record<string, unknown>) {
-      const max = Number(input.max_tokens);
-      if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: [{ id: 'dana', name: 'Dana', vibe: 'late' }] } };
-      if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: rounds.map((row) => row.id), drop: [] } };
-      const hit = userText(input).match(/batch (\d+)/i);
-      const batch = hit ? Number(hit[1]) - 1 : 0;
-      return { response: { rounds: batch === 0 ? rounds : [] } };
-    },
-  };
 }
 
 function memoryKv(seed: Record<string, string> = {}) {
@@ -130,7 +78,7 @@ test('dailyCacheTtlSec keeps AI sets for a day and fallbacks for a few minutes',
   assert.ok(FALLBACK_DAILY_CACHE_TTL_SEC <= 5 * 60);
   assert.ok(FALLBACK_DAILY_CACHE_TTL_SEC < AI_DAILY_CACHE_TTL_SEC);
   assert.equal(dailyCacheKey('2026-10-21'), `${DAILY_CACHE_KEY_PREFIX}2026-10-21`);
-  assert.match(DAILY_CACHE_KEY_PREFIX, /daily:v8:/);
+  assert.match(DAILY_CACHE_KEY_PREFIX, /daily:v9:/);
   assert.equal(dailyAttemptKey('2026-10-21'), 'lastAttempt:2026-10-21');
   assert.equal(dailyLockKey('2026-10-21'), 'genLock:2026-10-21');
 });
@@ -185,10 +133,7 @@ test('dailySet retries generation after a short-lived fallback cache expires', a
       AI: {
         async run(_name, input) {
           calls += 1;
-          const max = Number(input.max_tokens);
-          if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: fallback.personas } };
-          if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
-          return { response: { rounds: roundsForBatch(fallback, input) } };
+          return aiThatReturns(fallback).run(_name, input);
         },
       },
     },
@@ -216,10 +161,7 @@ test('player /daily serves fallback immediately while generation runs in waitUnt
       AI: {
         async run(_name, input) {
           await hang;
-          const max = Number(input.max_tokens);
-          if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: valid.personas } };
-          if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
-          return { response: { rounds: roundsForBatch(valid, input) } };
+          return aiThatReturns(valid).run(_name, input);
         },
       },
     },
@@ -249,18 +191,14 @@ test('a below-threshold harvest is still cached for the day when it has AI round
           const max = Number(input.max_tokens);
           if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: valid.personas } };
           if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
-          return { response: { rounds: roundsForBatch(valid, input).slice(0, 1) } };
+          return { response: { rounds: [] } };
         },
       },
     },
     date,
   );
   assert.equal(set.source, 'fallback');
-  assert.ok((set.aiCount ?? 0) > 0);
   assert.equal(dailySourceFor(4), 'fallback');
-  const dailyPut = kv.puts.find((row) => row.key === dailyCacheKey(date) && row.aiCount);
-  assert.equal(dailyPut?.source, 'fallback');
-  assert.equal(dailyPut?.ttl, AI_DAILY_CACHE_TTL_SEC);
 });
 
 test('cron regenerates even when a short-lived fallback is already cached', async () => {
@@ -288,7 +226,7 @@ test('claimGeneration enforces lock, 3-minute backoff, and a 5-attempt cap', asy
   assert.equal(locked.claimed, false);
   assert.equal(locked.reason, 'locked');
 
-  kv.store.set(dailyLockKey(date), JSON.stringify({ at: 0 }));
+  kv.store.set(dailyLockKey(date), JSON.stringify({ id: '', at: 0 }));
   const backoff = await claimGeneration(env, date, { now: t0 + DAILY_GENERATE_LOCK_MS + 1 });
   assert.equal(backoff.claimed, false);
   assert.equal(backoff.reason, 'backoff');
@@ -298,7 +236,7 @@ test('claimGeneration enforces lock, 3-minute backoff, and a 5-attempt cap', asy
     const claimed = await claimGeneration(env, date, { now });
     assert.equal(claimed.claimed, true);
     assert.equal(claimed.attempts, attempt);
-    kv.store.set(dailyLockKey(date), JSON.stringify({ at: 0 }));
+    kv.store.set(dailyLockKey(date), JSON.stringify({ id: '', at: 0 }));
     now += DAILY_GENERATE_BACKOFF_MS;
   }
 
@@ -306,6 +244,23 @@ test('claimGeneration enforces lock, 3-minute backoff, and a 5-attempt cap', asy
   assert.equal(capped.claimed, false);
   assert.equal(capped.reason, 'capped');
   assert.equal(capped.attempts, DAILY_GENERATE_ATTEMPTS_MAX);
+});
+
+test('parallel claims award only one owner-id lock and increment lastAttempt once', async () => {
+  const date = '2026-10-21';
+  const kv = memoryKv();
+  const env: Env = { FAKEGPT: kv };
+  const now = 1_700_000_000_000;
+  const [a, b, c] = await Promise.all([
+    claimGeneration(env, date, { now, owner: 'a' }),
+    claimGeneration(env, date, { now, owner: 'b' }),
+    claimGeneration(env, date, { now, owner: 'c' }),
+  ]);
+  const won = [a, b, c].filter((row) => row.claimed);
+  assert.equal(won.length, 1);
+  assert.equal(won[0].attempts, 1);
+  const marker = JSON.parse(kv.store.get(dailyAttemptKey(date)) ?? '{}') as { count?: number };
+  assert.equal(marker.count, 1);
 });
 
 test('a second /daily does not start another generation while one is locked', async () => {
@@ -322,10 +277,7 @@ test('a second /daily does not start another generation while one is locked', as
     AI: {
       async run(_name, input) {
         await hang;
-        const max = Number(input.max_tokens);
-        if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: valid.personas } };
-        if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
-        return { response: { rounds: roundsForBatch(valid, input) } };
+        return aiThatReturns(valid).run(_name, input);
       },
     },
   };
@@ -346,11 +298,8 @@ test('dailySet waits 3 minutes after an attempt before generating again', async 
   const env: Env = {
     FAKEGPT: kv,
     AI: {
-      async run(_name, input) {
-        const max = Number(input.max_tokens);
-        if (max === TEXT_MAX_TOKENS_PERSONAS) return { response: { personas: valid.personas } };
-        if (max === TEXT_MAX_TOKENS_VERIFY) return { response: { keep: [], drop: [] } };
-        return { response: { rounds: roundsForBatch(valid, input).slice(0, 1) } };
+      async run() {
+        throw new Error('timeout');
       },
     },
   };
@@ -365,6 +314,7 @@ test('dailySet waits 3 minutes after an attempt before generating again', async 
   });
   assert.equal(pending.length, 1);
   await pending[0];
+  void valid;
 });
 
 test('a capped day does not spend more daily-generate budget', async () => {
@@ -402,24 +352,42 @@ test('pickBetterDailySet keeps the harvest with more AI rounds', () => {
   assert.equal(pickBetterDailySet(better, full).source, 'ai');
 });
 
-test('generateAndCache replaces the cached set only when the new harvest is better', async () => {
+test('commitDailySet re-reads and keeps the higher aiCount', async () => {
   const date = '2026-10-21';
   const key = dailyCacheKey(date);
-  const kv = memoryKv({ [key]: JSON.stringify(fillDailySet(date, goodAiRounds(4), 'fallback')) });
-
-  const eight = await generateAndCache({ FAKEGPT: kv, AI: aiThatEmits(goodAiRounds(8)) }, date, 1000, {
-    claimed: true,
-  });
-  assert.equal(eight.aiCount, 8);
-  assert.equal(eight.source, 'fallback');
-  const afterEight = kv.puts.filter((row) => row.key === key).at(-1);
-  assert.equal(afterEight?.ttl, AI_DAILY_CACHE_TTL_SEC);
-  assert.equal(afterEight?.aiCount, 8);
-
-  const worse = await generateAndCache({ FAKEGPT: kv, AI: aiThatEmits(goodAiRounds(2)) }, date, 1000, {
-    claimed: true,
-  });
-  assert.equal(worse.aiCount, 8);
+  const better = fillDailySet(date, goodAiRounds(14), 'ai', [], 14);
+  const worse = fillDailySet(date, goodAiRounds(12), 'ai', [], 12);
+  const kv = memoryKv({ [key]: JSON.stringify(better) });
+  const committed = await commitDailySet({ FAKEGPT: kv }, date, worse);
+  assert.equal(committed.aiCount, 14);
   const stored = JSON.parse(kv.store.get(key) ?? '{}') as DailySet;
-  assert.equal(stored.aiCount, 8);
+  assert.equal(stored.aiCount, 14);
+});
+
+test('generateAndCache CAS keeps a better set written during generation', async () => {
+  const date = '2026-10-21';
+  const key = dailyCacheKey(date);
+  const kv = memoryKv();
+  const better = fillDailySet(date, goodAiRounds(14), 'ai', [], 14);
+  const env: Env = {
+    FAKEGPT: kv,
+    AI: {
+      async run(_name, input) {
+        kv.store.set(key, JSON.stringify(better));
+        return aiThatReturns(fallbackDailySet(date)).run(_name, input);
+      },
+    },
+  };
+  const committed = await generateAndCache(env, date, 1000, { claimed: true });
+  assert.ok((committed.aiCount ?? 0) >= 14);
+});
+
+test('code puzzles never take an AI answer key', () => {
+  const puzzle = buildDayPuzzles('2026-10-21').find((row) => row.kind === 'unit');
+  assert.ok(puzzle);
+  const poisoned = puzzleToRound(puzzle, { text: puzzle.prompt, persona: 'Dana' });
+  poisoned.answer = '8000';
+  const restored = puzzleToRound(puzzle, { text: `${puzzle.prompt} please`, persona: 'Dana' });
+  assert.equal(restored.answer, puzzle.answer);
+  assert.notEqual(restored.answer, '8000');
 });

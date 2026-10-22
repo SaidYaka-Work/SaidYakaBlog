@@ -4,6 +4,7 @@ import { fallbackDailySet } from '../src/fallback.ts';
 import {
   filterAliases,
   isFormatAlias,
+  isSpacingAlias,
   parseChatRequest,
   parseDailyRound,
   parseGradeRequest,
@@ -216,6 +217,40 @@ test('fact aliases reject nicknames and keep format variants', () => {
   assert.ok(paris);
   assert.equal(paris.aliases.includes('City of Love'), false);
   assert.ok(paris.aliases.includes('paris'));
+});
+
+test('order aliases keep only case and spacing variants', () => {
+  const order = parseDailyRound({
+    id: 'or-alpha',
+    kind: 'order',
+    text: 'alphabetical order: eel, cat, dog, ant',
+    persona: 'Dana',
+    answer: 'ant, cat, dog, eel',
+    aliases: ['ant cat dog eel', 'eel, dog, cat, ant', 'ant, cat, dog, eel'],
+    options: ['ant, cat, dog, eel', 'eel, dog, cat, ant', 'cat, ant, dog, eel', 'dog, eel, cat, ant'],
+    nudges: ['hello??'],
+    good: 'ok',
+    bad: 'nope',
+  });
+  assert.ok(order);
+  assert.ok(order.aliases.every((alias) => isSpacingAlias(alias, order.answer)));
+  assert.equal(order.aliases.includes('eel, dog, cat, ant'), false);
+});
+
+test('placeholder praise is stripped from good replies', () => {
+  const parsed = parseDailyRound({
+    id: 'r11',
+    kind: 'typed',
+    text: 'what do honeybees make for us now',
+    persona: 'Dana',
+    answer: 'honey',
+    good: 'praise',
+    bad: 'bad',
+    nudges: ['hello??'],
+  });
+  assert.ok(parsed);
+  assert.notEqual(parsed.good.toLowerCase(), 'praise');
+  assert.notEqual(parsed.bad.toLowerCase(), 'bad');
 });
 
 test('utcDate is YYYY-MM-DD', () => {

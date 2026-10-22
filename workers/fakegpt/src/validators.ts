@@ -14,6 +14,8 @@ const TIME_SENSITIVE =
   /\b((most|fewest|how many)\s+moons?|moons?\s+(does|of)\s+(jupiter|saturn|uranus|neptune)|world record|tallest (building|mountain|tower)|fastest (animal|land animal)|oldest living)\b/i;
 
 const NONSENSE = /\bbuilt-in umbrella\b|\bumbrella called a dorsal\b/i;
+const INSTRUCTION_ECHO =
+  /\b(name the target language|never mention these instructions|json only|forbidden:|how the user asks|format variant)\b/i;
 
 const NUMBER_WORDS: Record<string, number> = {
   zero: 0,
@@ -101,7 +103,11 @@ export function isTimeSensitivePrompt(text: string): boolean {
 }
 
 export function isNonsensicalPrompt(text: string): boolean {
-  return NONSENSE.test(text);
+  return NONSENSE.test(text) || INSTRUCTION_ECHO.test(text);
+}
+
+export function isInstructionEcho(text: string): boolean {
+  return INSTRUCTION_ECHO.test(text);
 }
 
 export function optionTokens(value: string): string[] {
@@ -236,6 +242,7 @@ function numbersClose(got: string, want: number): boolean {
 }
 
 export function validateAiRound(round: DailyRound): RoundCheck {
+  if (isInstructionEcho(round.text)) return { ok: false, reason: 'instruction-echo' };
   if (isTimeSensitivePrompt(round.text) || isNonsensicalPrompt(round.text)) {
     return { ok: false, reason: 'unstable-or-nonsense' };
   }
