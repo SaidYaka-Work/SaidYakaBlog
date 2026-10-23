@@ -52,6 +52,8 @@ export default function DogHud({
   leashTaking = false,
   onTakeLeash,
   compact = false,
+  fetching = false,
+  onThrow,
 }: {
   name: string;
   stageLabel: string;
@@ -95,6 +97,8 @@ export default function DogHud({
   leashTaking?: boolean;
   onTakeLeash?: () => void;
   compact?: boolean;
+  fetching?: boolean;
+  onThrow?: () => void;
 }) {
   const leashPill =
     !empty && !flying ? (
@@ -250,13 +254,21 @@ export default function DogHud({
         </div>
       )}
 
-      {hint && !empty && !near && (
+      {hint && !empty && !near && !youHold && !fetching && (
         <p className="dog-hint">{touch ? 'Drag to walk · Feed at the bowl' : 'WASD to walk · Travel to a park'}</p>
+      )}
+      {youHold && !fetching && !near && (
+        <p className="dog-hint">{touch ? 'Tap the street to throw' : 'Click the street to throw'}</p>
+      )}
+      {fetching && (
+        <p className="dog-prompt" role="status">
+          {name} is fetching
+        </p>
       )}
 
       {attribution && <p className="dog-attrib">{attribution}</p>}
 
-      {near && !empty && (
+      {near && !empty && !fetching && (
         <p className="dog-prompt" role="status">
           {touch ? 'Feed' : 'E · Feed'}
         </p>
@@ -277,6 +289,11 @@ export default function DogHud({
             <button type="button" className={`dog-action${near ? ' is-ready' : ''}`} onClick={onFeed} disabled={busy}>
               Feed
             </button>
+            {youHold && onThrow && (
+              <button type="button" className="dog-action" onClick={onThrow} disabled={busy || fetching}>
+                Throw
+              </button>
+            )}
           </>
         )}
       </div>

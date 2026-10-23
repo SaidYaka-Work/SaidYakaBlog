@@ -680,6 +680,7 @@ export function applyTravel(yard: YardState, placeId: string, now: number): { ok
       location: next,
       feeder: { ...yard.feeder, ...placeFeeder(pose) },
       ai: { mode: 'idle', until: now + 3_600, tx: 0, tz: 0 },
+      ball: undefined,
     },
   };
 }

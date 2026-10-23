@@ -2,8 +2,9 @@
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Suspense, lazy, useEffect, useRef, useState, type RefObject } from 'react';
-import { ACESFilmicToneMapping, PerspectiveCamera, PointLight, SRGBColorSpace, Vector3, type Group, type Mesh } from 'three';
-import type { DogCompanion, DogGenome, LifeStage } from '@/lib/dog';
+import { ACESFilmicToneMapping, PerspectiveCamera, Plane, PointLight, Raycaster, SRGBColorSpace, Vector2, Vector3, type Group, type Mesh } from 'three';
+import type { DogBall, DogCompanion, DogGenome, LifeStage } from '@/lib/dog';
+import { ballVisual, isBallLive } from '../../workers/dog/src/fetch';
 import Companions from './Companions';
 import type { PortraitReaction } from './look';
 import { CAMERA_YAW, clampOrbitPitchOffset, frameCamera, followYardCamera, worldOrbitPitch } from './frame';
@@ -161,6 +162,39 @@ function EmptyReady({ onReady }: { onReady?: () => void }) {
   return null;
 }
 
+function FetchBall({
+  ball,
+  dog,
+}: {
+  ball: DogBall | null;
+  dog: RefObject<Group | null>;
+}) {
+  const mesh = useRef<Mesh>(null);
+  useFrame(() => {
+    const node = mesh.current;
+    if (!node) return;
+    const now = Date.now();
+    if (!ball || !isBallLive(ball, now)) {
+      node.visible = false;
+      return;
+    }
+    const dogPos = dog.current ? { x: dog.current.position.x, z: dog.current.position.z } : null;
+    const at = ballVisual(ball, now, dogPos);
+    node.visible = at.visible;
+    node.position.set(at.x, at.y, at.z);
+    if (at.spinning) {
+      node.rotation.x += 0.18;
+      node.rotation.z += 0.12;
+    }
+  });
+  return (
+    <mesh ref={mesh} visible={false} castShadow>
+      <sphereGeometry args={[0.09, 12, 10]} />
+      <meshStandardMaterial color="#c8e04c" roughness={0.42} metalness={0.04} />
+    </mesh>
+  );
+}
+
 function FramedCamera({
   target,
   host,
@@ -171,6 +205,8 @@ function FramedCamera({
   world,
   onReady,
   onAnchor,
+  canThrow,
+  onThrow,
 }: {
   target: RefObject<Group | null>;
   host: RefObject<HTMLDivElement | null>;
@@ -181,6 +217,8 @@ function FramedCamera({
   world?: WorldView | null;
   onReady?: () => void;
   onAnchor?: (pos: { x: number; y: number } | null) => void;
+  canThrow?: boolean;
+  onThrow?: (x: number, z: number) => void;
 }) {
   const camera = useThree((state) => state.camera) as PerspectiveCamera;
   const size = useThree((state) => state.size);
@@ -201,7 +239,13 @@ function FramedCamera({
     let down = false;
     let lastX = 0;
     let lastY = 0;
+    let startX = 0;
+    let startY = 0;
     let pointerId: number | null = null;
+    const ground = new Plane(new Vector3(0, 1, 0), 0);
+    const ndc = new Vector2();
+    const hit = new Vector3();
+    const caster = new Raycaster();
     const onDown = (event: PointerEvent) => {
       if (event.pointerType === 'mouse' && event.button !== 0) return;
       const hit = event.target;
@@ -215,6 +259,8 @@ function FramedCamera({
       pointerId = event.pointerId;
       lastX = event.clientX;
       lastY = event.clientY;
+      startX = event.clientX;
+      startY = event.clientY;
       node.setPointerCapture(event.pointerId);
       const canvas = node.querySelector('canvas');
       try {
@@ -238,6 +284,7 @@ function FramedCamera({
     };
     const onUp = (event: PointerEvent) => {
       if (pointerId !== null && event.pointerId !== pointerId) return;
+      const dragged = Math.hypot(event.clientX - startX, event.clientY - startY);
       down = false;
       pointerId = null;
       try {
@@ -245,6 +292,14 @@ function FramedCamera({
       } catch {
         // ignore
       }
+      if (!canThrow || !onThrow || dragged > 10) return;
+      const box = node.getBoundingClientRect();
+      if (box.width < 1 || box.height < 1) return;
+      ndc.set(((event.clientX - box.left) / box.width) * 2 - 1, -((event.clientY - box.top) / box.height) * 2 + 1);
+      caster.setFromCamera(ndc, camera);
+      if (!caster.ray.intersectPlane(ground, hit)) return;
+      if (!Number.isFinite(hit.x) || !Number.isFinite(hit.z)) return;
+      onThrow(hit.x, hit.z);
     };
     node.addEventListener('pointerdown', onDown, { passive: false });
     node.addEventListener('pointermove', onMove, { passive: false });
@@ -258,7 +313,7 @@ function FramedCamera({
       node.removeEventListener('pointercancel', onUp);
       node.removeEventListener('touchmove', onTouchMove);
     };
-  }, [host]);
+  }, [camera, canThrow, host, onThrow]);
 
   useFrame((_, dt) => {
     const object = target.current;
@@ -442,6 +497,9 @@ export default function DogCanvas({
   companions = [],
   youId = null,
   lookAt = { x: 0, z: 0 },
+  ball = null,
+  canThrow = false,
+  onThrow,
 }: {
   genome?: DogGenome | null;
   stage?: LifeStage;
@@ -466,6 +524,9 @@ export default function DogCanvas({
   companions?: DogCompanion[];
   youId?: string | null;
   lookAt?: { x: number; z: number };
+  ball?: DogBall | null;
+  canThrow?: boolean;
+  onThrow?: (x: number, z: number) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const dogRef = useRef<Group>(null);
@@ -596,6 +657,7 @@ export default function DogCanvas({
               roomy={fill}
             />
           )}
+          {!empty && <FetchBall ball={ball} dog={dogRef} />}
           {!empty && <Companions guests={companions} night={night} youId={youId} lookAt={lookAt} />}
           {!empty && <DogKeyLight target={dogRef} night={night} />}
           {!empty && fill && <FootShadow target={dogRef} />}
@@ -619,6 +681,8 @@ export default function DogCanvas({
               }
               onReady={onReady}
               onAnchor={onAnchor}
+              canThrow={canThrow}
+              onThrow={onThrow}
             />
           )}
           {empty && <EmptyReady onReady={onReady} />}

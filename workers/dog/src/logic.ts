@@ -53,6 +53,15 @@ import {
   type EmoteKind,
   type PublicCompanion,
 } from './presence';
+import {
+  FETCH_HAPPINESS,
+  THROW_COOLDOWN_MS,
+  isBallLive,
+  makeBall,
+  publicBall,
+  tickFetch,
+  type PublicBall,
+} from './fetch';
 
 export {
   applyEmote,
@@ -73,6 +82,24 @@ export {
   type EmoteKind,
   type PublicCompanion,
 } from './presence';
+export {
+  FETCH_HAPPINESS,
+  FETCH_TTL_MS,
+  THROW_COOLDOWN_MS,
+  THROW_MAX_M,
+  THROW_MIN_M,
+  airDuration,
+  ballVisual,
+  clampThrowTarget,
+  fetchPose,
+  isBallLive,
+  makeBall,
+  publicBall,
+  reconcileBall,
+  tickFetch,
+  type BallState,
+  type PublicBall,
+} from './fetch';
 export {
   CARE_BY_STAGE,
   careFor,
@@ -302,6 +329,8 @@ export type PublicSnapshot = {
   /** Absent on older Workers. Later phases add optional companions, weather, stamps — never required fields. */
   location?: PublicLocation;
   companions?: PublicCompanion[];
+  /** Shared fetch ball. Null when none is in flight. */
+  ball?: PublicBall | null;
 };
 
 export function clamp(value: number, min = 0, max = 100) {
@@ -749,6 +778,7 @@ export function snapshot(room: RoomState, now: number, presence: number): Public
     feeder: publicFeeder(yard.feeder, yard.pose, now),
     location: publicLocation(migrateLocation(yard.location, now)),
     companions: publicCompanions(current.companions, yard.pose, now),
+    ball: publicBall(yard.ball, now),
   };
 }
 
@@ -991,10 +1021,62 @@ export function applyVisitorMove(
   if (!acquired.ok) {
     return { room: { ...current, yard: acquired.yard }, acquired: false, code: acquired.code, retryAfterMs: acquired.retryAfterMs };
   }
+  if (isBallLive(acquired.yard.ball, now)) {
+    return { room: { ...current, yard: tickFetch(acquired.yard, now) }, acquired: true };
+  }
   const driven = applyHomeOrWorldDrive(acquired.yard, ax, az, run, dt, now, proposed);
   const next = { ...current, yard: driven };
   const walk = creditLeashWalk(next, now);
   return { room: walk && walk.ok ? walk.room : next, acquired: true, walk: walk ?? undefined };
+}
+
+export function applyThrow(
+  room: RoomState,
+  clientId: string,
+  x: number,
+  z: number,
+  now: number,
+): { ok: true; room: RoomState; event: Activity } | ActionFail {
+  const current = applyDecay(room, now);
+  if (!current.dog) return { ok: false, code: 'gone', room: current };
+  const yard = migrateYard(current.yard, now);
+  if (!yard.leash.holderId || yard.leash.holderId !== clientId || leashExpired(yard.leash, now)) {
+    return { ok: false, code: 'busy', room: { ...current, yard } };
+  }
+  if (isBallLive(yard.ball, now)) {
+    return { ok: false, code: 'busy', room: { ...current, yard } };
+  }
+  const wait = (yard.lastThrowAt ?? 0) + THROW_COOLDOWN_MS - now;
+  if (wait > 0) {
+    return { ok: false, code: 'cooldown', room: { ...current, yard }, retryAfterMs: wait };
+  }
+  const ball = makeBall(yard.pose.x, yard.pose.z, x, z, clientId, now, yard.pose.yaw);
+  const fetched = tickFetch(
+    {
+      ...yard,
+      ball,
+      lastThrowAt: now,
+      leash: { ...yard.leash, lastInputAt: now },
+    },
+    now,
+  );
+  const dog = current.dog;
+  const nextDog: LivingDog = {
+    ...dog,
+    happiness: clamp(dog.happiness + FETCH_HAPPINESS),
+    peakHappiness: Math.max(dog.peakHappiness, dog.happiness + FETCH_HAPPINESS),
+  };
+  if (nextDog.happiness >= LOW_HAPPINESS) nextDog.lowSince = null;
+  const event: Activity = {
+    at: now,
+    action: 'system',
+    text: `${displayName(dog)} tore after the ball.`,
+  };
+  return {
+    ok: true,
+    room: { ...current, dog: nextDog, yard: fetched },
+    event,
+  };
 }
 
 export function applyWorldAction(
@@ -1050,7 +1132,7 @@ export function tickSharedYard(room: RoomState, now: number, dt: number): { room
   const dog = current.dog;
   const care = dog ? careView(dog, now) : null;
   const hungry = Boolean(care && (care.feedOverdue || care.hunger > 58));
-  const nextYard = tickWorldAi(yard, now, dt, { hungry });
+  const nextYard = tickFetch(tickWorldAi(yard, now, dt, { hungry }), now);
   let next = { ...current, yard: nextYard };
   if (
     yard.feeder.hasFood &&
@@ -1161,6 +1243,7 @@ export type ClientMessage =
   | { ok: true; kind: 'travel'; placeId: string }
   | { ok: true; kind: 'emote'; emote: EmoteKind }
   | { ok: true; kind: 'here'; x: number; z: number }
+  | { ok: true; kind: 'throw'; x: number; z: number }
   | { ok: false; code: ErrorCode };
 
 const CLIENT_KEYS = [
@@ -1230,6 +1313,11 @@ export function parseClientMessage(raw: string): ClientMessage {
   if (message.type === 'here' && typeof message.x === 'number' && typeof message.z === 'number') {
     if (!Number.isFinite(message.x) || !Number.isFinite(message.z)) return { ok: false, code: 'invalid' };
     return { ok: true, kind: 'here', x: message.x, z: message.z };
+  }
+  if (message.type === 'throw' && typeof message.x === 'number' && typeof message.z === 'number') {
+    if (!Number.isFinite(message.x) || !Number.isFinite(message.z)) return { ok: false, code: 'invalid' };
+    if (Math.abs(message.x) > 1e6 || Math.abs(message.z) > 1e6) return { ok: false, code: 'invalid' };
+    return { ok: true, kind: 'throw', x: message.x, z: message.z };
   }
   return { ok: false, code: 'invalid' };
 }
