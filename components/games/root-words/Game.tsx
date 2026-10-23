@@ -34,8 +34,12 @@ function startRound(mode: Mode, date: string): Puzzle[] {
 }
 
 function tileSeed(date: string, mode: Mode, puzzleId: string, index: number) {
-  const basis = mode === 'daily' ? date : `practice-${date}`;
-  return [...`${basis}:${puzzleId}:${index}`].reduce((sum, char) => (sum * 33 + char.charCodeAt(0)) >>> 0, 2166136261);
+  const basis = `${mode === 'daily' ? date : `practice-${date}`}:${puzzleId}:${index}`;
+  let hash = 2166136261;
+  for (let i = 0; i < basis.length; i += 1) {
+    hash = (hash * 33 + basis.charCodeAt(i)) >>> 0;
+  }
+  return hash;
 }
 
 export default function RootWordsGame() {
@@ -146,7 +150,7 @@ export default function RootWordsGame() {
     beep(200, 0.08);
   }, [finishRound, hints, picked, phase, puzzle, tries, beep]);
 
-  const useHint = useCallback(() => {
+  const applyHint = useCallback(() => {
     if (phase !== 'play' || hints >= MAX_HINTS) return;
     const next = hintTile(tiles, pickedIds);
     if (!next) return;
@@ -219,7 +223,7 @@ export default function RootWordsGame() {
       }
       if (event.key === 'h' || event.key === 'H') {
         event.preventDefault();
-        useHint();
+        applyHint();
         return;
       }
       if (event.code === 'ArrowRight' || event.code === 'ArrowDown') {
@@ -273,7 +277,7 @@ export default function RootWordsGame() {
       window.removeEventListener('keydown', onKey);
       window.clearTimeout(typeTimer.current);
     };
-  }, [addTile, advance, clearTiles, cursor, lockIn, phase, popTile, tray, useHint]);
+  }, [addTile, advance, clearTiles, cursor, lockIn, phase, popTile, tray, applyHint]);
 
   useEffect(() => {
     if (cursor >= tray.length) setCursor(0);
@@ -441,7 +445,7 @@ export default function RootWordsGame() {
                   </button>
                   <button
                     type="button"
-                    onClick={useHint}
+                    onClick={applyHint}
                     disabled={hints >= MAX_HINTS}
                     className="pressable rounded-full border border-[var(--line)] px-4 py-2.5 text-sm text-[var(--ink)] disabled:opacity-40"
                   >
