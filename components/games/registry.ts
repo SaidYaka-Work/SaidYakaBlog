@@ -12,4 +12,5 @@ export const reactGameLoaders: Record<string, GameLoader> = {
   'shade-shift': () => import('./shade-shift/Game'),
   'fold-herd': () => import('./fold-herd/Game'),
   magnitude: () => import('./magnitude/Game'),
+  'root-words': () => import('./root-words/Game'),
 };

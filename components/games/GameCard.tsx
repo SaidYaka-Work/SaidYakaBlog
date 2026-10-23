@@ -152,6 +152,22 @@ function GamePreview({ tone, featured = false }: { tone: GameMeta['tone']; featu
           <span className="absolute left-[58%] top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-[#e8a87c] shadow-[0_0_10px_#e8a87c]" />
         </>
       )}
+      {tone === 'roots' && (
+        <div className="absolute inset-0 flex items-center justify-center gap-2 px-6 font-serif text-[#f3eee6]/85">
+          {['tele', '+', 'phon'].map((label) => (
+            <span
+              key={label}
+              className={
+                label === '+'
+                  ? 'text-[#e8a87c]/70'
+                  : 'rounded-md border border-[#e8a87c]/40 bg-[#e8a87c]/15 px-2.5 py-1 text-sm'
+              }
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
