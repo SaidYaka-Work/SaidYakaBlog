@@ -853,6 +853,17 @@ html[data-motion='on'] .fgpt-board.is-shake {
   80% { transform: translateX(2px); }
 }
 
+html[data-motion='on'] .rw-shake {
+  animation: rw-shake 0.38s ease;
+}
+
+@keyframes rw-shake {
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+
 .fgpt-intro,
 .fgpt-results {
   padding: 1rem 1.1rem 1.2rem;

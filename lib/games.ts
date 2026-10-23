@@ -13,7 +13,8 @@ export type GameTone =
   | 'herd'
   | 'unknown'
   | 'gpt'
-  | 'magnitude';
+  | 'magnitude'
+  | 'roots';
 
 export type GameMeta = {
   slug: string;
@@ -167,6 +168,20 @@ export const games: GameMeta[] = [
     kind: 'react',
     href: englishPath('/games/magnitude'),
     tone: 'magnitude',
+    daily: true,
+  },
+  {
+    slug: 'root-words',
+    title: 'Root Words',
+    tagline: 'Six literal roots a day. Build the English word they became.',
+    description:
+      'A daily etymology puzzle: each round shows the literal sense of a word’s roots — “bad + star,” “far + sound” — and a tray of Greek, Latin, and Old English tiles. Assemble the word, then read the real derivation.',
+    howTo:
+      'Tap root tiles to match the literal sense, or use 1–9 and Enter. Three tries; a hint labels one true root. Six words a day, each with a short etymology note.',
+    genre: 'Etymology',
+    kind: 'react',
+    href: englishPath('/games/root-words'),
+    tone: 'roots',
     daily: true,
   },
 ];
