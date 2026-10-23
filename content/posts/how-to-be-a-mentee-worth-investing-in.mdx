@@ -1,0 +1,140 @@
+---
+slug: "how-to-be-a-mentee-worth-investing-in"
+title: "How to Be a Mentee Worth Investing In"
+date: 2026-10-23
+author: Said Yaka
+tags:
+  - Engineering Leadership
+  - Mentorship
+  - Software Engineering
+  - Team Culture
+  - Career Growth
+description: "Mentors invest in people who make help cheap to give. Here is how I arrive prepared, ask about decisions, close the loop, and turn advice into a pattern."
+canonical_url: "https://saidyaka.com/en/posts/how-to-be-a-mentee-worth-investing-in"
+keywords:
+  - how to be a good mentee
+  - engineering mentorship
+  - asking seniors for help
+  - software engineering career growth
+  - mentee feedback loop
+og_title: "How to Be a Mentee Worth Investing In"
+og_description: "Arrive with a real question, make help cheap to give, close the loop, and turn one-off advice into a pattern."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+Most mentorship advice is written for the person giving it. Book the 1:1. Leave better comments. Start a program.
+
+That is half the loop. The other half is whether the person asking is someone you would spend a second Tuesday on. Seniors spend a finite number of interruptions where the help compounds. The people I keep helping are the ones who make it cheap to be useful.
+
+Being worth investing in is a skill. It is also learnable.
+
+## Arrive with a question, not a weather report
+
+"Can I pick your brain?" is not a question. It is a calendar invite with no agenda.
+
+A useful ask has three parts: the decision you are stuck on, what you already tried, and what a good answer would let you do next. I use a short template so I do not dump a morning of confusion on someone else:
+
+> I am trying to decide **X vs Y** for **Z**.
+> I already tried **A** (result) and **B** (result).
+> I think the risk is **C**, but I might be missing **D**.
+> I need **a five-minute gut check / a yes-no / a pointer to the right file**, not a design review.
+
+Name the size of the help. A scoped ask fits between meetings. An unscoped one waits until they have an hour they do not have.
+
+A foggy version sounds like: "the checkout job is weird, can you look?" A cheap one sounds like: "the job retries on 500s and I think it is double-charging. Idempotency on the write did not help on timeout. Client or webhook next?" You do not need the right diagnosis. You need to show you have one.
+
+### What "already tried" is for
+
+It is not a performance. It is a filter.
+
+If you have not read the error, searched the repo, or written down the two options you can see, you are asking someone to do that work with you watching. Do the cheap steps first. Bring the residue. I also write the question down before I send it. Half the time that is the answer. That is the point.
+
+## Make the help cheaper than the alternative
+
+The hidden cost of helping you is reconstruction. The senior was not in your terminal. They should not have to ask for the stack trace, the ticket, and the reproduction as three follow-ups.
+
+I try to attach a context pack in the first message:
+
+- the link (PR, log line, failing test, doc)
+- the one-sentence symptom
+- what I believe is happening
+- the exact question
+- how urgent it is, and what I will do if they cannot look today
+
+If the answer lives in a file, link the file. If it needs pairing, say that instead of stretching Slack until it becomes a call by accident.
+
+Cheap also means picking the right surface. "Which helper should I use?" is a Slack message. "I need you to see the state machine" is a short call. "Is this the right abstraction?" is often a design note, not a hallway grab. Respect their no. If you only ask people who always say yes, you will burn the ones who are kindest.
+
+## Ask for a review of the decision
+
+Most people ask seniors to look at code. Code is the artifact. The transferable thing is the decision underneath it.
+
+"Does this look okay?" gets you a skim. "I am putting the timeout on the client because that layer knows how long the user can wait. The other option is a handler deadline. What does that miss?" gets you a model you can reuse.
+
+Bring the tradeoff first: the options, the constraint, and what you are willing to get wrong. Then ask what you cannot see — an invariant, a past incident, a consumer you did not know existed. If they rewrite the function, you shipped their taste. If they stress-test the decision, you leave with a way to make the next one.
+
+"I am about to add a cache because the endpoint is getting chatty. I am worried about stale reads on logout. Is that the right fear?" is a mentorship question. "Thoughts?" is a request for telepathy.
+
+## Mine the comments you already have
+
+If you wait for a formal mentor, you will miss the curriculum already landing on your pull requests. I have written about [how I review so the author grows, not just the diff](/en/posts/code-review-is-mentorship-in-disguise/). The receiving habit is simpler.
+
+After I make the fix, I write one line: what rule would have prevented the comment. Not "rename this." The rule: "this name claims it returns all users and it returns active ones." Not "add a test." The rule: "this branch refunds money, so it needs a case that fails closed."
+
+Then I ask one follow-up if I am not sure I got the model:
+
+> I changed it to fail closed on an empty list. If I see this again, should I always fail closed, or only when the caller treats the id as real?
+
+One question, after the fix. That is how you check whether you learned the constraint or just satisfied the reviewer. If the same comment shows up twice, I put it on a private list and look at it before the next pull request. I try to stop paying tuition on the same lesson.
+
+## Close the loop or do not expect a second one
+
+Advice that disappears into a black hole trains people to stop giving it.
+
+I try to report back in the same thread, while the context is still warm:
+
+> I put the lock on the writer, not the queue. Retries stopped colliding. I will use that pattern on the other two jobs.
+
+Or, if it did not work:
+
+> I tried the client timeout. The handler still ran long because the worker ignored the deadline. Next I am passing a cutoff into the job. Flag if that is the wrong next step.
+
+This is not etiquette. It is data. They now know whether the model they handed you was right, and whether you are worth another ask. If you chose something else, say so and say why. Silent disagreement looks like ignore. Named disagreement looks like judgment. A same-day note is cheap. A week later, they have left the problem.
+
+## Turn the favor into a pattern
+
+One-off help is expensive. A pattern is an asset.
+
+After someone unblocks me, I ask one extra question when it will not inflate the meeting:
+
+> When would you not do it this way?
+
+That turns a recipe into a boundary. Recipes expire. Boundaries travel.
+
+If I needed the same class of help twice — retries, migrations, permission checks — I write the steps down where the next person will look. Then I do not ask for the same tour again.
+
+The goal is a shorter list of things you still need them for. Say that out loud: "I want to stop bringing you this class of problem. What should I be able to decide alone next time?" Most seniors will give you a sharper answer than if you ask them to "mentor you."
+
+## Collect specialists, not a sage
+
+One person will not be your systems mentor, your product-taste mentor, and your career coach. Asking one senior for all of that is how you exhaust the person who was kind first.
+
+I look for different people for different jobs: someone burned by this system, someone good at cutting scope, someone outside the team for career questions, and someone a little ahead of me for the problem I have this month. You do not need a program. You need a specific ask and a habit of closing the loop. The person who shipped the last migration often has a better map than the person who owns the org chart.
+
+## Pay it forward before you feel qualified
+
+You do not become a mentor on the day someone promotes you.
+
+The cheapest way I know to lock a lesson is to give it away while it is still sharp. When the next person asks a vague question about the same job, ask what they tried, give the constraint instead of the patch, and check they can decide the next case without you.
+
+You will feel underqualified. That is normal. You are offering a map of the last street you were lost on. If the only people allowed to help are the most senior, you have built a queue, not a culture.
+
+## What I optimize for
+
+I cannot control who has time for me. I can control whether helping me was a good use of their Tuesday.
+
+Arrive with a real question. Show the work. Ask about the decision. Mine the comments. Report back. Write the pattern down. Spread the asks. Teach the last thing you learned.
+
+Do that consistently and you will not need to ask anyone to "be your mentor." They already are.
+
