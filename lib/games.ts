@@ -177,7 +177,7 @@ export const games: GameMeta[] = [
     description:
       'A daily etymology puzzle: each round shows the literal sense of a word’s roots — “bad + star,” “far + sound” — and a tray of Greek, Latin, and Old English tiles. Assemble the word, then read the real derivation.',
     howTo:
-      'Read the literal sense, then tap root tiles to build the word — or use 1–9, arrows, and Enter. Three tries; a hint labels one true root at a cost. After each word, a short etymology note. Six words a day.',
+      'Tap root tiles to match the literal sense, or use 1–9 and Enter. Three tries; a hint labels one true root. Six words a day, each with a short etymology note.',
     genre: 'Etymology',
     kind: 'react',
     href: englishPath('/games/root-words'),

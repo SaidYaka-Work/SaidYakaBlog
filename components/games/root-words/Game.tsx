@@ -54,6 +54,7 @@ export default function RootWordsGame() {
   const [hints, setHints] = useState(0);
   const [revealed, setRevealed] = useState<Set<string>>(() => new Set());
   const [phase, setPhase] = useState<'play' | 'reveal' | 'done'>('play');
+  const [reveal, setReveal] = useState<Result | undefined>();
   const [shake, setShake] = useState(false);
   const [shareNote, setShareNote] = useState('');
   const [cursor, setCursor] = useState(0);
@@ -67,7 +68,7 @@ export default function RootWordsGame() {
   );
   const pickedIds = useMemo(() => new Set(picked.map((tile) => tile.id)), [picked]);
   const tray = tiles.filter((tile) => !pickedIds.has(tile.id));
-  const result = phase === 'reveal' ? results[index] : undefined;
+  const result = phase === 'reveal' ? reveal : undefined;
   const score = totalScore(results);
   const done = phase === 'done';
   const remaining = MAX_TRIES - tries;
@@ -84,6 +85,7 @@ export default function RootWordsGame() {
       setTries(0);
       setHints(0);
       setRevealed(new Set());
+      setReveal(undefined);
       setPhase('play');
       setShake(false);
       setShareNote('');
@@ -106,7 +108,9 @@ export default function RootWordsGame() {
         next[index] = scored;
         return next;
       });
+      setReveal(scored);
       setPhase('reveal');
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       beep(solved ? 880 : 180, solved ? 0.12 : 0.14);
     },
     [beep, index, puzzle],
@@ -173,9 +177,11 @@ export default function RootWordsGame() {
     setTries(0);
     setHints(0);
     setRevealed(new Set());
+    setReveal(undefined);
     setPhase('play');
     setShake(false);
     setCursor(0);
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     beep(360, 0.05);
   }, [beep, commitBest, index, phase, results, round.length]);
 
@@ -206,6 +212,7 @@ export default function RootWordsGame() {
 
       if (event.code === 'Enter') {
         event.preventDefault();
+        if (target?.tagName === 'BUTTON') return;
         if (phase === 'play') lockIn();
         else if (phase === 'reveal') advance();
         return;
@@ -243,9 +250,12 @@ export default function RootWordsGame() {
         return;
       }
       const digit = Number(event.key);
-      if (digit >= 1 && digit <= tray.length) {
-        event.preventDefault();
-        addTile(tray[digit - 1]);
+      if (digit >= 1 && digit <= tiles.length) {
+        const tile = tiles[digit - 1];
+        if (tile && !pickedIds.has(tile.id)) {
+          event.preventDefault();
+          addTile(tile);
+        }
         return;
       }
       const letter = event.key.toLowerCase();
@@ -277,7 +287,7 @@ export default function RootWordsGame() {
       window.removeEventListener('keydown', onKey);
       window.clearTimeout(typeTimer.current);
     };
-  }, [addTile, advance, clearTiles, cursor, lockIn, phase, popTile, tray, applyHint]);
+  }, [addTile, advance, applyHint, clearTiles, cursor, lockIn, phase, pickedIds, popTile, tiles, tray]);
 
   useEffect(() => {
     if (cursor >= tray.length) setCursor(0);
@@ -373,8 +383,8 @@ export default function RootWordsGame() {
               })}
             </ol>
 
-            <p className="mt-5 text-xs uppercase tracking-[0.14em] text-[var(--faint)]">Literal sense</p>
-            <h2 className="mt-1 font-serif text-3xl leading-snug tracking-tight text-[var(--ink)] sm:text-4xl">
+            <p className="mt-4 text-xs uppercase tracking-[0.14em] text-[var(--faint)]">Literal sense</p>
+            <h2 className="mt-1 font-serif text-2xl leading-snug tracking-tight text-[var(--ink)] sm:text-4xl">
               {puzzle.prompt}
             </h2>
 
@@ -390,7 +400,7 @@ export default function RootWordsGame() {
 
             {phase === 'play' ? (
               <>
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--muted)]">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--muted)]">
                   <p aria-live="polite">
                     {remaining} {remaining === 1 ? 'try' : 'tries'} left
                     <span className="mx-2 text-[var(--line)]" aria-hidden="true">
@@ -404,11 +414,13 @@ export default function RootWordsGame() {
                   {tray.map((tile, tileIndex) => {
                     const hinted = revealed.has(tile.id);
                     const focused = tileIndex === cursor;
+                    const stableNumber = tiles.findIndex((item) => item.id === tile.id) + 1;
                     return (
                       <button
                         key={tile.id}
                         type="button"
                         role="listitem"
+                        aria-label={hinted && tile.gloss ? `${tile.form}, ${tile.gloss}` : tile.form}
                         onClick={() => {
                           setCursor(tileIndex);
                           addTile(tile);
@@ -421,7 +433,7 @@ export default function RootWordsGame() {
                       >
                         <span className="block font-serif text-lg tracking-tight text-[var(--ink)]">{tile.form}</span>
                         <span className="mt-0.5 block min-h-[1rem] text-[10px] uppercase tracking-[0.12em] text-[var(--faint)]">
-                          {hinted && tile.gloss ? tile.gloss : tileIndex < 9 ? <span className="hidden sm:inline">{tileIndex + 1}</span> : null}
+                          {hinted && tile.gloss ? tile.gloss : stableNumber > 0 ? <span className="hidden sm:inline">{stableNumber}</span> : null}
                         </span>
                       </button>
                     );
@@ -436,6 +448,7 @@ export default function RootWordsGame() {
               {phase === 'play' ? (
                 <>
                   <button
+                    key="lock-in"
                     type="button"
                     onClick={lockIn}
                     disabled={picked.length === 0}
@@ -462,6 +475,7 @@ export default function RootWordsGame() {
                 </>
               ) : (
                 <button
+                  key="advance"
                   type="button"
                   onClick={advance}
                   className="pressable rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm text-[var(--bg)]"
@@ -496,7 +510,7 @@ function Assembly({
 }) {
   const slots = Math.max(puzzle.roots.length, picked.length);
   return (
-    <div className="mt-5">
+    <div className="mt-4">
       <div
         className={`flex flex-wrap items-center gap-2 ${shake ? 'rw-shake' : ''}`}
         aria-label={draft ? `Assembled ${draft}` : 'Empty assembly'}
