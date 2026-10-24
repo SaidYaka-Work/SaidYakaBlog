@@ -5,7 +5,7 @@ import { englishUrl } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'Games',
-  description: 'A shelf of original browser games: daily puzzles in history, estimation, and etymology, a FakeGPT party toy, plus skill, timing, words, logic, and herding.',
+  description: 'A shelf of original browser games: daily puzzles in history, timelines, estimation, and etymology, a FakeGPT party toy, plus skill, timing, words, logic, and herding.',
   alternates: {
     canonical: englishUrl('/games'),
     languages: {

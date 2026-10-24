@@ -168,6 +168,23 @@ function GamePreview({ tone, featured = false }: { tone: GameMeta['tone']; featu
           ))}
         </div>
       )}
+      {tone === 'chrono' && (
+        <>
+          <span className="absolute bottom-6 left-1/2 top-6 w-px -translate-x-1/2 bg-[#e8a87c]/35" />
+          {['32%', '48%', '64%'].map((top, index) => (
+            <span
+              key={top}
+              className="absolute left-[22%] right-[18%] h-6 rounded-md border border-[#e8a87c]/35 bg-[#e8a87c]/12"
+              style={{ top }}
+            >
+              <span
+                className="absolute left-2 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-[#e8a87c]"
+                style={{ opacity: 0.45 + index * 0.2 }}
+              />
+            </span>
+          ))}
+        </>
+      )}
     </div>
   );
 }

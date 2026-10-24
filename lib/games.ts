@@ -14,7 +14,8 @@ export type GameTone =
   | 'unknown'
   | 'gpt'
   | 'magnitude'
-  | 'roots';
+  | 'roots'
+  | 'chrono';
 
 export type GameMeta = {
   slug: string;
@@ -182,6 +183,20 @@ export const games: GameMeta[] = [
     kind: 'react',
     href: englishPath('/games/root-words'),
     tone: 'roots',
+    daily: true,
+  },
+  {
+    slug: 'chronology',
+    title: 'Chronology',
+    tagline: 'Six events a day. Put history back in order.',
+    description:
+      'A daily timeline puzzle: six historical events, inventions, or discoveries, and a few tries to drag them into chronological order. Locked cards stay put; a short note teaches the year when you finish.',
+    howTo:
+      'Drag the cards from oldest to newest, or select one and move it with the arrows. Lock in to freeze cards that sit in the right place. Four tries; the years and a one-sentence note wait at the end.',
+    genre: 'History',
+    kind: 'react',
+    href: englishPath('/games/chronology'),
+    tone: 'chrono',
     daily: true,
   },
 ];
