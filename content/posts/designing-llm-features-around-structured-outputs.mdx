@@ -1,0 +1,141 @@
+---
+slug: "designing-llm-features-around-structured-outputs"
+title: "Designing LLM Features Around Structured Outputs You Can Trust"
+date: 2026-10-24
+author: Said Yaka
+tags:
+  - Structured Outputs
+  - AI Engineering
+  - LLMs
+  - Evaluation
+  - Reliability
+description: "Treat the schema as the product contract. Here is how I design typed LLM outputs, validate and repair them, version the shape, and eval field by field."
+canonical_url: "https://saidyaka.com/en/posts/designing-llm-features-around-structured-outputs"
+keywords:
+  - LLM structured outputs
+  - JSON schema LLM
+  - typed model outputs
+  - structured output validation
+  - AI feature reliability
+og_title: "Designing LLM Features Around Structured Outputs You Can Trust"
+og_description: "Design the schema first. Constrain the model. Validate every response. Score the fields you will act on, not the JSON-ness."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+The first version of an LLM feature is usually a paragraph. You prompt for prose, you get prose, you render the prose. Then someone wants to file a ticket, route a case, or write a row. Suddenly you are scraping a sentence and hoping the model used the same heading twice.
+
+If your code is the consumer, prose is not a feature. It is a leak. I design these systems around a typed object first. Anything outside the schema is decoration. The model is good at filling a form. It is worse at being a reliable API. Your job is to make it look like the second one.
+
+## Start with the object your next function needs
+
+I do not start with the prompt. I start with the function that runs after the model returns.
+
+What does that function need? A status enum. An optional order id. A flag you will actually branch on. A short string a human will read. If I cannot write that type, I am not ready to talk to a model.
+
+The type is the product contract. The prompt is just how you ask for it.
+
+A support-intake feature might only need:
+
+> `{ intent, urgency, should_escalate, order_id, customer_visible_reply }`
+
+Not a transcript recap, three alternative replies, or a restatement of the policy. Extra fields feel cheap. They are not. Every field is another place the model can invent something your UI will treat as true.
+
+### Enums and nulls beat clever prose
+
+If the set is closed, put the set in the type. `intent: billing | shipping | cancel | other` is a decision. `intent: string` is an invitation to invent your company's vocabulary.
+
+I use `null` when "I do not know" is a useful answer. A missing key and a hallucinated value look different to you. They look similar to a model that was told the field is required. If the order id might not be in the email, make it nullable and say so in the description. Required-plus-hope is how you get a plausible id on a message that never mentioned an order.
+
+Free text is for humans. I keep one or two such fields, and I never branch business logic on them. `customer_visible_reply` can be a string. `should_escalate` cannot.
+
+Field descriptions are part of the prompt. Same instinct as [designing tools a model can actually call](/en/posts/designing-tools-llm-agents-can-use/): the schema is the brief, not leftover API docs. `urgency`: "How soon a human should look. `high` means a payment or access problem. Do not use `high` for tone." is a policy. `urgency`: "The urgency." is a shrug.
+
+This is about what the model returns to your product code. That one is about what it calls.
+
+## Constrain the decode. Do not parse a vibe.
+
+Prompting "return JSON" is not a contract. It is a suggestion that works until it does not: a markdown fence, a trailing comma, a helpful preface, a missing brace.
+
+When the provider has a native structured-output or constrained-decoding mode, I use it for any object my code will parse. The grammar is part of the request. You still validate. You stop losing turns to punctuation.
+
+Tool-calling is the same idea with a different costume. A single tool whose parameters *are* the result (`submit_intake`, `extract_order`) is often more reliable than a JSON blob in the assistant message. I use that when structured-output mode is missing or awkward. I am not building an agent. I am using the tool channel as a typed return.
+
+I still prompt for JSON when the API cannot constrain, or when I am prototyping and a bad parse is only a console log. I do not stay there. A feature that files work or changes access should not depend on the model remembering a curly brace.
+
+If I do prompt for JSON, I ask for the object only. No fences. No commentary. Then I parse like the model will ignore me, because sometimes it will.
+
+## Keep the schema small enough to fail loudly
+
+Fat schemas hide bugs. The model fills every key. Your logs look complete. Your product is guessing.
+
+I keep a result to the fields a single screen or a single write needs. Nested objects only when the nest is a real unit. Arrays only with a max the product can use. I would rather make a second call than accept a forty-field blob that is half wrong.
+
+A shape I will actually ship for intake:
+
+```
+type Intake = {
+  schema_version: "intake.v1";
+  intent: "billing" | "shipping" | "cancel" | "other";
+  urgency: "low" | "normal" | "high";
+  should_escalate: boolean;
+  order_id: string | null;
+  customer_visible_reply: string;
+};
+```
+
+`schema_version` is not ceremony. The day you rename `urgency` or split `other`, stored rows need a name for the shape they have. Treat a schema change like an API change. Add optional fields. Do not silently make a field required. Keep a `v1` parser if you persisted it.
+
+I also version the prompt, but I do not confuse the two. Prompt seventeen can still emit `intake.v1`. Extra keys "in case we need them" is the same failure as [treating a context window like memory](/en/posts/context-windows-are-not-memory/): more on the desk than anyone can use.
+
+## Validate, repair once, then choose a fallback
+
+Constrained decoding reduces invalid JSON. It does not make the object true.
+
+Every response goes through the same gate:
+
+1. parse
+2. validate against the schema
+3. run a small set of product checks the schema cannot say (`order_id` matches a known pattern, `customer_visible_reply` is not empty if we will send it)
+4. decide
+
+A validator error is a better follow-up than "please try again." I send the field, the constraint, and the bad value back. One repair pass, maybe a second if the failure is cheap and local. I do not loop until the model invents a legal object. That is how you launder a guess into a pass.
+
+If repair fails, I want an explicit fallback, not a crash and not a silent default that looks like success:
+
+- **ask the user** when a required field is missing and they can provide it
+- **safe default** only when the default is product-true (`should_escalate: true` is safer than `false` if you cannot tell)
+- **escalate the model** when the cheap model keeps missing a closed enum
+- **queue for a human** when the write is costly
+- **show the raw text** only on surfaces where a human is the next parser
+
+Routing belongs here. I have written about [matching model strength to the task](/en/posts/how-i-think-about-model-routing/). Extraction is often a cheap-model job. Escalate when the input is messy or the fallback rate spikes. If the object is bad, the [trace should show the schema, the raw payload, and the validator error](/en/posts/building-agent-observability/).
+
+Never coerce away meaning. Mapping `"high"` to `normal` because you dislike the extra review is a product decision pretending to be parsing. Log it. Own it. Or do not do it. Silent success is how you [teach users not to trust the product](/en/posts/shipping-fast-without-breaking-trust/). I would rather stop than write a row I cannot defend.
+
+## Eval the fields, not the JSON-ness
+
+"Valid JSON" is a liveness check. It is not quality. I score structured features by the failure mode, not a vibe number. Same instinct as [evals that catch regressions](/en/posts/rag-evals-that-catch-regressions/). A fluent object can still be wrong in the one field you branch on.
+
+### Checks I actually run
+
+On a small labeled set of real tickets, plus a few adversarial ones, I record:
+
+- **schema pass rate:** parsed and valid, before any repair
+- **repair rate:** valid only after the error came back
+- **field accuracy:** each enum, boolean, and id against a label
+- **null discipline:** did it invent an `order_id`, or correctly return `null`?
+- **overreach:** extra keys, or a free-text field that asserts a fact the input did not contain
+- **action match:** if we had executed `should_escalate`, would that have been right?
+
+A run can have perfect JSON and a disastrous escalate flag. That should fail the suite. I do not average fields into one score that lets a cheap one hide an expensive one. When I add a field, I add a check. Schema edits are prompt edits.
+
+Synthetic variants help for paraphrase and missing-field cases. They do not replace production inputs. Same guardrail as [using generated eval data without fooling yourself](/en/posts/synthetic-data-for-llm-evals/).
+
+## The contract is the feature
+
+I want the model to fill a form my code already understands. Write the type first. Keep it small. Prefer enums and honest nulls. Use structured-output or the tool-call channel when you can. Validate every time. Repair with the actual error, then stop. Version the shape. Score the fields you will act on.
+
+If a coworker could not implement the next function from the schema alone, the model will not fill it reliably either.
+
+The schema is the API. Ship it like one.
