@@ -111,7 +111,7 @@ If repair fails, I want an explicit fallback, not a crash and not a silent defau
 
 Routing belongs here. I have written about [matching model strength to the task](/en/posts/how-i-think-about-model-routing/). Extraction is often a cheap-model job. Escalate when the input is messy or the fallback rate spikes. If the object is bad, the [trace should show the schema, the raw payload, and the validator error](/en/posts/building-agent-observability/).
 
-Never coerce away meaning. Mapping `"high"` to `normal` because you dislike the extra review is a product decision pretending to be parsing. Log it or do not do it. Silent success is how you [teach users not to trust the product](/en/posts/shipping-fast-without-breaking-trust/). I would rather stop than write a row I cannot defend.
+Never coerce away meaning. Mapping `"high"` to `normal` because you dislike the extra review is a product decision pretending to be parsing. Log it. Own it. Or do not do it. Silent success is how you [teach users not to trust the product](/en/posts/shipping-fast-without-breaking-trust/). I would rather stop than write a row I cannot defend.
 
 ## Eval the fields, not the JSON-ness
 
