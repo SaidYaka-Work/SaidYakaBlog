@@ -13,4 +13,5 @@ export const reactGameLoaders: Record<string, GameLoader> = {
   'fold-herd': () => import('./fold-herd/Game'),
   magnitude: () => import('./magnitude/Game'),
   'root-words': () => import('./root-words/Game'),
+  chronology: () => import('./chronology/Game'),
 };

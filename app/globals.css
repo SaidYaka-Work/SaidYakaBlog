@@ -853,7 +853,8 @@ html[data-motion='on'] .fgpt-board.is-shake {
   80% { transform: translateX(2px); }
 }
 
-html[data-motion='on'] .rw-shake {
+html[data-motion='on'] .rw-shake,
+html[data-motion='on'] .chrono-shake {
   animation: rw-shake 0.38s ease;
 }
 
