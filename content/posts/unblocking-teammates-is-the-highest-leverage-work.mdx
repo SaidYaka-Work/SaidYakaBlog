@@ -1,0 +1,137 @@
+---
+slug: "unblocking-teammates-is-the-highest-leverage-work"
+title: "Unblocking Teammates Is the Highest-Leverage Work You Can Do"
+date: 2026-10-25
+author: Said Yaka
+tags:
+  - Engineering Leadership
+  - Software Engineering
+  - Team Culture
+  - Collaboration
+  - Productivity
+description: "A blocked teammate burns more hours than your interruption. Here is how I notice stuck work, unblock it without taking over, and still protect focus time."
+canonical_url: "https://saidyaka.com/en/posts/unblocking-teammates-is-the-highest-leverage-work"
+keywords:
+  - unblocking teammates
+  - engineering leadership
+  - high leverage engineering work
+  - helping blocked engineers
+  - software team culture
+og_title: "Unblocking Teammates Is the Highest-Leverage Work You Can Do"
+og_description: "Protecting your focus is cheap if the person next to you is idle. Unblock them, teach the pattern, and batch the rest."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+Protecting your own focus is easy to defend. A blocked teammate is harder to see. They look busy. They are in the ticket. They have not pinged you. Meanwhile a day is disappearing, and usually someone else is waiting.
+
+I treat unblocking as high-leverage engineering work, not as courtesy. Fifteen minutes that returns someone a day is not a context switch. It is a multiplier. The teams that ship interrupt on purpose, then leave.
+
+## A blocked hour costs more than your interrupt
+
+Your interrupt is real. You lose the stack you were holding. You may need ten minutes to get it back. That is a cost. I do not pretend it is free.
+
+The other side is larger. A blocked person is not paused. They reread the same error, start a second task they will drop, wait on a review, then wait again because the reviewer also waited. Downstream work sits. An idle senior is expensive. An idle junior learns that getting stuck is something you hide.
+
+I compare two things, not one: the cost of answering, and the cost of the work that does not move if I do not. A same-day review, a yes-or-no, or a five-minute pair often wins. The ticket I was polishing rarely does.
+
+## How you actually notice someone is stuck
+
+Stuck is quiet more often than it is loud.
+
+I look for motion that stopped, not for complaints:
+
+- the same pull request sitting without a new commit or a new question
+- a standup update that is still "looking into it" on day two
+- the same Slack thread getting restated instead of closed
+- a person who used to ask and then went silent
+
+The dangerous cases are the competent ones. They wait because asking feels like a defect. New people wait because they do not know which questions are cheap. If you only help the people who ping you, you miss both.
+
+I do not wait for a perfect signal. If a ticket that should have moved has not, I ask: "What is the actual blocker, a missing decision, a missing review, or a missing fact?" That is easier to answer than "how is it going?"
+
+### Make it safe to say so
+
+People hide stuck work when the last time they said it, someone sighed. Stuck has to be a status, not a confession. I try to make that mechanical:
+
+- treat "I am blocked" as a normal standup field, same as "I shipped"
+- ask what would unblock them, not why they did not already know
+- go first as a lead: "I am stuck on the cutoff. I need a yes or no today."
+- thank the first ask even if the question was messy
+
+If someone has to perform competence before they can get help, they will sit until the problem is late and large. Safety is not a poster. It is what happens the next time a junior says they do not understand the auth path.
+
+## Fast paths that unblock
+
+**A precise answer.** The file, the invariant, the yes or no. "Use the existing idempotency key on the writer, not a new lock" is an unblock. A paragraph of context they already have is not.
+
+**A short pair.** Fifteen minutes on a shared screen, then leave. I do not stay to watch them type the test. The session is over when they have a next action they can do alone.
+
+**A review turned around the same day.** A pull request sitting untouched is a blocked person. I have written about [reviewing so the author grows, not just the diff](/en/posts/code-review-is-mentorship-in-disguise/). The latency part is the unblock: a same-morning first pass, even incomplete, beats a thorough essay tomorrow.
+
+**A decision made rather than deferred.** "Ship the simpler path. We will revisit if the second consumer shows up" unblocks two people. "Let's think about it" blocks both and feels wise. Defer when being wrong is costly, not by default. Speed still has to be the kind users can [trust](/en/posts/shipping-fast-without-breaking-trust/). A fast decision that ships a silent no-op is a later incident, not an unblock.
+
+I pick the smallest tool that restores motion. Slack for a pointer. A comment for a review. A call when the picture of the system is missing.
+
+## Unblock without taking the work
+
+The failure mode is doing it for them.
+
+You merge their branch. You rewrite the function. They are unblocked today and dependent tomorrow. You have also taught the team that the fastest path is to hand you the wheel.
+
+I try to leave three things behind:
+
+1. **the pattern**, not just the patch. "Fail closed when the caller treats this id as real" travels. The one-line fix does not.
+2. **a breadcrumb** where the next person will look: a comment on the helper, a sentence in the runbook, a pointer in the PR.
+3. **the next similar case in their hands.** After we pair, I ask what they would do if the timeout were on the other client. If they cannot answer, I did the work. I did not teach it.
+
+"I will do this with you once" is a contract. "I will do this for you" is a queue.
+
+Taking over is sometimes right: an incident, a missed deadline, a change that will leak data if it is wrong. Those are exceptions. Say so out loud so they do not become the default.
+
+## Protect your own focus
+
+Unblocking everyone, all day, is how you become the bottleneck you were trying to prevent. I batch the work that can wait and stay interruptible for the work that cannot.
+
+**Office-hours style windows.** I tell the team when I am cheap to grab. A standing hour after standup, or a block after lunch, is enough. People will hold a non-urgent question if they believe the window is real.
+
+**Async answers with a time.** "I will look after lunch" is an unblock. Silence is not. A stated delay lets them plan. An open-ended "busy" leaves them hovering.
+
+**Sort fire from itch.** Someone fully stopped on a merge or a decision they cannot make alone is a fire. A nicer name or a question they could answer from the repo is an itch. Itches go in the window. Fires get the interrupt.
+
+You can still say no. "I cannot do this today. Ask N, or I will take it tomorrow morning" is a complete answer. Disappearing is how people stop asking, which is how you lose the signal.
+
+I do not owe anyone my entire morning. I do owe them a path.
+
+## Leads should name and reward this
+
+If the only work that counts is the ticket with your name on it, people will hide from interrupts. Then the team will look productive and move slowly.
+
+I want unblocking to show up where status already shows up:
+
+- 1:1s: "who did you get moving this week?"
+- reviews of seniors: review latency, decisions made, pairing that stuck
+- promo packets: name the work that shipped because they got out of the way of it
+- your own updates: say "I unblocked the migration review" the way you would say "I shipped the endpoint"
+
+You cannot reward what you will not say. If you only praise closed tickets, you get closed tickets plus a pile of waiting people. A lead who reviews same-day and makes cheap decisions is teaching the job. A lead who is always in maker mode, and never on the critical path, is teaching something else.
+
+## Ask to be unblocked well
+
+The other half is how you show up when you are the stuck one. I have written about [being a mentee worth investing in](/en/posts/how-to-be-a-mentee-worth-investing-in/). The unblock version is shorter.
+
+Bring the decision, what you tried, and what a good answer lets you do next. Link the PR, the log, or the file. Name the size: a yes-or-no, a pointer, or fifteen minutes.
+
+> I am blocked on whether this job should lock the writer or the queue. I tried a client timeout. Timeouts still double-wrote. I need a yes-or-no so I can finish the test today.
+
+That is cheap to answer. "The job is weird, can you look?" is a reconstruction project.
+
+Then close the loop in the same thread. They need to know whether the model they handed you worked. If you take help and never report back, people will save their interrupts for someone else.
+
+## Do the work that multiplies
+
+Focus time is real. So is a teammate who cannot move.
+
+I try to keep both true: windows for deep work, and a habit of spending the cheap interrupt when someone else's day is on the line. Notice the quiet stuck ones. Teach the pattern. Write the breadcrumb. Reward the people who do this, or they will stop.
+
+Unblocking is not a distraction from the work. On a team, it often is the work.
