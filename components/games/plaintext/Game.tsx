@@ -207,17 +207,15 @@ export default function PlaintextGame() {
         setSelected(null);
         return;
       }
-      if (event.key === 'h' || event.key === 'H') {
-        if (event.metaKey || event.ctrlKey) return;
-        event.preventDefault();
-        applyReveal();
-        return;
-      }
       const letter = event.key.toUpperCase();
       if (letter.length === 1 && letter >= 'A' && letter <= 'Z') {
         event.preventDefault();
         if (selected) {
           assign(selected, letter);
+          return;
+        }
+        if (letter === 'H') {
+          applyReveal();
           return;
         }
         if (letters.includes(letter)) setSelected(letter);
@@ -306,7 +304,7 @@ export default function PlaintextGame() {
                 </span>
                 {MAX_HINTS - hints} {MAX_HINTS - hints === 1 ? 'reveal' : 'reveals'} left
               </p>
-              <p className="hidden sm:block text-[var(--faint)]">tap a letter · type its match · H reveal</p>
+              <p className="hidden sm:block text-[var(--faint)]">tap a letter · type its match · H reveals if none selected</p>
             </div>
 
             <CipherBoard
@@ -315,7 +313,7 @@ export default function PlaintextGame() {
               selected={selected}
               conflicts={conflicts}
               hinted={hinted}
-              onSelect={(cipher) => setSelected((current) => (current === cipher ? null : cipher))}
+              onSelect={setSelected}
             />
 
             <div className="mt-4 flex flex-wrap gap-3">
