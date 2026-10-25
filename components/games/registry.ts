@@ -14,4 +14,5 @@ export const reactGameLoaders: Record<string, GameLoader> = {
   magnitude: () => import('./magnitude/Game'),
   'root-words': () => import('./root-words/Game'),
   chronology: () => import('./chronology/Game'),
+  plaintext: () => import('./plaintext/Game'),
 };
