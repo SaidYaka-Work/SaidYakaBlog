@@ -15,7 +15,8 @@ export type GameTone =
   | 'gpt'
   | 'magnitude'
   | 'roots'
-  | 'chrono';
+  | 'chrono'
+  | 'plain';
 
 export type GameMeta = {
   slug: string;
@@ -197,6 +198,20 @@ export const games: GameMeta[] = [
     kind: 'react',
     href: englishPath('/games/chronology'),
     tone: 'chrono',
+    daily: true,
+  },
+  {
+    slug: 'plaintext',
+    title: 'Plaintext',
+    tagline: 'A famous quotation, letter by letter. Same cipher for everyone, every day.',
+    description:
+      'A daily cryptogram: a public-domain quotation encrypted with a simple letter-substitution cipher. Assign plaintext letters, use frequency counts, and decode the line to meet the author.',
+    howTo:
+      'Tap a cipher letter, then choose its match on the keyboard — or type it. Frequency counts sit under the alphabet. The same letter used twice is flagged. A reveal costs score. Decode the whole line to read who said it, and why it lasted.',
+    genre: 'Cryptogram',
+    kind: 'react',
+    href: englishPath('/games/plaintext'),
+    tone: 'plain',
     daily: true,
   },
 ];

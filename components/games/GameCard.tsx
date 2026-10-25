@@ -185,6 +185,19 @@ function GamePreview({ tone, featured = false }: { tone: GameMeta['tone']; featu
           ))}
         </>
       )}
+      {tone === 'plain' && (
+        <div className="absolute inset-0 flex items-end justify-center gap-1.5 px-6 pb-8 font-serif text-[#f3eee6]">
+          {['S', 'W', 'X', 'K', 'Q'].map((cipher, index) => (
+            <span
+              key={cipher}
+              className="grid w-8 place-items-center rounded-md border border-[#e8a87c]/35 bg-[#e8a87c]/12 py-1"
+            >
+              <span className="text-[9px] tracking-[0.14em] text-[#e8a87c]/70">{cipher}</span>
+              <span className="text-sm">{['P', 'L', 'A', 'I', 'N'][index]}</span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
