@@ -313,25 +313,7 @@ export default function PlaintextGame() {
               onSelect={(cipher) => setSelected((current) => (current === cipher ? null : cipher))}
             />
 
-            <FrequencyRow
-              freqs={freqs}
-              guesses={guesses}
-              selected={selected}
-              conflicts={conflicts}
-              onSelect={setSelected}
-            />
-
-            <Keyboard
-              guesses={guesses}
-              selected={selected}
-              conflicts={conflicts}
-              disabled={phase !== 'play'}
-              onPick={(plain) => {
-                if (selected) assign(selected, plain);
-              }}
-            />
-
-            <div className="mt-5 flex flex-wrap gap-3">
+            <div className="mt-4 flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={applyReveal}
@@ -350,7 +332,25 @@ export default function PlaintextGame() {
               </button>
             </div>
 
-            <p className="mt-4 text-[11px] uppercase tracking-[0.14em] text-[var(--faint)]">
+            <FrequencyRow
+              freqs={freqs}
+              guesses={guesses}
+              selected={selected}
+              conflicts={conflicts}
+              onSelect={setSelected}
+            />
+
+            <Keyboard
+              guesses={guesses}
+              selected={selected}
+              conflicts={conflicts}
+              disabled={phase !== 'play'}
+              onPick={(plain) => {
+                if (selected) assign(selected, plain);
+              }}
+            />
+
+            <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-[var(--faint)]">
               English order · {ENGLISH_ORDER.split('').join(' ')}
             </p>
           </div>
@@ -376,9 +376,9 @@ function CipherBoard({
   onSelect: (cipher: string) => void;
 }) {
   return (
-    <p className="mt-5 flex flex-wrap gap-x-3 gap-y-4" aria-label="Encrypted quotation">
+    <p className="mt-4 flex flex-wrap gap-x-2.5 gap-y-2.5" aria-label="Encrypted quotation">
       {words.map((word, wordIndex) => (
-        <span key={`w-${wordIndex}`} className="inline-flex flex-wrap gap-x-[0.2rem]">
+        <span key={`w-${wordIndex}`} className="inline-flex flex-wrap gap-x-[0.15rem]">
           {word.cells.map((cell, cellIndex) => {
             if (cell.kind === 'mark') {
               return (
@@ -401,9 +401,9 @@ function CipherBoard({
                 aria-pressed={isSelected}
                 aria-label={`Cipher ${cell.cipher}${guess ? `, now ${guess}` : ''}${clash ? ', used twice' : ''}`}
                 onClick={() => onSelect(cell.cipher)}
-                className="flex w-6 flex-col items-center sm:w-7"
+                className="flex w-7 flex-col items-center sm:w-8"
               >
-                <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--faint)]">{cell.cipher}</span>
+                <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--muted)]">{cell.cipher}</span>
                 <span
                   className={`mt-0.5 flex h-8 w-full items-end justify-center border-b font-serif text-xl leading-none ${
                     isSelected
@@ -438,7 +438,7 @@ function FrequencyRow({
   onSelect: (cipher: string) => void;
 }) {
   return (
-    <div className="mt-6">
+    <div className="mt-4">
       <p className="text-xs uppercase tracking-[0.12em] text-[var(--faint)]">Frequency</p>
       <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Cipher letter frequencies">
         {freqs.map((row) => {
@@ -491,7 +491,7 @@ function Keyboard({
   }
 
   return (
-    <div className="mt-6" aria-label="Plaintext keyboard">
+    <div className="mt-4" aria-label="Plaintext keyboard">
       {KEY_ROWS.map((row, rowIndex) => (
         <div
           key={row}
@@ -508,7 +508,7 @@ function Keyboard({
                 disabled={disabled}
                 aria-label={held.length ? `${letter}, assigned to ${held.join(', ')}` : letter}
                 onClick={() => onPick(letter)}
-                className={`pressable min-h-11 flex-1 rounded-lg border text-sm sm:min-h-12 sm:text-base ${
+                className={`pressable min-h-10 flex-1 rounded-lg border text-sm sm:min-h-11 sm:text-base ${
                   active
                     ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--bg)]'
                     : clash

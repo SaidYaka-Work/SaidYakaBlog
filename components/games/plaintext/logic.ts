@@ -5,10 +5,10 @@ export const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 export const MAX_SCORE = 100;
 export const MAX_HINTS = 3;
 export const HINT_COST = 15;
-export const GRACE_SECONDS = 120;
-export const TIME_STEP_SECONDS = 20;
-export const TIME_STEP_COST = 5;
-export const MIN_SOLVED_SCORE = 10;
+export const GRACE_SECONDS = 180;
+export const TIME_STEP_SECONDS = 30;
+export const TIME_STEP_COST = 3;
+export const MIN_SOLVED_SCORE = 25;
 export const LAUNCH_DATE = '2026-10-25';
 
 export const ENGLISH_ORDER = 'ETAOINSHRDLCUMWFGYPBVKJXQZ';
