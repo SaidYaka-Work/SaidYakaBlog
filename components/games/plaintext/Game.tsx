@@ -497,7 +497,7 @@ function Keyboard({
           key={row}
           className={`mt-1.5 flex justify-center gap-1 ${rowIndex === 1 ? 'px-3 sm:px-5' : ''} ${rowIndex === 2 ? 'px-8 sm:px-10' : ''}`}
         >
-          {[...row].map((letter) => {
+          {row.split('').map((letter) => {
             const held = owners.get(letter) ?? [];
             const clash = held.some((cipher) => conflicts.has(cipher));
             const active = selected !== null && guesses[selected] === letter;

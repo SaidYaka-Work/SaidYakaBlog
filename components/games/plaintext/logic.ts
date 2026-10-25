@@ -72,7 +72,7 @@ export function lettersIn(text: string): string {
 }
 
 export function uniqueLetters(text: string): string[] {
-  return [...new Set(lettersIn(text).split(''))];
+  return Array.from(new Set(lettersIn(text).split('')));
 }
 
 function validateBank(quotes: readonly Quote[]) {
@@ -167,7 +167,7 @@ export function practicePuzzle(seed = Math.floor(Math.random() * 1_000_000_000))
 
 export function wordsFrom(encoded: string): Word[] {
   return encoded.split(/(\s+)/).map((chunk) => ({
-    cells: [...chunk].map((char) =>
+    cells: chunk.split('').map((char) =>
       /[A-Z]/.test(char) ? ({ kind: 'letter', cipher: char } satisfies Cell) : ({ kind: 'mark', value: char } satisfies Cell),
     ),
   }));
@@ -202,10 +202,10 @@ export function usedPlain(guesses: Record<string, string>): Map<string, string[]
 
 export function conflictsOf(guesses: Record<string, string>): Set<string> {
   const flagged = new Set<string>();
-  for (const ciphers of usedPlain(guesses).values()) {
-    if (ciphers.length < 2) continue;
-    for (const cipher of ciphers) flagged.add(cipher);
-  }
+  Array.from(usedPlain(guesses).values()).forEach((ciphers) => {
+    if (ciphers.length < 2) return;
+    ciphers.forEach((cipher) => flagged.add(cipher));
+  });
   return flagged;
 }
 
