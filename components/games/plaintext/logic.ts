@@ -215,6 +215,16 @@ export function isSolved(puzzle: Puzzle, guesses: Record<string, string>): boole
   return needed.every((cipher) => guesses[cipher] === puzzle.decodeMap[cipher]);
 }
 
+export function nextEmptyCipher(letters: string[], guesses: Record<string, string>, current: string | null): string | null {
+  if (letters.length === 0) return null;
+  const start = current ? Math.max(0, letters.indexOf(current)) : -1;
+  for (let offset = 1; offset <= letters.length; offset += 1) {
+    const candidate = letters[(start + offset) % letters.length];
+    if (!guesses[candidate]) return candidate;
+  }
+  return current && guesses[current] ? null : current;
+}
+
 export function nextHint(puzzle: Puzzle, guesses: Record<string, string>): string | null {
   const counts = frequencies(puzzle.encoded);
   const open = uniqueLetters(puzzle.encoded)

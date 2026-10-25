@@ -20,6 +20,7 @@ import {
   hintLabel,
   isSolved,
   makeResult,
+  nextEmptyCipher,
   nextHint,
   practicePuzzle,
   puzzleNumberForDate,
@@ -107,9 +108,13 @@ export default function PlaintextGame() {
       setGuesses(next);
       const clash = Object.entries(next).some(([other, value]) => other !== cipher && value === letter);
       beep(clash ? 220 : 460, clash ? 0.07 : 0.03);
-      if (isSolved(puzzle, next)) finish(next, hints, seconds);
+      if (isSolved(puzzle, next)) {
+        finish(next, hints, seconds);
+        return;
+      }
+      setSelected(nextEmptyCipher(letters, next, cipher));
     },
-    [beep, finish, guesses, hinted, hints, phase, puzzle, seconds],
+    [beep, finish, guesses, hinted, hints, letters, phase, puzzle, seconds],
   );
 
   const clearLetter = useCallback(
