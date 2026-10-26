@@ -15,4 +15,5 @@ export const reactGameLoaders: Record<string, GameLoader> = {
   'root-words': () => import('./root-words/Game'),
   chronology: () => import('./chronology/Game'),
   plaintext: () => import('./plaintext/Game'),
+  alibi: () => import('./alibi/Game'),
 };

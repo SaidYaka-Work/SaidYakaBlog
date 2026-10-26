@@ -16,7 +16,8 @@ export type GameTone =
   | 'magnitude'
   | 'roots'
   | 'chrono'
-  | 'plain';
+  | 'plain'
+  | 'alibi';
 
 export type GameMeta = {
   slug: string;
@@ -212,6 +213,20 @@ export const games: GameMeta[] = [
     kind: 'react',
     href: englishPath('/games/plaintext'),
     tone: 'plain',
+    daily: true,
+  },
+  {
+    slug: 'alibi',
+    title: 'Alibi',
+    tagline: 'Four suspects, one grid. A daily case with a single solution.',
+    description:
+      'A daily logic-grid mystery: match each guest to a room and an hour from a handful of written clues. Mark the grid, tick off what you have used, and name who took it.',
+    howTo:
+      'Tap a cell to cycle empty, ×, and ✓ — a check crosses out the rest of its row and column. Arrows move; X marks a no, C or Space a yes. Tick clues as you use them. Check my grid costs score. When the marks name the only arrangement, the case closes.',
+    genre: 'Deduction',
+    kind: 'react',
+    href: englishPath('/games/alibi'),
+    tone: 'alibi',
     daily: true,
   },
 ];
