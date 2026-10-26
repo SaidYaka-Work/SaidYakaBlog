@@ -198,6 +198,20 @@ function GamePreview({ tone, featured = false }: { tone: GameMeta['tone']; featu
           ))}
         </div>
       )}
+      {tone === 'alibi' && (
+        <div className="absolute inset-0 grid grid-cols-4 gap-1.5 p-6">
+          {['✓', '×', '', '×', '×', '', '✓', '×', '', '×', '×', '✓', '×', '✓', '×', ''].map((mark, index) => (
+            <span
+              key={index}
+              className={`grid place-items-center rounded-sm border border-[#e8a87c]/30 text-[11px] ${
+                mark === '✓' ? 'bg-[#e8a87c]/35 text-[#f3eee6]' : mark === '×' ? 'bg-white/5 text-[#e8a87c]/70' : 'bg-white/5'
+              }`}
+            >
+              {mark}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
