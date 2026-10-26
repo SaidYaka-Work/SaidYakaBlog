@@ -209,7 +209,7 @@ export default function AlibiGame() {
         return;
       }
 
-      if (target?.tagName === 'BUTTON') return;
+      if (target?.tagName === 'BUTTON' && (event.code === 'Space' || event.code === 'Enter')) return;
 
       if (event.code === 'KeyZ' && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
