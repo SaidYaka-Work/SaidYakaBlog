@@ -1,0 +1,140 @@
+---
+slug: "give-feedback-engineers-can-actually-use"
+title: "Give Feedback Engineers Can Actually Use"
+date: 2026-10-27
+author: Said Yaka
+tags:
+  - Engineering Leadership
+  - Software Engineering
+  - Team Culture
+  - Mentorship
+  - Collaboration
+description: "Vague praise and late notes do not change the next pull request. Here is how I give feedback engineers can actually use: specific, timely, and followed up."
+canonical_url: "https://saidyaka.com/en/posts/give-feedback-engineers-can-actually-use"
+keywords:
+  - giving feedback to engineers
+  - engineering feedback
+  - software engineering leadership
+  - actionable feedback
+  - team feedback culture
+og_title: "Give Feedback Engineers Can Actually Use"
+og_description: "Name the work, say it while it is still cheap, and check the next case. Feedback is a habit, not a performance review."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+Most feedback I see is a vibe. "Be more proactive." "Communicate better." "Looks good." None of that is something you can put in a commit.
+
+Engineers do not need another opinion about their character. They need a moment, an effect, and a next instance they can rehearse. I treat feedback as a cheap correction on live work, not a speech we save for a form.
+
+## Name the work, not the person
+
+If the sentence still works after you swap the name for a file, it is about the work. If it only works as a character judgment, rewrite it.
+
+"You are careless with edge cases" is a verdict. "This refund path still writes when the upstream returns an empty list, and the caller treats the id as real" is a ticket.
+
+The first one makes people defend themselves. The second one makes people open the file. Once someone hears "you are a weak communicator," they manage the label, not the update that left two people waiting.
+
+> In standup you said the writer was "should be fine." Two people planned on the new id today. It still returns a placeholder on timeout. Can we say "blocked on timeout behavior" next time so they do not schedule around a guess?
+
+Same information. No character. A next action.
+
+Review comments already have a home for this. I have written about [reviewing so the author grows, not just the diff](/en/posts/code-review-is-mentorship-in-disguise/). The split is the same in a meeting, an incident, or a design doc. "Your design was sloppy" is a person. "The doc does not say what happens if a second consumer arrives" is work.
+
+Praise needs the same discipline. "You are so smart" is a compliment they cannot repeat. "Putting the deadline on the client was the right layer. That is the one that knows how long the user can wait" is a decision they can make again.
+
+## Specific enough that they can act without you
+
+If they have to book another meeting to decode what you meant, you gave a mood.
+
+I try to include three things:
+
+1. **the moment** — when it happened, with enough detail they can find it
+2. **the effect** — who waited, what broke, what got harder
+3. **the next instance** — what better looks like the next time this class of thing shows up
+
+A foggy version: "I need you to own the project more."
+
+A usable one:
+
+> In yesterday's design review you waited for me to cut the two options down. I can do that, but then the team is waiting on my calendar. Next time, come in with a recommendation and the thing you are willing to get wrong.
+
+They can rehearse that. They cannot rehearse "own it more." If I only have the feeling and not the moment, I wait.
+
+"Be more senior" is not a change. "Write the recommendation in the doc before the review" is. I try to name a behavior a third person could see: a sentence in Slack, a field in standup, a test on the money path. If I cannot describe what I would see next week, I have a preference, not feedback.
+
+## Say it while the work is still warm
+
+Saved feedback decays. A note from six weeks ago is archaeology. Neither of you can reconstruct the constraint, so you argue about a memory.
+
+I try to say it the same day, or the next morning, while the file or the meeting is still in working memory. After an incident, before the writeup goes cold.
+
+Late is not just delayed. It becomes a pattern, a performance story, a surprise. That is when people say "I wish you had told me." They are right.
+
+If I missed the window, I say so:
+
+> This is from Tuesday's review. I should have said it then. I am bringing it now because the same fork is in this week's design.
+
+Honesty about latency keeps it from sounding like a dossier. Timely also means small. One moment beats a list. If you have four things, pick the one that will still be true next month and hold the rest.
+
+## Keep the ceremony small enough that it happens
+
+The enemy of useful feedback is the ritual we invent to avoid saying it. A quarterly form. A "feedback session." A compliment sandwich. People wait for the official container, then dump a quarter of stored observations into it.
+
+I want it as cheap as a Slack note or two minutes leftover after a call:
+
+> Quick one from planning: when you said "we can do both," the PM heard a date. I would name the cheaper path and the cost of the other one.
+
+That is a habit. If you only give feedback when someone books a room, you will give it too late and too large.
+
+Leads should go first. If the only feedback on the team is downward and scheduled, people will copy that. A lead who sends a same-day note after their own miss teaches more than a lead who writes a perfect rubric and never uses it. Kind is the moment and the effect, not a wrapper.
+
+## Send it sideways and up, not just down
+
+Peer feedback is the one most teams skip. It is also the one people can hear. A teammate saying "I could not start because the interface was still moving" lands differently than a manager saying "communicate better."
+
+I ask for it the way I ask for [help that is cheap to give](/en/posts/how-to-be-a-mentee-worth-investing-in/): a real question, a moment, a size.
+
+> After we pair on the migration: one thing I should do differently next time, and one thing to keep.
+
+Not "any feedback?" That is a weather report. People will say you are great and change the subject. Name the surface and the size, then be quiet long enough for the real sentence.
+
+### Upward is a decision, not a character review
+
+Make it about a decision they control, not a personality they cannot rewrite this week.
+
+> In the last two plannings we left without a cutoff. I slipped the test because I was waiting on the second consumer. If we pick a default ("ship the one-consumer path"), I can finish without a ping.
+
+A lead can act on that. "You are disorganized in planning" they cannot. If you never send it up, you train the lead that silence is agreement, then complain in the hallway. That is a leak, not safety. The upward note is also how you [get a stuck decision unblocked](/en/posts/unblocking-teammates-is-the-highest-leverage-work/) without turning it into a personality fight.
+
+## Follow up, or you gave a performance
+
+Feedback that is never checked is theater. They nod. You feel responsible. The next similar case looks the same.
+
+I try to name the next instance when I give it:
+
+> I will look for this on the next job that writes money. If the empty list still returns an id, we should pair. If it fails closed, we are done.
+
+Then I look. If it changed, I say so in the same thread or the next 1:1. Specific praise of the new decision is how you mark the lesson as complete. If it did not change, I do not escalate the adjective. I bring the new moment:
+
+> Same empty-list return on the refund job. Want to walk the helper together so the third one is free?
+
+Repeating the original speech louder is how feedback becomes a personality fight. A second example is how it stays about the work. If someone gave you a usable note, report back when you try it. Otherwise they stop spending the cheap ones on you.
+
+## When a note is the wrong medium
+
+Some feedback should not be a Slack message. If it is about trust, a public miss, or a pattern that already has two examples, I take it to a call.
+
+> I want to talk about how the incident update landed, not the retry itself. Fifteen minutes today?
+
+After we talk, I write the agreement down: what we will do next time, and when we will check. A conversation without that sentence is a feeling. Feelings do not survive the next sprint.
+
+Public channels are for work. Private channels are for the person. If the team needs a new rule ("name the blast radius in the first incident message"), write the rule where they will see it. Do not correct one person in the channel.
+
+## Make the next one cheaper
+
+I cannot make someone want the note. I can make it cheap to use.
+
+Talk about the work. Point at a moment. Say it while it is still cheap. Keep the ceremony small. Send it sideways and up. Check the next case.
+
+Do that for a month and you will not need a feedback program. You will have a team that can correct itself while the change is still a line, not a story.
