@@ -16,4 +16,5 @@ export const reactGameLoaders: Record<string, GameLoader> = {
   chronology: () => import('./chronology/Game'),
   plaintext: () => import('./plaintext/Game'),
   alibi: () => import('./alibi/Game'),
+  sequence: () => import('./sequence/Game'),
 };

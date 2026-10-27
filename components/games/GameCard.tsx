@@ -212,6 +212,20 @@ function GamePreview({ tone, featured = false }: { tone: GameMeta['tone']; featu
           ))}
         </div>
       )}
+      {tone === 'sequence' && (
+        <div className="absolute inset-0 flex items-end justify-center gap-1.5 px-5 pb-8 font-serif text-[#f3eee6]">
+          {['1', '1', '2', '3', '5', '?'].map((term, index) => (
+            <span
+              key={`${term}-${index}`}
+              className={`grid min-w-8 place-items-center rounded-md border border-[#e8a87c]/35 py-1 ${
+                term === '?' ? 'bg-[#e8a87c]/25 text-[#e8a87c]' : 'bg-[#e8a87c]/12'
+              }`}
+            >
+              {term}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
