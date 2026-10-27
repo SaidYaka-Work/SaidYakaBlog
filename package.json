@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --experimental-strip-types scripts/dog-frame-check.ts && node --experimental-strip-types scripts/dog-motion-check.ts && node --import ./workers/dog/node_modules/tsx/dist/loader.mjs scripts/dog-lag-sim.ts && node --import ./workers/dog/node_modules/tsx/dist/loader.mjs scripts/dog-world-check.ts && node --import ./workers/dog/node_modules/tsx/dist/loader.mjs scripts/dog-tile-build-check.ts && node --import ./workers/dog/node_modules/tsx/dist/loader.mjs scripts/unknown-number-check.ts && node --import ./workers/fakegpt/node_modules/tsx/dist/loader.mjs scripts/fakegpt-check.ts && node --experimental-strip-types --import ./scripts/register-ts.mjs scripts/alibi-check.ts && npm --prefix workers/fakegpt test"
+    "test": "node --experimental-strip-types scripts/dog-frame-check.ts && node --experimental-strip-types scripts/dog-motion-check.ts && node --import ./workers/dog/node_modules/tsx/dist/loader.mjs scripts/dog-lag-sim.ts && node --import ./workers/dog/node_modules/tsx/dist/loader.mjs scripts/dog-world-check.ts && node --import ./workers/dog/node_modules/tsx/dist/loader.mjs scripts/dog-tile-build-check.ts && node --import ./workers/dog/node_modules/tsx/dist/loader.mjs scripts/unknown-number-check.ts && node --import ./workers/fakegpt/node_modules/tsx/dist/loader.mjs scripts/fakegpt-check.ts && node --experimental-strip-types --import ./scripts/register-ts.mjs scripts/alibi-check.ts && node --experimental-strip-types --import ./scripts/register-ts.mjs scripts/sequence-check.ts && npm --prefix workers/fakegpt test"
   },
   "dependencies": {
     "@mapbox/vector-tile": "^3.0.0",

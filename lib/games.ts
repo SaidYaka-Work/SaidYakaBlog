@@ -17,7 +17,8 @@ export type GameTone =
   | 'roots'
   | 'chrono'
   | 'plain'
-  | 'alibi';
+  | 'alibi'
+  | 'sequence';
 
 export type GameMeta = {
   slug: string;
@@ -227,6 +228,20 @@ export const games: GameMeta[] = [
     kind: 'react',
     href: englishPath('/games/alibi'),
     tone: 'alibi',
+    daily: true,
+  },
+  {
+    slug: 'sequence',
+    title: 'Sequence',
+    tagline: 'The first terms of a famous integer sequence. Type the next one.',
+    description:
+      'A daily number-pattern puzzle: the opening of a famous integer sequence, five guesses at the next term, and hints that grow from first differences to the family to the rule. After you finish, a short note names the sequence and where it shows up.',
+    howTo:
+      'Read the given terms and type the next integer. Five tries. Each miss unlocks a stronger hint — the gaps, then the family, then the rule. Keyboard or the number pad; the same puzzle for everyone that day.',
+    genre: 'Numbers',
+    kind: 'react',
+    href: englishPath('/games/sequence'),
+    tone: 'sequence',
     daily: true,
   },
 ];
