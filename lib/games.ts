@@ -18,7 +18,8 @@ export type GameTone =
   | 'chrono'
   | 'plain'
   | 'alibi'
-  | 'sequence';
+  | 'sequence'
+  | 'counter';
 
 export type GameMeta = {
   slug: string;
@@ -242,6 +243,20 @@ export const games: GameMeta[] = [
     kind: 'react',
     href: englishPath('/games/sequence'),
     tone: 'sequence',
+    daily: true,
+  },
+  {
+    slug: 'counterweight',
+    title: 'Counterweight',
+    tagline: 'A few level scales. Deduce each shape, then balance the last one.',
+    description:
+      'A daily balance-scale deduction: a handful of level pans holding shapes and numbered weights. Each shape is a different whole number. Read the equations, then type the weight that levels the mystery side. The reveal walks the algebra step by step.',
+    howTo:
+      'Each shape is a different whole number. Numbered bars are known weights. Read the balanced scales, then type the integer that levels the last one. Four tries; a miss unlocks a stronger hint. Keyboard or the number pad; the same puzzle for everyone that day.',
+    genre: 'Algebra',
+    kind: 'react',
+    href: englishPath('/games/counterweight'),
+    tone: 'counter',
     daily: true,
   },
 ];
