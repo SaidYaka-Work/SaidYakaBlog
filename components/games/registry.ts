@@ -17,4 +17,5 @@ export const reactGameLoaders: Record<string, GameLoader> = {
   plaintext: () => import('./plaintext/Game'),
   alibi: () => import('./alibi/Game'),
   sequence: () => import('./sequence/Game'),
+  counterweight: () => import('./counterweight/Game'),
 };

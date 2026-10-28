@@ -226,6 +226,16 @@ function GamePreview({ tone, featured = false }: { tone: GameMeta['tone']; featu
           ))}
         </div>
       )}
+      {tone === 'counter' && (
+        <>
+          <span className="absolute left-1/2 top-[58%] h-px w-28 -translate-x-1/2 bg-[#e8a87c]/45" />
+          <span className="absolute left-1/2 top-[58%] h-0 w-0 -translate-x-1/2 border-x-[6px] border-t-[8px] border-x-transparent border-t-[#e8a87c]/70" />
+          <span className="absolute left-[22%] top-[34%] h-7 w-7 rounded-full bg-[#e8a87c]/80" />
+          <span className="absolute left-[34%] top-[38%] h-6 w-6 rounded-full bg-[#f0d8c8]/70" />
+          <span className="absolute right-[24%] top-[36%] h-0 w-0 border-x-[9px] border-b-[16px] border-x-transparent border-b-[#e8a87c]/75" />
+          <span className="absolute right-[36%] top-[42%] h-5 w-5 rotate-45 bg-[#f0d8c8]/65" />
+        </>
+      )}
     </div>
   );
 }
