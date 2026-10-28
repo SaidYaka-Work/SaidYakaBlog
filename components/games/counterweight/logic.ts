@@ -163,7 +163,9 @@ export function describeSide(side: Side): string {
     }
     let count = 0;
     const { shape } = token;
-    while (index < side.length && side[index].kind === 'shape' && side[index].shape === shape) {
+    while (index < side.length) {
+      const next = side[index];
+      if (next.kind !== 'shape' || next.shape !== shape) break;
       count += 1;
       index += 1;
     }
@@ -557,7 +559,7 @@ function acceptPuzzle(puzzle: Puzzle): boolean {
   >;
   const used = new Set(puzzle.shapes.map((shape) => shape.weight));
   if (used.size !== puzzle.shapes.length) return false;
-  if ([...used].some((weight) => weight < MIN_WEIGHT || weight > MAX_WEIGHT)) return false;
+  if (puzzle.shapes.some((shape) => shape.weight < MIN_WEIGHT || shape.weight > MAX_WEIGHT)) return false;
   if (!scalesBalance(puzzle.scales, weights)) return false;
   if (sideWeight(puzzle.question, weights) !== puzzle.answer) return false;
   const solutions = findSolutions(ids, puzzle.scales);
