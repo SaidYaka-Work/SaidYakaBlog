@@ -1,0 +1,153 @@
+---
+slug: "ownership-in-software-engineering-owning-outcomes-not-tickets"
+title: "Ownership in Software Engineering: Owning Outcomes, Not Tickets"
+date: 2026-10-29
+author: Said Yaka
+tags:
+  - Engineering Leadership
+  - Software Engineering
+  - Team Culture
+  - Execution
+  - Collaboration
+description: "Closing a ticket is not owning the outcome. Here is how I define done, own rollout and cleanup, close loops early, and share the work without hoarding it."
+canonical_url: "https://saidyaka.com/en/posts/ownership-in-software-engineering-owning-outcomes-not-tickets"
+keywords:
+  - ownership in software engineering
+  - engineering ownership
+  - owning outcomes not tickets
+  - end to end ownership
+  - software engineering leadership
+og_title: "Ownership in Software Engineering: Owning Outcomes, Not Tickets"
+og_description: "Stay with the problem until it is true in production. Define done, own the boring path, close loops, and share the work."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+Closing a ticket is a status change. Owning an outcome is a different job. The card can move while the user still cannot do the thing, the dashboard is silent, and the next person has to reconstruct what you meant.
+
+I treat ownership as staying with a problem until the result is true in the world, not until the card moves. That includes the boring path, status no one asked for, and making yourself replaceable.
+
+## Done means shipped, adopted, and measured
+
+"Merged" is a git event. "Done" is a claim about users.
+
+I write the definition before I start, in a form a third person could check:
+
+- **shipped:** in production for the people who need it, not only on main
+- **adopted:** someone can complete the job without a workaround or a Slack ask
+- **measured:** a number or log that would tell us if it failed after we looked away
+- **supported:** the next person can find the flag, the dashboard, and the rollback
+
+The foggy version: "the refund job is done."
+
+The usable one:
+
+> Done when the job is on in production for the two callers, empty upstream fails closed, the dashboard shows success vs retry, and the old path is off.
+
+If I cannot write that sentence, I have a pile of tasks, not a project. I also write what I am willing to leave false. "Docs next week" is a decision. "We will see" is how cleanup never happens.
+
+### A preflight I actually use
+
+Before I pick up the work:
+
+1. Who is in a worse place if this is late or wrong?
+2. What does success look like in a user action, not a commit?
+3. What will I look at on day two to know it held?
+4. What do I delete or turn off when it works?
+5. Who else needs a decision from me this week?
+
+If I cannot answer those, I am about to optimize for motion.
+
+## The boring path is the job
+
+The interesting part is the model and the clever retry. The owned part is rollout, monitoring, docs, and cleanup. I keep that list next to the pull request, not in my head:
+
+- **rollout:** flag, percent, who can turn it off, what "off" still serves
+- **monitoring:** one chart or alert that fires on the failure I actually fear
+- **docs:** where the next person will look — the runbook, the README, the ticket that outlives Slack
+- **cleanup:** the old path, the temporary table, the comment that will not delete itself
+
+Follow-ups need a name and a date. A follow-up with no owner is a wish. I have written about [moving fast in ways users can still trust](/en/posts/shipping-fast-without-breaking-trust/). Ownership is the operational half: you do not ship a silent no-op and call it done.
+
+## Close the loop before anyone asks
+
+Status that has to be extracted is already late. I send a short note when the picture changes, not when standup comes around:
+
+> Flag is at 10%. Empty-list path is failing closed. One caller still on the old job; I am moving them tomorrow. Risk: their timeout is longer than ours.
+
+I include three things: what is true now, what I will do next and by when, and what I need or am proceeding without.
+
+Silence reads as "fine." Fine is how surprises get scheduled. This is not the same as [reporting back on advice](/en/posts/how-to-be-a-mentee-worth-investing-in/). That loop is "your model worked." This one is "the outcome is still mine." If I am blocked, I say the blocker. Owning it does not mean sitting quietly in the ticket.
+
+## Raise the risk while it is still a choice
+
+Late risk is a confession. Early risk is a decision. I raise it the first day I would bet against the current plan, with a recommendation attached:
+
+> The second consumer will not be ready Friday. I can ship the one-consumer path and keep the old writer, or slip both. I am shipping the one-consumer path today unless you want the slip.
+
+"This might slip" is a weather report. They cannot act on weather. Name the blast radius: who waits, what is false in production, what we will not know.
+
+Treat early risk as the job working. If the last person who raised a slip got a sigh, you will only hear about slips when they are incidents.
+
+## Ownership is not hoarding
+
+Owning a problem does not mean doing every line yourself. Hoarding looks like ownership from the outside. I own the outcome, not every keystroke.
+
+- **Bring people in on purpose.** A second engineer on the migration is how the work survives a sick day, not a loss of credit.
+- **Make the decision visible.** A note in the PR or the doc: what we chose, what we were willing to get wrong.
+- **Hand off the next similar case.** After we pair, they take the second caller. If I keep both, I have a queue, not a team.
+
+"I am the only one who can finish this" is a process bug I created. The fix is a walkthrough and a review from someone who has not lived in the file. The owner who cannot be replaced is not senior. They are stuck.
+
+The same rule I use when [unblocking without taking the work](/en/posts/unblocking-teammates-is-the-highest-leverage-work/) applies here: teach the pattern, leave the breadcrumb, let someone else take the next case.
+
+## How leads create owners, not ticket machines
+
+You cannot demand ownership from a backlog of tasks. Give a problem with a done definition and a decision right:
+
+> Users still see a paid invoice after a failed refund. Own getting that false. You can cut the second retry path. Flag me if you need a product call.
+
+That is a problem. "Add the metric and update the copy" is a task list. Task lists produce closed tickets. Problems produce people who notice the failure mode you skipped.
+
+Clear decision rights matter more than pep talks. If every choice still routes through you, you have a reporter, not an owner. Say what they can decide alone, what they must broadcast, and what they must escalate. Do not relitigate the ones you delegated unless the blast radius changed.
+
+### Back them when it breaks
+
+Ownership dies the first time someone takes a real problem, makes a real decision, misses in public, and the lead treats it as a character defect.
+
+I want the writeup to be about the path: what we could not see, what we will watch next time, what we will decide earlier. [Feedback that names the work](/en/posts/give-feedback-engineers-can-actually-use/) belongs here. "You should have owned this more" does not.
+
+If you only back people when it works, they will take smaller problems and hide larger risks. Reward the boring path the same way you reward the launch. "I turned off the old writer and the dashboard is quiet" is a shipped outcome. Treat it like one.
+
+## Ownership is how you actually go faster
+
+Coordination is the tax you pay when no one owns the gap. Handoffs create waiting. Waiting creates status meetings. Status meetings create the feeling of motion.
+
+An owner collapses the gap: they see the adoption miss, write the alert, pull the reviewer, and raise the slip on Tuesday. That is faster than a perfectly groomed board. I would rather have one person accountable for "refunds fail closed and we can see it" than five people on five tickets that almost add up to that.
+
+## A checklist I reuse
+
+When I am the owner:
+
+- Done written as shipped, adopted, measured, supported
+- Rollout and rollback named
+- One signal I will look at after I stop watching
+- Next person can find the flag and the why
+- Status went out when the picture changed, not when I was asked
+- The risk I would bet against is in writing, with a recommendation
+- Someone else can take the next similar case
+- Cleanup has a name and a date, or I admitted I am leaving it
+
+When I am the lead:
+
+- Handed over a problem and a decision right, not a task list
+- Kept the work with them unless the blast radius required otherwise
+- Treated an early risk as useful
+- Backed the person in public if it broke
+- Named the boring path in the update, not only the launch
+
+## Stay until it is true
+
+Tickets are a tool. They are a bad definition of the job. I try to stay until the outcome is true: users can do the thing, we can see if it stops working, and I am not the only one who can touch it.
+
+Define done. Do the boring path. Close the loop. Raise the risk. Share the work. If you lead, give problems and back the people who take them. The card moving is just what it looks like from the board.
