@@ -236,6 +236,26 @@ function GamePreview({ tone, featured = false }: { tone: GameMeta['tone']; featu
           <span className="absolute right-[36%] top-[42%] h-5 w-5 rotate-45 bg-[#f0d8c8]/65" />
         </>
       )}
+      {tone === 'tessera' && (
+        <div className="absolute inset-0 grid grid-cols-6 gap-1 p-6">
+          {['', '2', '4', '4', '2', '', '2', '', '', '', '', '2', '6', '', '#', '#', '', '6', '4', '', '#', '#', '', '4', '2', '', '', '', '', '2'].map(
+            (mark, index) => (
+              <span
+                key={index}
+                className={`grid place-items-center rounded-sm text-[9px] ${
+                  mark === '#'
+                    ? 'bg-[#e8a87c]/80'
+                    : mark
+                      ? 'bg-white/5 text-[#f3eee6]/55'
+                      : 'bg-white/5'
+                }`}
+              >
+                {mark === '#' ? '' : mark}
+              </span>
+            ),
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -18,4 +18,5 @@ export const reactGameLoaders: Record<string, GameLoader> = {
   alibi: () => import('./alibi/Game'),
   sequence: () => import('./sequence/Game'),
   counterweight: () => import('./counterweight/Game'),
+  tessera: () => import('./tessera/Game'),
 };
