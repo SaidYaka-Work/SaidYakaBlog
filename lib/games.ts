@@ -19,7 +19,8 @@ export type GameTone =
   | 'plain'
   | 'alibi'
   | 'sequence'
-  | 'counter';
+  | 'counter'
+  | 'tessera';
 
 export type GameMeta = {
   slug: string;
@@ -257,6 +258,20 @@ export const games: GameMeta[] = [
     kind: 'react',
     href: englishPath('/games/counterweight'),
     tone: 'counter',
+    daily: true,
+  },
+  {
+    slug: 'tessera',
+    title: 'Tessera',
+    tagline: 'A daily picture in clues. Fill the tiles, meet the thing.',
+    description:
+      'A daily picture-logic puzzle: row and column run lengths of a hidden silhouette — a landmark, invention, animal, or symbol. Fill and mark tiles until the picture appears, then read a short fact about what you uncovered. The same grid for everyone that day, and every picture has a unique line-solvable solution.',
+    howTo:
+      'Each number is a run of filled tiles, in order, with at least one gap between runs. Click or drag to fill; right-click, X, or Mark mode to rule a tile out. Arrows move; Space fills. Check my grid costs score. The same picture for everyone that day.',
+    genre: 'Picture logic',
+    kind: 'react',
+    href: englishPath('/games/tessera'),
+    tone: 'tessera',
     daily: true,
   },
 ];
