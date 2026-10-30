@@ -19,4 +19,5 @@ export const reactGameLoaders: Record<string, GameLoader> = {
   sequence: () => import('./sequence/Game'),
   counterweight: () => import('./counterweight/Game'),
   tessera: () => import('./tessera/Game'),
+  span: () => import('./span/Game'),
 };

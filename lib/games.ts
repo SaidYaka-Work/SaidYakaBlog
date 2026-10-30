@@ -20,7 +20,8 @@ export type GameTone =
   | 'alibi'
   | 'sequence'
   | 'counter'
-  | 'tessera';
+  | 'tessera'
+  | 'span';
 
 export type GameMeta = {
   slug: string;
@@ -272,6 +273,20 @@ export const games: GameMeta[] = [
     kind: 'react',
     href: englishPath('/games/tessera'),
     tone: 'tessera',
+    daily: true,
+  },
+  {
+    slug: 'span',
+    title: 'Span',
+    tagline: 'A daily bridges puzzle. Join the islands, never cross.',
+    description:
+      'A daily Hashiwokakero-style puzzle: numbered islands on a grid, and one or two straight bridges between them. No crossing, no passing through, every number exact, and the whole map one network. The same islands for everyone that day, with a unique solution.',
+    howTo:
+      'Tap two islands — or the span between them — to cycle none, one, then two bridges. Drag also works. Bridges stay straight, never cross, and never pass through an island. When every number is exact and the map is one network, you have spanned it.',
+    genre: 'Bridges',
+    kind: 'react',
+    href: englishPath('/games/span'),
+    tone: 'span',
     daily: true,
   },
 ];

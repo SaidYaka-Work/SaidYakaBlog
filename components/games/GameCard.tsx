@@ -236,6 +236,26 @@ function GamePreview({ tone, featured = false }: { tone: GameMeta['tone']; featu
           <span className="absolute right-[36%] top-[42%] h-5 w-5 rotate-45 bg-[#f0d8c8]/65" />
         </>
       )}
+      {tone === 'span' && (
+        <>
+          <span className="absolute left-[18%] top-[38%] h-8 w-8 rounded-full border border-[#e8a87c]/70 bg-[#e8a87c]/20 text-center text-[11px] leading-8 text-[#f3eee6]">
+            3
+          </span>
+          <span className="absolute right-[20%] top-[28%] h-8 w-8 rounded-full border border-[#e8a87c]/70 bg-[#e8a87c]/20 text-center text-[11px] leading-8 text-[#f3eee6]">
+            3
+          </span>
+          <span className="absolute left-[18%] bottom-[22%] h-7 w-7 rounded-full border border-[#e8a87c]/55 bg-[#e8a87c]/15 text-center text-[10px] leading-7 text-[#f3eee6]">
+            1
+          </span>
+          <span className="absolute right-[20%] bottom-[18%] h-7 w-7 rounded-full border border-[#e8a87c]/55 bg-[#e8a87c]/15 text-center text-[10px] leading-7 text-[#f3eee6]">
+            1
+          </span>
+          <span className="absolute left-[28%] top-[46%] h-px w-[38%] bg-[#e8a87c]/80" />
+          <span className="absolute left-[28%] top-[50%] h-px w-[38%] bg-[#e8a87c]/80" />
+          <span className="absolute left-[23%] top-[48%] h-[22%] w-px bg-[#e8a87c]/70" />
+          <span className="absolute right-[25%] top-[42%] h-[30%] w-px bg-[#e8a87c]/70" />
+        </>
+      )}
       {tone === 'tessera' && (
         <div className="absolute inset-0 grid grid-cols-6 gap-1 p-6">
           {['', '2', '4', '4', '2', '', '2', '', '', '', '', '2', '6', '', '#', '#', '', '6', '4', '', '#', '#', '', '4', '2', '', '', '', '', '2'].map(
