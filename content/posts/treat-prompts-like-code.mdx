@@ -1,0 +1,160 @@
+---
+slug: "treat-prompts-like-code"
+title: "Treat Prompts Like Code Before They Break in Production"
+date: 2026-10-30
+author: Said Yaka
+tags:
+  - Prompts
+  - AI Engineering
+  - LLMs
+  - Evaluation
+  - Reliability
+description: "Shipped prompts drift and break silently. Here is how I version them next to the calling code, review diffs, gate on evals, pin models, and roll them back."
+canonical_url: "https://saidyaka.com/en/posts/treat-prompts-like-code"
+keywords:
+  - treat prompts like code
+  - prompt versioning
+  - LLM prompt management
+  - production prompt engineering
+  - prompt rollback
+og_title: "Treat Prompts Like Code Before They Break in Production"
+og_description: "Version the prompt with the caller. Review the diff. Gate on an eval. Pin the model. Log the version. Roll back like a deploy."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+A prompt that ships is not a note. It is product behavior. The model follows it the way a function follows a branch: every request, until you change it.
+
+I treat production prompts like code. The failure mode is an unreviewed config change, except nothing compiles, the output still sounds finished, and you find out from a ticket instead of a test.
+
+## They break silently because nothing compiles them
+
+Code fails loudly. A missing import, a type error, a red CI job. A prompt fails as fluent nonsense.
+
+You add a sentence to be "more helpful." Refund tone improves. Intake starts inventing order ids. The UI still renders. The regression is a vibe until someone names it.
+
+That is the drift. The string moved without the same gates as the caller:
+
+- a "quick" edit in a vendor console or a shared doc
+- a model alias that now points at a different snapshot
+- a tool description that changed while the system prompt did not
+- a one-line policy tweak that was never run against the old cases
+
+The product still answers. It just answers as a different product.
+
+## Put the prompt next to the code that calls it
+
+If the source of truth is a playground, a doc, or a dashboard the deploy cannot see, you do not have a prompt. You have folklore.
+
+I keep the prompt in the repo, in a file the caller imports. Same review, same history, same release as the function that sends it. The dashboard can be a viewer. It is not the live copy.
+
+A shape I will actually ship:
+
+```
+prompts/
+  intake.v3.txt
+  intake.v3.meta.json
+lib/
+  intake.ts          // imports intake.v3
+```
+
+The meta file is boring on purpose: id, version, owner, pinned model, last eval run. If a sentence affects behavior, it lives in that file. The caller asks for `intake@v3`, not "whatever is in the console."
+
+This is the same split I use for [structured outputs](/en/posts/designing-llm-features-around-structured-outputs/): the schema version and the prompt version are not the same object. Prompt `v3` can still emit `intake.v1`. Mixing them is how you cannot tell whether the model drifted or the contract did.
+
+## Review the diff. Name an owner.
+
+A prompt change is a behavior change. I will not merge it as "just copy."
+
+The pull request shows the prompt the way it shows a policy change: old string, new string, why, what should get better, what you are willing to make worse. If the author cannot name a regression they checked, they did not review their own edit.
+
+I want a reviewer who owns the feature. "Sounds nicer" is not a review. "This sentence asks for a refund reason the caller does not have, so the model will invent one" is a review.
+
+An owner is a person, not a channel. When intake breaks at 4pm, I want a name that can revert `v3` without a scavenger hunt.
+
+What I look at on the diff:
+
+- **new instructions** that conflict with an existing one
+- **examples** that teach a format the parser no longer accepts
+- **policy** that belongs in code — limits, allowlists — leaking into prose
+- **hidden volatility** — timestamps, shuffled few-shots, "today" — that makes two deploys incomparable
+- **scope** — one prompt doing intake, tone, and routing is three products in a string
+
+If the change is large, I ask for two versions, not a rewrite you cannot bisect.
+
+## No ship without an eval of that version
+
+A prompt version that has not been scored is a draft. Drafts do not go to production.
+
+I tie the version to a specific eval run before the flag flips: commit hash, prompt id, suite, the score that matters. "We ran evals last month" is not attached to this string.
+
+The suite should fail the way the product fails. Same instinct as [evals that catch regressions](/en/posts/rag-evals-that-catch-regressions/): measure the field you will act on, not a fluency number. For intake that is invented ids, missed escalations, and replies that assert a fact the ticket never had. A prettier paragraph that refunds the wrong charge is a fail.
+
+I keep a small core of real cases and use [synthetic data to widen, not to define](/en/posts/synthetic-data-for-llm-evals/). The go / no-go lives on the cases that look like production. The run is part of the pull request. If the bar is "I read five outputs and they felt fine," you are reviewing a demo.
+
+## Pin the model with the prompt
+
+A prompt is not portable across snapshots just because the marketing name stayed the same.
+
+I pin the model version next to the prompt version. `intake@v3` + `provider-model-2026-06-01` is a pair. `intake@v3` + `provider-model-latest` is a lottery. Aliases move. Providers ship silent upgrades. Your string did not change. Your product did.
+
+When I [route across cheap, fast, and strong models](/en/posts/how-i-think-about-model-routing/), the route still names a pin. Escalation is a second pair: `intake-hard@v3` plus the stronger snapshot.
+
+If the provider retires a pin, that is a prompt change. New pair, new eval, new rollout. I do not update the alias in the same change as a wording tweak. You will not know which one broke the suite.
+
+## Roll it out like any other change
+
+I do not flip the world to `v3` because the eval was green. Green means safe to start, not done.
+
+The prompt version is a flag. Ten percent. One workspace. One surface. Watch the live failures you actually fear, then widen. [Shipping fast still has to be the kind users can trust](/en/posts/shipping-fast-without-breaking-trust/). A silent full cutover is how you teach people the assistant is moody.
+
+"Off" has to serve the old prompt, not an empty string. If `v3` is wrong, `v2` is still the product. I write that in the pull request: who can flip it, what "off" serves, what I will look at after I stop staring.
+
+This is the boring path I already treat as [ownership, not a ticket](/en/posts/ownership-in-software-engineering-owning-outcomes-not-tickets/). Merged is a git event. Done is `v3` adopted, measured, and reversible.
+
+## Log the version that wrote the output
+
+When a user pastes a bad reply, "the model said that" is not a debug step.
+
+Every output I might have to explain carries the pair that produced it: prompt id, prompt version, model pin, last eval run that cleared it, flag bucket. For agents, the [trace already needs the decision step](/en/posts/building-agent-observability/). Add the instruction identity. Tokens will not tell you that `v3` started inventing order ids at 14:00.
+
+I log the hash of the fully rendered prompt, not only the template name. If a caller injects a policy paragraph at runtime, that paragraph is part of the version.
+
+The incident question is then mechanical: which version, which pin, which bucket, which eval said this was fine. If you cannot answer those from the row, you will reproduce from memory.
+
+## Rollback is a pointer, not a rewrite
+
+The point is a short undo.
+
+I do not hotfix a live prompt by editing the console. I point the flag at `v2`, or I pin the previous model, and I leave `v3` in the repo with a note. Rewriting in place destroys the artifact you need to understand the break.
+
+Rollback should not require the original author. The owner, the flag, and the log are enough for whoever is on call. If reverting needs a new prompt drafted under pressure, you did not version it.
+
+A pair I want in the runbook:
+
+> Intake replies asserting refunds that are not in the ticket. Flip `intake_prompt` to `v2`. Confirm logs show `intake@v2` and the pinned model. Leave `v3` off until an eval run is attached.
+
+That is a deploy rollback. It should feel like one.
+
+## A checklist I reuse
+
+Before a prompt change ships:
+
+- File lives next to the caller, not in a console
+- Version and owner are named
+- Diff reviewed as behavior, not as copy
+- Eval run is attached to *this* version
+- Model pin is named with the prompt, not an alias
+- Flag, percent, and what "off" serves
+- Logs will show id, version, pin, and bucket
+- Rollback is a pointer someone else can flip
+
+If any of those are missing, I still have a scratchpad. Scratchpads do not belong on the user-facing path.
+
+## The string is the product
+
+I want the prompt to be boring to operate. Checked in. Reviewed. Scored. Pinned. Flagged. Logged. Reversible.
+
+Keep it next to the caller. Review it like a policy change. Do not ship a version the eval has not seen. Pin the model. Roll out on a flag. Write the version onto every output you might have to defend. When it breaks, point at the last good pair.
+
+If a coworker can edit the live instructions without a diff, an eval, or a name on the page, that string is not under engineering. Put it in the repo and treat it like the rest of the product.
