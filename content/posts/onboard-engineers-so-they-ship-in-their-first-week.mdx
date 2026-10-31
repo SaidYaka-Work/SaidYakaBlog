@@ -1,0 +1,152 @@
+---
+slug: "onboard-engineers-so-they-ship-in-their-first-week"
+title: "Onboard Engineers So They Ship in Their First Week"
+date: 2026-10-31
+author: Said Yaka
+tags:
+  - Engineering Leadership
+  - Software Engineering
+  - Team Culture
+  - Collaboration
+  - Execution
+description: "A tour and a stack of docs is not onboarding. Here is how I prepare before day one, pick a scoped first change, pair without taking the work, and make week one a team outcome."
+canonical_url: "https://saidyaka.com/en/posts/onboard-engineers-so-they-ship-in-their-first-week"
+keywords:
+  - engineer onboarding
+  - onboarding new engineers
+  - first week onboarding
+  - software engineering onboarding
+  - onboarding buddy
+og_title: "Onboard Engineers So They Ship in Their First Week"
+og_description: "Prepare access and a starter task before day one. Pair, write the unwritten down, make questions cheap, and treat the first ship as the team's job."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+A week of accounts, tours, and "read the wiki" is not onboarding. It is delay with a welcome message. The person is present. The team still cannot tell if they can ship.
+
+I treat week one as successful when they land a real change: reviewed, merged, and true in the environment that matters. Not a hero feature.
+
+## The first ship is the onboarding
+
+A tour tells them where the kitchen is. A first change tells them how work actually moves: who reviews, what "done" means, which tests matter, and whether a question is expensive.
+
+The first ship is also a test of the team. If they cannot merge a small, well-scoped change in five days, the problem is usually not them: late access, a scavenger-hunt environment, a starter task that needed three services, or a review that sat until Friday.
+
+I do not need a large pull request. I need a change someone will feel: a broken deploy command, a webhook timeout that already double-sent mail, a copy bug users hit this week. Decorative chores teach them their work does not count.
+
+## Prepare the path before day one
+
+Day one is too late to invent the plan. I want the path ready before they show up, written down, with names on it.
+
+1. **Access:** repo, CI, staging, the error dashboard, the rooms they will actually use.
+2. **Machine:** a documented install that a teammate ran last week, not a README from last year.
+3. **Starter task:** written as a problem with a done definition, not "get familiar with billing."
+4. **Buddy:** named, with time on both calendars for the first three days.
+5. **Map:** who owns deploys, who owns the data model, who can say yes to a product cut.
+
+I also send a note the week before:
+
+> Your first change is already picked: the receipt webhook still acks a timeout as success, so the worker retries and double-sends mail. Done when it fails closed in staging and the runbook says so. I will pair on the setup Tuesday morning. Ping me if the laptop script dies.
+
+"Excited to have you, here is a forty-page wiki" is a pile. Late access is a team miss, not a newcomer delay.
+
+## Pick a first change that can actually land
+
+A good starter task has a shape. I write it the way I write any owned outcome, just smaller.
+
+- **real:** a user or an operator is better off if it ships
+- **bounded:** one service, one pull request
+- **checkable:** a third person can say whether it is done
+- **reviewed by someone who knows the file:** not a random reviewer on Friday
+- **reversible:** a flag or a revert, not a migration of the money table
+
+"Ramp up on notifications" is a scavenger hunt. The note above is a problem. I have written about [handing over outcomes instead of tickets](/en/posts/ownership-in-software-engineering-owning-outcomes-not-tickets/). If the task depends on a decision no one has made, make the decision first.
+
+## The buddy ships the path, not the diff
+
+The buddy is not a tour guide. Their job is to keep the path open: pairing on setup, a same-day first review, and noticing if the work went quiet.
+
+I timebox pairing. Sit together until the tests run locally. Then fifteen or thirty minutes on the surprising part, and leave when they have a next action they can do alone. I have written about [unblocking without taking the work](/en/posts/unblocking-teammates-is-the-highest-leverage-work/). Merge their branch for them and they are dependent on day eight.
+
+The buddy also teaches how to ask. Point them at [arriving with a decision, what they tried, and the size of the help](/en/posts/how-to-be-a-mentee-worth-investing-in/). Then model it when you are the one stuck:
+
+> I am blocked on whether we fail closed or return a typed empty. I need a yes-or-no so they can finish the test today.
+
+They will copy what you do, not what the handbook says. Do not ask the buddy to own every intro, IT provisioning, or every answer. If they are the only warm human, you assigned a chore.
+
+## Write down the unwritten as they hit it
+
+Every team has a second codebase: the things you only learn by being corrected. Where the real runbook lives. Which test you can skip. Who can approve a production flag. I do not try to write all of that before they start. I make it their job to leave the map better than they found it.
+
+- every Slack-only answer becomes a sentence in the doc they will look at next
+- every "we always do it this way" becomes a note on the helper or the README
+- the onboarding page is a living list they edit in week one, not a relic
+
+A useful edit is small:
+
+> Staging receipts need the `notifications-staging` role. Ask in #notifications, not #help. The laptop script does not install it.
+
+The newcomer is the only person who can still see what is missing. If a missing permission costs three hours and the doc does not change, you will buy those hours again.
+
+## Make the cheap question the default
+
+New people hide stuck work because they cannot tell a cheap question from a stupid one. If the last person who asked got a sigh, they will sit until Friday.
+
+I make the rule mechanical: "I am stuck" is a standup field, same as "I shipped." Thank the first messy question in public. Name when you are cheap to grab. Ask what would unblock them, not why they did not already know.
+
+The first review is part of that safety. [Review so the author grows, not just the diff](/en/posts/code-review-is-mentorship-in-disguise/). Label blocking versus nits. Explain the why. Turn the first pull request around the same day.
+
+## Give the early note while the work is still small
+
+Week one is the cheapest time to correct a habit. The work is still a line, not a reputation. I do not wait for a thirty-day form. I send one note after the first review or pairing, the way I [give feedback anyone can actually use](/en/posts/give-feedback-engineers-can-actually-use/): a moment, an effect, a next instance.
+
+> In standup you said the webhook was "should be fine." Two of us planned on a single receipt. It still acks on timeout. Can we say "blocked on timeout behavior" so we do not schedule around a guess?
+
+Praise the same way. "Great first week" is a vibe. "You failed closed and updated the runbook in the same PR" is a pattern they can repeat.
+
+I also book fifteen minutes at the end of the week. One thing to keep. One thing to change. One thing I should have prepared and did not.
+
+## Onboarding is a team outcome
+
+A buddy cannot carry access, reviews, product context, and belonging. If they try, they disappear from their own work and still leave gaps.
+
+I treat the first ship as shared ownership:
+
+- **platform / IT:** accounts and the laptop path ready before Monday
+- **the reviewer who knows the file:** a same-day first pass
+- **the lead:** a scoped problem, a decision right, and cover if it breaks
+- **everyone else:** a real intro, a lunch, an answer in the channel they were told to use
+- **the newcomer:** the change and the doc they improved
+
+When I am the lead, I do not ask "how is onboarding going?" I look at the path: whether the pull request moved, a question sat unanswered, someone took the work, or we backed a revert. If the first ship slips, I write down which part of the path failed.
+
+## A checklist I reuse
+
+Before they start:
+
+- Access and laptop path verified by someone other than the README author
+- Starter task written as shipped / checkable / reversible
+- Buddy named, with pairing time on the calendar
+- Reviewer who knows the file on the hook for a same-day first pass
+- Map of who can answer deploys, data, and product cuts
+
+During week one:
+
+- Tests run locally on day one; first change opened before midweek
+- Slack-only answers landed in a doc they will find again
+- First review labeled and explained; one usable note sent
+- Someone other than the buddy answered a question
+
+When I am the lead:
+
+- Handed over a problem, not a reading list
+- Treated a late account as a team miss
+- Did not let the buddy become the only human
+- Backed a revert, then wrote down the path failure
+
+## Week one is a ship, or it is a delay
+
+Tours fade. What sticks is whether they have already moved something real, and whether the team treated that as the job.
+
+Prepare the path. Give a small outcome. Pair without taking the work. Write the unwritten down. Make the question cheap. Say the early note. Share the load. If they cannot ship in week one, fix the path. Do not add another welcome deck.
