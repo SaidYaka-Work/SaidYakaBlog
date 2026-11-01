@@ -1,0 +1,145 @@
+---
+slug: "latency-budgets-for-llm-features"
+title: "Latency Budgets for LLM Features That Need to Feel Fast"
+date: 2026-11-01
+author: Said Yaka
+tags:
+  - Latency
+  - LLMs
+  - AI Engineering
+  - Performance
+  - Product Design
+description: "Users feel LLM latency before they feel model quality. Here is how I set a per-feature budget, spend it on first token and streaming, and watch p50 and p95."
+canonical_url: "https://saidyaka.com/en/posts/latency-budgets-for-llm-features"
+keywords:
+  - LLM latency budget
+  - time to first token
+  - streaming LLM UX
+  - AI product performance
+  - p95 latency monitoring
+og_title: "Latency Budgets for LLM Features That Need to Feel Fast"
+og_description: "Write the wait the feature is allowed to spend. Then spend it on first useful paint, not on a sequential stack that got lucky in the demo."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+Users do not experience your model. They experience the wait before anything useful appears.
+
+A demo that eventually writes a strong answer still feels broken if the screen sat still. Latency is not an infra leftover. It is the first quality signal the product sends. I write the constraint first, then spend it on purpose.
+
+## Write the budget before you pick the stack
+
+I do not start with a model card. I start with the surface.
+
+Autocomplete while someone is typing is one product. A support composer is another. A report the user asked to generate is a third. Treating them as one "AI latency" number is how you ship a chat spinner on a keystroke.
+
+The budget is end-to-end and per feature:
+
+- from the user action to first useful paint
+- from first useful paint to a complete, trustworthy result
+- what the UI is allowed to show in between
+
+"Useful" is the word that matters. A blinking cursor is not useful. A streamed sentence the user can start reading is. A spinner that says "thinking" is a confession that you have not decided.
+
+I write those numbers down as product constraints, not as hopes. If the feature cannot make the budget with the current path, the path is wrong. The model is one line item. Retrieval, tools, prompt size, and the UI are the rest.
+
+A budget is also a permission to be slow in the right places. A long generation can be fine if the first useful token arrives early and the rest is progress, not a frozen page. A cheaper model that finishes under budget can beat a stronger one that consistently misses it. I have written about [latency as part of quality when you route](/en/posts/how-i-think-about-model-routing/). The budget is what that sentence is for.
+
+## Measure time-to-first-token and time-to-useful separately
+
+Total generation time is a billing metric. It is a weak product metric.
+
+Users judge two clocks:
+
+- **time-to-first-token (TTFT)**: when the first model token arrives
+- **time-to-useful**: when the interface has something a person can actually use
+
+Those are not the same. A stream that starts with filler ("Sure, I can help with that") spent the first-token budget on nothing. A structured feature that waits for a complete JSON blob can have a fine TTFT on the wire and a bad time-to-useful in the UI.
+
+I also keep total time. A reply that starts instantly and then dribbles can still feel broken if the user cannot act until the end. The point is to stop collapsing three clocks into one average.
+
+When I instrument a feature I want action timestamp, first token, first useful paint, and completion. If you only log model duration, you will miss the wait the user saw.
+
+## Stream meaning, not just tokens
+
+Streaming is the cheapest way to spend a budget well, if you stream something a person can read. I treat it as a UI contract, not a transport flag.
+
+### Progressive UI
+
+Tokens are one channel. The feature usually has others: a skeleton that matches the final layout, retrieved sources as they exist, tool names while calls run, fields filling as they validate.
+
+A support-draft feature can show ticket facts before the first sentence of the reply. An agent can name the tool it is calling instead of sitting on a blank composer. A structured intake form can paint `intent` the moment it is valid, even if `customer_visible_reply` is still streaming. Same instinct as [designing around outputs you can trust](/en/posts/designing-llm-features-around-structured-outputs/): the object has parts. Some can land earlier.
+
+### Do not lie in the gap
+
+A placeholder that pretends the answer is done is worse than a wait. So is a "done" state that later rewrites the first paragraph.
+
+If the output is not safe to show until a validator runs, stream the status, not the raw tokens. Feeling fast is not the same as flashing an invalid object and then yanking it.
+
+## Spend the budget on the critical path
+
+Once the clocks exist, most of the work is removing things from the path before first useful paint.
+
+### Parallelize work that does not depend
+
+A lot of "the model is slow" is sequential work that did not need to be.
+
+If you already know you will retrieve, start retrieval when the user submits, not after a planner token. If two tools do not need each other's output, call them together. If the UI needs a title and a body, do not block the title on the body.
+
+The anti-pattern is an agent that discovers, one step at a time, a fetch you could have issued from the request. I would rather [make the tools fewer and higher-level](/en/posts/designing-tools-llm-agents-can-use/) than add another hop.
+
+### Route the easy work to a faster model
+
+Not every request deserves the slow, expensive model.
+
+Classification, extraction, "is this a follow-up or a new task," and short transforms are usually a fast-model job. Save the stronger model for the turn where the extra quality is visible. That is the point of [routing by task class](/en/posts/how-i-think-about-model-routing/). From a latency-budget view, routing is how you stop spending frontier-model TTFT on a title case.
+
+Escalation still belongs. A cheap miss that then retries on a slow model can be worse than starting on the slow one. The budget should include that path, not only the happy path.
+
+### Cache the work you already paid for
+
+Cache is how a second turn stays inside the budget after the first one spent it.
+
+Prompt prefixes that do not change — policy, tool schemas, persona — should be shaped so they can hit a cache. I wrote about that as [a product feature, not an infra trick](/en/posts/prompt-caching-is-a-product-feature/). The latency version is simpler: if the second message in a thread feels like a cold start, the prompt is too volatile or the cache boundary is in the wrong place.
+
+There is also result cache. Identical asks and stable retrieval sets do not need a model. A cache miss should be visible in the trace. A cache hit should be visible in the p50.
+
+### Speculate and precompute the next likely step
+
+Some wait can disappear before the click.
+
+If a workflow always retrieves the same workspace docs, retrieve them on session start, not on submit. If the next button is almost certainly "draft a reply," you can start a cheap draft when the ticket opens and throw it away if the user types something else.
+
+Speculation should be cheap to abandon. I do not precompute a high-stakes action. I precompute lookups, embeddings, summaries, and drafts that are safe to drop.
+
+### Trim the context you send
+
+A fat prompt is latency. The user feels the wait first.
+
+I keep the working set small: this turn, the few retrieved snippets that support it, the tool results from this step. I do not paste the repo or a policy PDF "just in case." That is the same split as [context versus memory](/en/posts/context-windows-are-not-memory/). Extra tokens delay first token, stretch total time, and make caching worse.
+
+If a fact has to be true, look it up. If it has to persist, store it. If it is not needed for this turn, leave it off the desk.
+
+## Watch p50 and p95 as product metrics
+
+Averages hide the path that trains users the product is moody.
+
+I want **p50** for the typical feel and **p95** for the tax. A feature with a fine median and a long tail will get the demo and lose the weekday. The tail is usually a cache miss, a slow tool, an escalation, or a fat prompt. If you cannot slice by those, you cannot spend the budget.
+
+What I put on the dashboard, per feature:
+
+- p50 and p95 for time-to-first-token, time-to-useful, and completion
+- budget miss rate (how often we exceed the number we wrote down)
+- the same clocks split by route, cache hit, and tool path
+
+This is [observability](/en/posts/building-agent-observability/) pointed at wait. Tokens will not tell you that the p95 is a sequential retrieval you could have started earlier. The trace should.
+
+I alert on miss rate and p95, not on a mean that a good morning can hide. When p95 moves, I want to know which slice moved. "The model got slower" is a hypothesis. "The cache hit rate dropped on the support composer" is a cause. Do not average features together.
+
+## The budget is the product
+
+Write the end-to-end budget for the surface. Measure first token, first useful paint, and completion as different clocks. Stream meaning. Parallelize independent work. Route the easy turns. Cache the stable prefix. Precompute what you can throw away. Trim the working set. Watch p50 and p95 on the paths that exist.
+
+If a coworker cannot say what the feature is allowed to spend, you do not have a performance plan. You have a demo that got lucky on a warm cache.
+
+Fast is not a model property. Fast is a budget you keep.
