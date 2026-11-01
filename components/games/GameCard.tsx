@@ -256,6 +256,14 @@ function GamePreview({ tone, featured = false }: { tone: GameMeta['tone']; featu
           <span className="absolute right-[25%] top-[42%] h-[30%] w-px bg-[#e8a87c]/70" />
         </>
       )}
+      {tone === 'meridian' && (
+        <>
+          <span className="absolute inset-x-6 top-[42%] h-px bg-[#e8a87c]/30" />
+          <span className="absolute left-[18%] top-[48%] h-2 w-2 rounded-full bg-[#e8a87c]" />
+          <span className="absolute right-[22%] top-[36%] h-2 w-2 rounded-full bg-[#f0d8c8]" />
+          <span className="absolute left-[22%] right-[24%] top-[28%] h-10 rounded-[100%] border-t-2 border-[#e8a87c]/80" />
+        </>
+      )}
       {tone === 'gear' && (
         <>
           <span className="absolute left-[22%] top-[28%] h-16 w-16 rounded-full border-[6px] border-dashed border-[#e8a87c]/70 bg-[#e8a87c]/15" />
