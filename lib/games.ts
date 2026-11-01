@@ -22,7 +22,8 @@ export type GameTone =
   | 'counter'
   | 'tessera'
   | 'span'
-  | 'gear';
+  | 'gear'
+  | 'meridian';
 
 export type GameMeta = {
   slug: string;
@@ -302,6 +303,20 @@ export const games: GameMeta[] = [
     kind: 'react',
     href: englishPath('/games/gearwork'),
     tone: 'gear',
+    daily: true,
+  },
+  {
+    slug: 'meridian',
+    title: 'Meridian',
+    tagline: 'A hidden city. Distance, a bearing, and a curve on the map.',
+    description:
+      'A daily geography puzzle: everyone gets the same mystery world city. Guess another city to see the great-circle distance and the initial compass bearing, drawn on a flat map so the shortest route bows. Six tries, then a short fact and why great circles curve.',
+    howTo:
+      'Type a city. Each guess shows how far you are, the first heading toward the hidden city, and a curved start of the great-circle route. Six tries; the same city for everyone that day.',
+    genre: 'Geography',
+    kind: 'react',
+    href: englishPath('/games/meridian'),
+    tone: 'meridian',
     daily: true,
   },
 ];
