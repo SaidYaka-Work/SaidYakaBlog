@@ -20,4 +20,5 @@ export const reactGameLoaders: Record<string, GameLoader> = {
   counterweight: () => import('./counterweight/Game'),
   tessera: () => import('./tessera/Game'),
   span: () => import('./span/Game'),
+  gearwork: () => import('./gearwork/Game'),
 };

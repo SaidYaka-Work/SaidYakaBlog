@@ -21,7 +21,8 @@ export type GameTone =
   | 'sequence'
   | 'counter'
   | 'tessera'
-  | 'span';
+  | 'span'
+  | 'gear';
 
 export type GameMeta = {
   slug: string;
@@ -287,6 +288,20 @@ export const games: GameMeta[] = [
     kind: 'react',
     href: englishPath('/games/span'),
     tone: 'span',
+    daily: true,
+  },
+  {
+    slug: 'gearwork',
+    title: 'Gearwork',
+    tagline: 'Seat the gears so the output turns at the day’s ratio.',
+    description:
+      'A daily mechanical-reasoning puzzle: a fixed motor, a tray of gears, and an output shaft that must turn at a given speed and direction. Mesh simple and compound gears, watch them spin, and learn why tooth counts set a ratio.',
+    howTo:
+      'Place gears from the tray onto pegs so they mesh from the motor to the output. Meshing flips direction; speed follows tooth counts. A stacked pair shares an axle and multiplies the ratio. A fighting loop jams. Same workshop for everyone that day.',
+    genre: 'Mechanics',
+    kind: 'react',
+    href: englishPath('/games/gearwork'),
+    tone: 'gear',
     daily: true,
   },
 ];

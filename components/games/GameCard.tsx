@@ -256,6 +256,15 @@ function GamePreview({ tone, featured = false }: { tone: GameMeta['tone']; featu
           <span className="absolute right-[25%] top-[42%] h-[30%] w-px bg-[#e8a87c]/70" />
         </>
       )}
+      {tone === 'gear' && (
+        <>
+          <span className="absolute left-[22%] top-[28%] h-16 w-16 rounded-full border-[6px] border-dashed border-[#e8a87c]/70 bg-[#e8a87c]/15" />
+          <span className="absolute right-[18%] top-[32%] h-12 w-12 rounded-full border-[5px] border-dashed border-[#f0d8c8]/80 bg-[#f0d8c8]/10" />
+          <span className="absolute left-[34%] top-[46%] h-px w-[28%] bg-[#e8a87c]/70" />
+          <span className="absolute left-[30%] top-[42%] h-2.5 w-2.5 rounded-full bg-[#e8a87c]" />
+          <span className="absolute right-[28%] top-[40%] h-2 w-2 rounded-full bg-[#f0d8c8]" />
+        </>
+      )}
       {tone === 'tessera' && (
         <div className="absolute inset-0 grid grid-cols-6 gap-1 p-6">
           {['', '2', '4', '4', '2', '', '2', '', '', '', '', '2', '6', '', '#', '#', '', '6', '4', '', '#', '#', '', '4', '2', '', '', '', '', '2'].map(
