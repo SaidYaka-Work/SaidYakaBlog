@@ -328,6 +328,10 @@ html[data-motion='on'] [data-reveal].will-reveal.is-in {
   animation-delay: calc(var(--reveal-delay, 0) * 70ms);
 }
 
+html[data-motion='on'] .calc-tick {
+  animation: rise-soft 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 ::view-transition-old(root) {
   animation: fade-out 180ms ease both;
 }

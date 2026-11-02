@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import PostEmbed from '@/components/PostEmbed';
 import ReadingProgress from '@/components/ReadingProgress';
 import TableOfContents from '@/components/TableOfContents';
 import { markdownToHtml } from '@/lib/markdown';
+import { splitPostEmbeds } from '@/lib/post-embeds';
 import { getAllPosts, getPostBySlug } from '@/lib/posts';
 import {
   AUTHOR_NAME,
@@ -76,6 +78,7 @@ export default async function PostPage({
   if (!post) notFound();
 
   const content = await markdownToHtml(post.content);
+  const bodyChunks = splitPostEmbeds(content);
   const minutes = readingTime(post.content);
   const allPosts = await getAllPosts();
   const firstTag = post.tags[0];
@@ -147,10 +150,19 @@ export default async function PostPage({
               )}
             </header>
 
-            <div
-              className="prose prose-essay prose-lg max-w-none"
-              dangerouslySetInnerHTML={{ __html: content }}
-            />
+            <div className="prose prose-essay prose-lg max-w-none">
+              {bodyChunks.map((chunk, index) =>
+                chunk.type === 'html' ? (
+                  <div
+                    key={`html-${index}`}
+                    className="contents"
+                    dangerouslySetInnerHTML={{ __html: chunk.html }}
+                  />
+                ) : (
+                  <PostEmbed key={`${chunk.id}-${index}`} id={chunk.id} />
+                )
+              )}
+            </div>
 
             {related.length > 0 && (
               <section className="mt-16 border-t border-[var(--line)] pt-10">
