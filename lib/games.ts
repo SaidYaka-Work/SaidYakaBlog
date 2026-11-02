@@ -23,7 +23,8 @@ export type GameTone =
   | 'tessera'
   | 'span'
   | 'gear'
-  | 'meridian';
+  | 'meridian'
+  | 'decant';
 
 export type GameMeta = {
   slug: string;
@@ -317,6 +318,20 @@ export const games: GameMeta[] = [
     kind: 'react',
     href: englishPath('/games/meridian'),
     tone: 'meridian',
+    daily: true,
+  },
+  {
+    slug: 'decant',
+    title: 'Decant',
+    tagline: 'Pour between jugs until the target volume sits exactly.',
+    description:
+      'A daily water-jug measuring puzzle: jugs of fixed capacities, a well, and a drain. Pour from one into another to hit an exact volume, scored against the shortest dance. After you finish, a short note shows why Euclid’s gcd decides what you can measure.',
+    howTo:
+      'Tap a jug, then the well to fill it, the drain to empty it, or another jug to pour. Keyboard: 1–3 select, F fills, E empties, arrows move, U undoes. Same jugs for everyone that day; weekends add a third jug.',
+    genre: 'Measuring',
+    kind: 'react',
+    href: englishPath('/games/decant'),
+    tone: 'decant',
     daily: true,
   },
 ];

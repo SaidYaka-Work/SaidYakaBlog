@@ -273,6 +273,17 @@ function GamePreview({ tone, featured = false }: { tone: GameMeta['tone']; featu
           <span className="absolute right-[28%] top-[40%] h-2 w-2 rounded-full bg-[#f0d8c8]" />
         </>
       )}
+      {tone === 'decant' && (
+        <>
+          <span className="absolute bottom-6 left-[18%] h-20 w-12 rounded-b-[1.4rem] rounded-t-sm border-2 border-[#e8a87c]/55">
+            <span className="absolute inset-x-0 bottom-0 h-1/2 bg-[#e8a87c]/70" />
+          </span>
+          <span className="absolute bottom-6 right-[22%] h-14 w-10 rounded-b-[1.2rem] rounded-t-sm border-2 border-[#f0d8c8]/50">
+            <span className="absolute inset-x-0 bottom-0 h-2/3 bg-[#f0d8c8]/55" />
+          </span>
+          <span className="absolute left-[46%] top-7 h-6 w-6 rounded-full border border-[#e8a87c]/40 bg-[#e8a87c]/20" />
+        </>
+      )}
       {tone === 'tessera' && (
         <div className="absolute inset-0 grid grid-cols-6 gap-1 p-6">
           {['', '2', '4', '4', '2', '', '2', '', '', '', '', '2', '6', '', '#', '#', '', '6', '4', '', '#', '#', '', '4', '2', '', '', '', '', '2'].map(
