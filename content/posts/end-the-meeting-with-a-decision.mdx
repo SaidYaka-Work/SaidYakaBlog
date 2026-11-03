@@ -1,0 +1,165 @@
+---
+slug: "end-the-meeting-with-a-decision"
+title: "End the Meeting With a Decision"
+date: 2026-11-03
+author: Said Yaka
+tags:
+  - Engineering Leadership
+  - Software Engineering
+  - Team Culture
+  - Collaboration
+  - Execution
+description: "A design review that ends with \"let's sync again\" is not unfinished thinking. Here is how I write the question, name options, timebox, decide who decides, and leave with a written next step."
+canonical_url: "https://saidyaka.com/en/posts/end-the-meeting-with-a-decision"
+keywords:
+  - technical discussion decision
+  - design review decision
+  - engineering meeting decisions
+  - RFC decision process
+  - software engineering leadership
+og_title: "End the Meeting With a Decision"
+og_description: "Write the question first. Name options with tradeoffs. Timebox. Decide who decides. Capture it where people will find it. Follow through."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+A design review that ends with "let's sync again" did not fail because the problem was hard. It failed because the group spent the expensive hour and left without a decision. The Slack thread will reopen. The RFC will sit on "thoughts?" The next meeting will restart from the same whiteboard.
+
+I treat a technical discussion as done when we leave with a written decision, a named owner, and a next step. Alignment is a feeling. A decision is a sentence someone can find next week.
+
+## Write the decision question first
+
+If you cannot write the question, you are not ready to meet.
+
+"How should we do notifications?" is a topic. A topic invites a tour. "Should the receipt job fail closed on a timeout, or ack and retry?" is a decision. A decision has a pick.
+
+I put the question at the top of the invite, the RFC, or the Slack thread, before anyone talks:
+
+> Decision: do we fail closed on timeout, or ack and retry? I need this today so the test can land.
+
+A room without a question will generate context. The calendar hold is not cheap.
+
+If there are two questions, there are two discussions. Split them. Park the second one in writing with an owner and a date.
+
+The same sentence I use when [handing over a problem](/en/posts/ownership-in-software-engineering-owning-outcomes-not-tickets/) belongs at the top: what we are deciding, and what we are not.
+
+## Name the options, the tradeoffs, and a recommendation
+
+A blank page is not facilitation. It is a request that the room invent the work in real time.
+
+I come in with two or three options, what each gets wrong, and the one I would ship. Three is usually enough. Twelve is a catalog.
+
+- **fail closed:** we drop a retry; we do not double-send mail
+- **ack and retry:** we keep the receipt; we accept a duplicate unless we add a lock
+- **ack and park:** we do not lose the event; we add a queue we do not have yet
+
+Then a recommendation:
+
+> I would fail closed. Duplicate mail is worse than a missed retry, and we can alert. I am willing to be wrong if support already treats a missed receipt as an incident.
+
+"What does everyone think?" is how you get a tour of preferences. A recommendation is something the group can attack. Attack is useful. A preference tour is not.
+
+Name the thing you are willing to get wrong. If you cannot, the room will absorb unbounded risk and ask for another meeting.
+
+## Timebox the talk, not the thinking
+
+The discussion exists to make the options comparable, then to pick.
+
+I timebox out loud:
+
+> Twenty minutes on whether fail-closed loses a receipt we cannot rebuild. Then we decide. The second consumer is out of scope.
+
+When the timebox ends, we decide with the facts we have, or we write the missing fact and who will get it by when. "Let's think more" needs an owner and a date. Parking lots need a sentence, not a vibe.
+
+I stop when people start restating. The options are already clear. The group is negotiating comfort. Comfort is not a decision rule.
+
+A Slack thread gets the same treatment. If it is still adding context on day two, I post the question, the options, and a default:
+
+> We have two options and no new facts. I am shipping fail closed tomorrow unless someone names a receipt we cannot rebuild.
+
+Silence after a default is agreement. An open thread is not. An RFC with comments and no closer is a slower meeting. Put the decision at the top when you can pick.
+
+## Decide who decides
+
+A room of eight peers will not converge by goodwill. Someone has to have the decision right, and everyone else has to know they do.
+
+I say it at the start:
+
+> I own this call. I want the failure modes. I will decide at :40.
+
+If I do not own it, I name who does. "We" is how no one can close the thread. [Ownership is a decision right](/en/posts/ownership-in-software-engineering-owning-outcomes-not-tickets/), not a ticket with your name on it.
+
+Consensus is for reversible, low-blast-radius choices. It is a bad default. Most design reviews need a responsible person and a consult, not a vote.
+
+If the decider is not in the room, the meeting was a briefing. Send them the question, the options, and the recommendation. Do not hold a second review so they can hear the same tour.
+
+Leads say what people can decide alone, what they must broadcast, and what they must escalate. If every technical choice still routes through you, you will keep getting "let's sync."
+
+When I am the one being asked, I try to [make the interrupt cheap](/en/posts/unblocking-teammates-is-the-highest-leverage-work/): a yes or no, today, with the blast radius attached. Defer when being wrong is costly, not by default.
+
+## Write the decision where people will look
+
+A decision that lives in a Zoom chat is a rumor. Next week's reviewer will not find it. The next RFC will relitigate it.
+
+I write it the same day, in the place the work already lives: the RFC, the design doc, the ticket, the pull request that implements it.
+
+The note is short:
+
+> **Decision:** fail closed on timeout. We will not ack a receipt we did not finish. Owner: the notifications author. Next: land the test and the alert this week. Revisit if support shows a missed receipt we cannot rebuild. We are willing to drop a retry.
+
+That is enough: the question, the choice, why, what we will get wrong, who owns the next step, and when we would reopen it.
+
+I paste that block into the invite thread, the top of the RFC, or the doc the next person will open. Slack is the ping. I have written about [leaving a breadcrumb where the next person will look](/en/posts/unblocking-teammates-is-the-highest-leverage-work/). The decision is the breadcrumb. A dated paragraph in the right file beats an empty ADR folder.
+
+## Follow through, or you held a salon
+
+A written decision with no next step is a position paper. The team will treat it as optional, then book another review when the work gets uncomfortable.
+
+The owner does the next concrete thing: the test, the flag, the RFC update, the "we are not doing the queue" comment on the ticket. I look for that the same way I [check the next instance of feedback](/en/posts/give-feedback-engineers-can-actually-use/). If it does not show up in the change, we performed agreement.
+
+Reopening needs a new fact. "I am still uneasy" is not one. "Support has missed receipts we cannot rebuild" is. Relitigate without that, and the real meeting is always the next one.
+
+If I was wrong, I say so in the same place and write the new decision. Changing your mind in public is how the record stays trusted.
+
+## When waiting is the decision
+
+Some calls should not close today. A missing measurement. A legal constraint. A blast radius you cannot see.
+
+Waiting is fine if it is explicit:
+
+> We are not deciding fail-closed today. We need one number: how many timeouts last week were receipts we could not rebuild. I will have that tomorrow. Default if I cannot: fail closed.
+
+That is a decision about the path. "Let's sync Thursday" is not. Thursday needs the question, the missing fact, and the default if the fact does not arrive.
+
+Speed still has to be the kind users can [trust](/en/posts/shipping-fast-without-breaking-trust/). A fast decision that ships a silent no-op is a later incident, not a closed thread.
+
+## A checklist I reuse
+
+Before I book the time:
+
+- Decision question written as a pick, not a topic
+- Two or three options with what each gets wrong
+- A recommendation and the thing I am willing to get wrong
+- Named decider, even if it is me
+- Out of scope written down
+
+In the discussion:
+
+- Timebox said out loud
+- New options added as a sentence, not a restart
+- Missing facts get an owner and a time, or we decide without them
+- We leave with a choice, an owner, and a next step
+
+After:
+
+- Decision written the same day where the next person will look
+- Slack is a ping, not the record
+- Next step has a name and a date
+- Reopen only with a new fact
+- If I change my mind, I write the new decision in the same place
+
+## Leave with a sentence
+
+The expensive part already happened. People prepared. They showed up. They argued the failure modes. Do not spend that and then schedule the real conversation for later.
+
+Write the question. Name the options. Timebox. Say who decides. Write the sentence down. Do the next step. A team that can end a discussion can [own the outcome](/en/posts/ownership-in-software-engineering-owning-outcomes-not-tickets/) instead of owning another meeting. The calendar hold is optional. The decision is the work.
