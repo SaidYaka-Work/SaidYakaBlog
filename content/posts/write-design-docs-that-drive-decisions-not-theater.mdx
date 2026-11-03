@@ -1,0 +1,136 @@
+---
+slug: "write-design-docs-that-drive-decisions-not-theater"
+title: "Write Design Docs That Drive Decisions, Not Theater"
+date: 2026-11-02
+author: Said Yaka
+tags:
+  - Engineering Leadership
+  - Software Engineering
+  - Team Culture
+  - Collaboration
+  - Execution
+description: "A design doc that never forces a choice is theater. Here is how I write ones that decide: when to write, how to frame the problem, and how to run review so it ends."
+canonical_url: "https://saidyaka.com/en/posts/write-design-docs-that-drive-decisions-not-theater"
+keywords:
+  - how to write a design doc
+  - engineering design document
+  - software design review
+  - design doc template
+  - documentation theater
+og_title: "Write Design Docs That Drive Decisions, Not Theater"
+og_description: "Write a design doc only when being wrong is shared. Put the decision first, steelman real alternatives, and close review with a named owner and a date."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+Most design docs I see are theater. They write down a choice that already happened in a hallway, or they wander until someone stamps "LGTM" on a vague recommendation.
+
+A useful design doc is a decision tool. If it does not force a choice by a date, it is a memo. I write one when being wrong is shared, put the decision first, and run review like I want it to end.
+
+## Write one when being wrong is expensive and shared
+
+A short message is enough when one person owns the change, the blast radius is one service, and a flag can reverse it. A prototype is better when the unknown is "will this even work," not "which constraint should we accept."
+
+I write a doc when at least two of these are true:
+
+- more than one team, caller, or system will wait on the choice
+- reversing it is a migration, a public contract, or a data rewrite
+- people will schedule work around a guess if we stay quiet
+- the tradeoff is what juniors need to see, not just the answer
+
+"Should this helper live in a new file?" is a pull request. "Should refunds write a new ledger or stay eventually consistent?" is a doc. If I cannot name who is blocked until we pick, I need a recommendation in the thread and a deadline, not a document.
+
+## Put the decision on the first screen
+
+The first screen is the only one you can count on. History belongs after the choice, or in a link. I open with four sentences:
+
+- **the decision:** what we are picking, in a form a third person could check
+- **why now:** who is waiting, what is false if we slip
+- **the recommendation:** the option I would ship, and what I am willing to get wrong
+- **the decision-maker and the date:** who cuts it, by when
+
+A foggy open: "This document explores approaches to our refund pipeline."
+
+A usable one:
+
+> We are deciding whether the refund job writes a new ledger row or updates the existing payment. Two callers are waiting on the id. I recommend a new row and keeping the old writer until the second caller is on. I am willing to be wrong about that caller's date. N decides Friday.
+
+If you hide the recommendation until page four, reviewers will debate the background. I also write what I am not deciding. "Schema for the archive table" is next week's problem. Putting it here is how you get comments on the wrong fork.
+
+## List real alternatives, including the one you dislike
+
+Theater is one preferred option plus a strawman. A decision needs two or three options someone competent would actually pick, plus "do nothing" when that is real. For each, I want what we would ship, what has to be true, the miss we can survive, and who pays if we are wrong:
+
+> Option A: new ledger row. Stable id for callers. Dual writers until cutover. Wrong if the second caller never arrives.
+>
+> Option B: update in place. Smaller change. Wrong if a second consumer needs the old payment intact.
+>
+> Option C: do nothing this month. Keep the workaround. Wrong if callers ship against a placeholder and we reconstruct intent in an incident.
+
+I include the option I do not want. If I cannot steelman it, I do not understand the tradeoff yet. "We could also rewrite billing" is a different document.
+
+## Keep it short enough to review in one sitting
+
+If people skim, you wrote a book. I aim for something a reviewer can finish before their next meeting. Cut history that is not load-bearing. Link the incident or the README. One diagram if the ownership model is the question, zero if it is decoration. No API appendix unless the contract *is* the decision.
+
+Length is a reviewability problem, the same way a huge pull request is. I have written about [reviewing so the author grows, not just the diff](/en/posts/code-review-is-mentorship-in-disguise/). Label blocking versus nits, explain the why, and do not stall a decision on taste.
+
+## Run review so it ends
+
+A doc without a closer is a comment graveyard. I set the process in the header:
+
+- **named decision-maker:** one person. A committee can advise. It cannot cut.
+- **deadline:** a day, not "when we have consensus"
+- **required reviewers vs informed:** people who will live with the blast radius must comment. Everyone else can read.
+- **async first:** comments in the doc. A meeting is for the one question the comments did not settle.
+
+I ask reviewers for a recommendation, not a vibe. "LGTM" is empty. "Ship A. B loses if the second consumer is real" is a review.
+
+If comments diverge on the same question, I book a short meeting: the fork, the two positions, the decision-maker. After we talk, someone writes the decision back on the doc. Silence is not consent. It is a blocked author. The same habit I use when [unblocking teammates](/en/posts/unblocking-teammates-is-the-highest-leverage-work/) applies: a same-day first pass beats a thorough essay after the date slipped.
+
+Leads should not be the default closer. If every choice still routes through you, you have reporters, not [owners](/en/posts/ownership-in-software-engineering-owning-outcomes-not-tickets/). Say who can decide alone, who must broadcast, and who must escalate.
+
+## Disagree, then commit in writing
+
+Once the decision is cut, the job is to make it true. Record the dissent in one or two sentences, name what would reopen it, and implement the chosen path without a shadow design in Slack.
+
+> Decided: new ledger row. Dissent: B is cheaper if the second caller slips. Reopen if that caller is not on by the next cutoff.
+
+Relitigating in a side channel is how theater returns. If you were the dissenting voice, [say the note about the work](/en/posts/give-feedback-engineers-can-actually-use/), not about the person who cut it. "The doc still does not say what happens if a second consumer arrives" is useful. "Your design was sloppy" is a fight. A lead who reopens every committed decision teaches that the doc was decoration.
+
+## Use the doc to grow people and unblock the queue
+
+The highest-leverage version is not the lead writing a perfect RFC. It is an engineer writing the recommendation, and you mentoring the judgment.
+
+A junior who has to write "I recommend A because B fails if the id is treated as real" is practicing the same skill as a good pull request. You can give [feedback on the decision](/en/posts/give-feedback-engineers-can-actually-use/) while it is still cheap: a missing alternative, a buried recommendation, a review with no owner.
+
+The doc also unblocks people who were not in the room. A teammate should be able to start the next caller without booking you. If the only way to learn the why is to ask you, you wrote a speech.
+
+## Keep the doc honest after you ship
+
+A design doc that never updates is fiction. I treat it as part of [owning the outcome](/en/posts/ownership-in-software-engineering-owning-outcomes-not-tickets/), not as a planning artifact. After we ship, I write what is actually true: what we built, what we left false on purpose, what would change the next similar choice, and where the flag, dashboard, and rollback live.
+
+A stale recommendation is worse than no doc. If we shipped B after all, do not leave A as the headline. I date a short "what shipped" note. The next decision should start from reality.
+
+## A skeleton I reuse
+
+Same header every time, so reviewers know where to look:
+
+1. **Decision** — one sentence, checkable
+2. **Why now** — who waits, what is false if we slip
+3. **Recommendation** — the option, and what I am willing to get wrong
+4. **Owner, decision-maker, date** — three names, one day
+5. **Out of scope** — the forks this doc will not cut
+6. **Options** — two or three real ones, plus do-nothing if it is real; each with the belief, the miss we can survive, and who pays
+7. **How we will know** — a signal after we look away
+8. **Review** — required commenters, informed readers, async until the date
+9. **Decision record** — what we picked, the dissent, what would reopen
+10. **What shipped** — filled in after, not before
+
+If section 1 and 3 are empty, I do not send it. If section 6 has one real option, I do not send it. If section 9 never gets written, the review failed.
+
+## Decide, or do not write
+
+Design docs are expensive. They are worth it when they collapse waiting, teach the tradeoff, and leave a record the next person can use.
+
+Write one when being wrong is shared. Put the decision first. Steelman the alternatives. Keep it reviewable. Name the closer and the date. Commit in writing. Update what you actually shipped. If you cannot do those, send a short recommendation or build the prototype. A memo that never decides is delay with better formatting.
