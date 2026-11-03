@@ -24,7 +24,8 @@ export type GameTone =
   | 'span'
   | 'gear'
   | 'meridian'
-  | 'decant';
+  | 'decant'
+  | 'ballot';
 
 export type GameMeta = {
   slug: string;
@@ -332,6 +333,20 @@ export const games: GameMeta[] = [
     kind: 'react',
     href: englishPath('/games/decant'),
     tone: 'decant',
+    daily: true,
+  },
+  {
+    slug: 'ballot',
+    title: 'Ballot',
+    tagline: 'A handful of ranked ballots. Name who instant runoff elects.',
+    description:
+      'A daily ranked-choice puzzle: a small fictional election, eight to twelve ranked ballots, and a few tries to name the Instant Runoff winner. After you finish, the runoff table, the plurality winner, and a short note on spoilers and center squeeze.',
+    howTo:
+      'Read the ranked ballots and name who wins Instant Runoff — drop last place, transfer those ballots, repeat. Four tries; a miss unlocks a stronger hint. Keyboard 1–4 or type a name. Same election for everyone that day.',
+    genre: 'Voting',
+    kind: 'react',
+    href: englishPath('/games/ballot'),
+    tone: 'ballot',
     daily: true,
   },
 ];

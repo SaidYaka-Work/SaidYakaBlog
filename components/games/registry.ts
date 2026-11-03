@@ -23,4 +23,5 @@ export const reactGameLoaders: Record<string, GameLoader> = {
   gearwork: () => import('./gearwork/Game'),
   meridian: () => import('./meridian/Game'),
   decant: () => import('./decant/Game'),
+  ballot: () => import('./ballot/Game'),
 };
