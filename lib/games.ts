@@ -25,7 +25,8 @@ export type GameTone =
   | 'gear'
   | 'meridian'
   | 'decant'
-  | 'ballot';
+  | 'ballot'
+  | 'triad';
 
 export type GameMeta = {
   slug: string;
@@ -347,6 +348,20 @@ export const games: GameMeta[] = [
     kind: 'react',
     href: englishPath('/games/ballot'),
     tone: 'ballot',
+    daily: true,
+  },
+  {
+    slug: 'triad',
+    title: 'Triad',
+    tagline: 'Twelve cards. Find every three that lock on all four attributes.',
+    description:
+      'A daily attribute-logic puzzle: a shared board of twelve cards, each with shape, color, count, and fill. Select three cards that are all the same or all different on every attribute. The board always hides several valid triads; find them all.',
+    howTo:
+      'Tap three cards. A triad is valid only if every attribute is all alike or all unlike — two matching and one odd value fails. The same twelve cards for everyone that UTC day. Hint marks one card from an unfound triad. Restart deals the same board.',
+    genre: 'Attributes',
+    kind: 'react',
+    href: englishPath('/games/triad'),
+    tone: 'triad',
     daily: true,
   },
 ];
