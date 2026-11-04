@@ -10,6 +10,7 @@ import { generateGenome, type DogGenome, type LifeStage } from '@/lib/dog';
 import { wagMs, type PortraitReaction } from './look';
 import type { DogGait, DogPose } from '@/lib/dog';
 import { applyDrive as stepDrive, createYard, tickYardAi } from '../../workers/dog/src/room';
+import { fetchPose, isBallLive, type PublicBall } from '../../workers/dog/src/fetch';
 import { applyWorldDrive, tickWorldAi, type FootprintGrid, type Ring } from '../../workers/dog/src/world';
 import { frameMark } from './world/frameMark';
 import { EAT_STAND, EAT_YAW, SLEEP_YAW, THREE_QUARTER_YAW, YARD_BODY } from './frame';
@@ -56,6 +57,7 @@ export type DriveControl = {
   buildings?: Ring[] | FootprintGrid;
   roads?: Ring[] | FootprintGrid;
   parks?: Ring[];
+  ball?: PublicBall | null;
 };
 
 function clipForGait(gait: DogGait, sad: boolean, asleep: boolean) {
@@ -193,7 +195,35 @@ const DogRig = forwardRef<Group, {
     if (driving && control) {
       const now = Date.now();
       const server = control.serverRef?.current ?? control.server;
-      if (control.youHold || control.localOnly) {
+      const liveBall = control.ball && isBallLive(control.ball, now) ? control.ball : null;
+      const scripted = liveBall ? fetchPose(liveBall, now) : null;
+      if (scripted && !scripted.done) {
+        localYard.current.pose.x = scripted.x;
+        localYard.current.pose.z = scripted.z;
+        localYard.current.pose.yaw = scripted.yaw;
+        localYard.current.pose.vx = scripted.vx;
+        localYard.current.pose.vz = scripted.vz;
+        localYard.current.pose.gait = scripted.gait;
+        if (control.youHold || control.localOnly) {
+          pushTrail(trail.current, now, scripted.x, scripted.z);
+          const mixed = reconcileDriver(localYard.current.pose, server, control.localOnly ? undefined : trail.current);
+          localYard.current.pose.x = mixed.x;
+          localYard.current.pose.z = mixed.z;
+          localYard.current.pose.yaw = mixed.yaw;
+        }
+        w.x = localYard.current.pose.x;
+        w.z = localYard.current.pose.z;
+        w.yaw = localYard.current.pose.yaw;
+        const clip = clipForGait(scripted.gait, sad, false);
+        play(clip);
+        const action = actions.current[clip];
+        const speed = Math.hypot(scripted.vx, scripted.vz);
+        action?.setEffectiveTimeScale(strideTimeScale(clip, speed, figure.timeScale * (sad ? 0.7 : 1)));
+        if (now - lastOnPose.current >= 80) {
+          lastOnPose.current = now;
+          control.onPose?.({ x: w.x, z: w.z, yaw: w.yaw, gait: scripted.gait });
+        }
+      } else if (control.youHold || control.localOnly) {
         if (control.originKey && control.originKey !== originKey.current) {
           originKey.current = control.originKey;
           trail.current.length = 0;

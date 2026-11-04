@@ -6,11 +6,13 @@ import {
   dogWorkerUrl,
   dogWsUrl,
   generateGenome,
+  type DogBall,
   type DogCompanion,
   type DogEmote,
   type DogPose,
   type DogSnapshot,
 } from '@/lib/dog';
+import { isBallLive, makeBall, reconcileBall } from '../../workers/dog/src/fetch';
 import { reactionFromEvent } from './look';
 import CatchGame from './CatchGame';
 import DogHud, { type Toast } from './DogHud';
@@ -79,6 +81,7 @@ function toastFromText(text: string): Omit<Toast, 'id'> {
   if (line.includes('petted') || line.includes('scratched')) return { emote: '👋', text };
   if (line.includes('fed') || line.includes('dinner')) return { emote: '🍖', text };
   if (line.includes('walk') || line.includes('sniff')) return { emote: '🐾', text };
+  if (line.includes('ball') || line.includes('fetch')) return { emote: '🎾', text };
   return { emote: '✨', text };
 }
 
@@ -124,7 +127,11 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
     roadGrid: emptyFootprintGrid(),
     label: '',
   });
-  const localPose = useRef<{ x: number; z: number } | null>(null);
+  const [localBall, setLocalBall] = useState<DogBall | null>(null);
+  const localBallRef = useRef<DogBall | null>(null);
+  const lastThrowAt = useRef(0);
+  const snapshotRef = useRef<DogSnapshot | null>(null);
+  const localPose = useRef<{ x: number; z: number; yaw?: number } | null>(null);
   const poseRef = useRef<DogPose | null>(null);
   const lastHudAt = useRef(0);
   const lastSelfHud = useRef(0);
@@ -241,6 +248,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   const apply = useCallback((data: DogSnapshot) => {
     if (data.pose) poseRef.current = data.pose;
     lastHudAt.current = Date.now();
+    snapshotRef.current = data;
     setSnapshot(data);
     setReach('up');
     setProgress((value) => Math.max(value, 78));
@@ -310,7 +318,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           | { type: 'event'; text: string }
           | { type: 'name-please'; until: number }
           | { type: 'welcome'; clientId: string }
-          | { type: 'pose'; pose?: DogSnapshot['pose']; leash?: DogSnapshot['leash']; feeder?: DogSnapshot['feeder']; location?: DogSnapshot['location']; companions?: DogSnapshot['companions'] };
+          | { type: 'pose'; pose?: DogSnapshot['pose']; leash?: DogSnapshot['leash']; feeder?: DogSnapshot['feeder']; location?: DogSnapshot['location']; companions?: DogSnapshot['companions']; ball?: DogSnapshot['ball'] };
         try {
           message = JSON.parse(event.data) as typeof message;
         } catch {
@@ -339,15 +347,18 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
               feeder: pose.feeder ?? current.feeder,
               location: pose.location ?? current.location,
               companions: pose.companions ?? current.companions,
+              ball: pose.ball === undefined ? current.ball : pose.ball,
             };
             if (next.pose) poseRef.current = next.pose;
             const leashChanged =
               next.leash?.holderId !== current.leash?.holderId ||
               next.leash?.nextId !== current.leash?.nextId ||
               (next.companions?.length ?? 0) !== (current.companions?.length ?? 0);
+            const ballChanged = next.ball?.playId !== current.ball?.playId;
             const now = Date.now();
-            if (!leashChanged && now - lastHudAt.current < 200) return current;
+            if (!leashChanged && !ballChanged && now - lastHudAt.current < 200) return current;
             lastHudAt.current = now;
+            snapshotRef.current = next;
             return next;
           });
         }
@@ -382,6 +393,12 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
                 : message.code === 'cooldown'
                   ? `Give him a moment · ${Math.max(1, Math.ceil(wait / 1000))}s`
                   : message.text || ERRORS[message.code] || 'Not just now.';
+          if (message.code === 'busy' || message.code === 'cooldown') {
+            if (localBallRef.current) {
+              localBallRef.current = null;
+              setLocalBall(null);
+            }
+          }
           pushToast(text);
           if (message.code === 'invalid' || message.code === 'not_catcher') setNameStatus(text);
         }
@@ -548,6 +565,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       (snapshot.leash.holderId === clientId || snapshot.leash.holderId === clientIdRef.current),
   );
   youHoldRef.current = youHold;
+  snapshotRef.current = snapshot;
   const leashQueue = snapshot?.leash?.queue ?? [];
   const nextId = snapshot?.leash?.nextId ?? leashQueue[0] ?? null;
   const youNext = preview === 'presence' || Boolean(nextId && clientId && nextId === clientId && !youHold);
@@ -565,6 +583,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       ? [...PREVIEW_VISITORS, selfGuest]
       : [...(snapshot?.companions ?? []).filter((guest) => guest.id !== clientId), ...(youId ? [selfGuest] : [])];
   const lookAt = snapshot?.pose ?? { x: 0, z: 0 };
+  const displayBall = reconcileBall(localBall, snapshot?.ball ?? null, Date.now());
   const visitorWalking = preview === 'leash' || Boolean(snapshot?.leash?.held && snapshot.leash.holderId && snapshot.leash.holderId !== clientId);
   const hideDrive = preview === 'eat' || preview === 'sleep' || preview === 'pose-walk';
   const inRange = preview === 'eat' || Boolean(snapshot?.feeder?.near) || nearBowl;
@@ -645,6 +664,29 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
       pushToast('Give him a moment · reconnecting');
     }
   }
+
+  const throwAt = useCallback((x: number, z: number) => {
+    if (!youHoldRef.current || spawnRef.current) return;
+    const now = Date.now();
+    const snap = snapshotRef.current;
+    if (isBallLive(localBallRef.current, now) || isBallLive(snap?.ball, now)) return;
+    if (now - lastThrowAt.current < 2000) return;
+    const pose = localPose.current ?? snap?.pose ?? { x: 0, z: 0, yaw: 0 };
+    const seed = makeBall(pose.x, pose.z, x, z, clientIdRef.current || 'you', now, pose.yaw ?? 0);
+    lastThrowAt.current = now;
+    localBallRef.current = seed;
+    setLocalBall(seed);
+    if (socket.current?.readyState === WebSocket.OPEN) {
+      socket.current.send(JSON.stringify({ type: 'throw', x: seed.toX, z: seed.toZ }));
+    }
+  }, []);
+
+  const throwAhead = useCallback(() => {
+    const pose = localPose.current ?? snapshotRef.current?.pose;
+    if (!pose) return;
+    const yaw = pose.yaw ?? 0;
+    throwAt(pose.x + Math.sin(yaw) * 14, pose.z + Math.cos(yaw) * 14);
+  }, [throwAt]);
 
   inputRef.current = input;
   spawnRef.current = debugSpawn;
@@ -793,7 +835,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
   }, [playing]);
 
   const handlePose = useCallback(
-    (pose: { x: number; z: number }) => {
+    (pose: { x: number; z: number; yaw?: number }) => {
       localPose.current = pose;
       const bowl = nearFeeder(pose.x, pose.z, snapshot?.feeder);
       setNearBowl((current) => (current === bowl ? current : bowl));
@@ -815,6 +857,7 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
         roads: colliders.current.roadGrid,
         parks: colliders.current.parks,
         onPose: handlePose,
+        ball: displayBall,
       };
 
   if (studio) return <DogStudio />;
@@ -844,6 +887,9 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           companions={guests}
           youId={youId}
           lookAt={lookAt}
+          ball={displayBall}
+          canThrow={youHold && !debugSpawn && !previewing && shared && !displayBall}
+          onThrow={throwAt}
         />
       ) : (
         <DogPortrait
@@ -869,6 +915,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           companions={guests}
           youId={youId}
           lookAt={lookAt}
+          ball={displayBall}
+          canThrow={false}
         />
       )}
 
@@ -939,6 +987,8 @@ export default function DogRoom({ initialPanel = null }: { initialPanel?: Panel 
           }
           flying={flying}
           onTakeLeash={takeLeash}
+          fetching={Boolean(displayBall)}
+          onThrow={throwAhead}
         />
       )}
 

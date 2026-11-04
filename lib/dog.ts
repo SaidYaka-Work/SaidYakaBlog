@@ -167,6 +167,16 @@ export type DogLocation = {
   country: string;
 };
 
+export type DogBall = {
+  playId: string;
+  thrownAt: number;
+  throwerId: string;
+  fromX: number;
+  fromZ: number;
+  toX: number;
+  toZ: number;
+};
+
 export type DogSnapshot = {
   type: 'state';
   dog: PublicDog | null;
@@ -182,6 +192,7 @@ export type DogSnapshot = {
   feeder?: DogFeeder;
   location?: DogLocation;
   companions?: DogCompanion[];
+  ball?: DogBall | null;
 };
 
 export function stageWord(stage: LifeStage) {

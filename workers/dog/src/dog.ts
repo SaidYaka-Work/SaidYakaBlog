@@ -8,6 +8,7 @@ import {
   applyCompanionHere,
   applyName,
   applyPet,
+  applyThrow,
   applyWorldAction,
   canStartCare,
   canStartCatch,
@@ -31,6 +32,7 @@ import {
 } from './logic';
 import { flushIfNeeded, logDogError, RoomSession, scheduleAlarm, type PersistKind } from './persist';
 import { HERE_GAP_MS } from './presence';
+import { isBallLive, publicBall } from './fetch';
 import { MOVE_MIN_MS, migrateYard, publicFeeder, publicLeash, publicPose, releaseLeash } from './room';
 import { migrateLocation, publicLocation } from './world';
 
@@ -308,6 +310,32 @@ export class DogRoom {
         this.broadcast(snapshot(session.room, now, this.sockets()));
         this.broadcast({ type: 'event', text: moved.walk.event.text, at: moved.walk.event.at });
       }
+      return;
+    }
+
+    if (parsed.kind === 'throw') {
+      const result = applyThrow(await this.mustLoad(now, 'action'), meta.clientId, parsed.x, parsed.z, now);
+      await this.commit(result.room, now, 'action');
+      if (!result.ok) {
+        ws.send(
+          JSON.stringify({
+            type: 'error',
+            code: result.code,
+            retryAfterMs: result.retryAfterMs,
+            text:
+              result.code === 'busy'
+                ? isBallLive(result.room.yard?.ball, now)
+                  ? 'The ball is still out.'
+                  : 'Only the leash holder can throw.'
+                : undefined,
+          }),
+        );
+        this.emitPose(result.room, now, true);
+        return;
+      }
+      this.broadcast(snapshot(result.room, now, this.sockets()));
+      this.broadcast({ type: 'event', text: result.event.text, at: result.event.at });
+      this.emitPose(result.room, now, true);
       return;
     }
 
@@ -695,6 +723,7 @@ export class DogRoom {
       feeder: publicFeeder(yard.feeder, yard.pose, now),
       location: publicLocation(migrateLocation(yard.location, now)),
       companions: publicCompanions(room.companions, yard.pose, now),
+      ball: publicBall(yard.ball, now),
     });
   }
 

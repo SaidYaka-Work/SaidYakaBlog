@@ -76,6 +76,9 @@ export type YardState = {
   ai: YardAi;
   /** Present after the open-world worker deploy. Older rooms migrate in. */
   location?: import('./world').Location;
+  /** Memory-only fetch ball. Older rooms migrate to undefined. */
+  ball?: import('./fetch').BallState;
+  lastThrowAt?: number;
 };
 
 export type Circle = { x: number; z: number; radius: number };
@@ -157,6 +160,8 @@ export function migrateYard(yard: YardState | undefined, now: number): YardState
     feeder: { ...createYard(now).feeder, ...yard.feeder },
     ai: { ...createYard(now).ai, ...yard.ai },
     location: yard.location,
+    ball: yard.ball,
+    lastThrowAt: Number.isFinite(yard.lastThrowAt) ? yard.lastThrowAt : undefined,
   };
 }
 

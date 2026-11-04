@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import type { DogCompanion, DogGenome, LifeStage } from '@/lib/dog';
+import type { DogBall, DogCompanion, DogGenome, LifeStage } from '@/lib/dog';
 import type { DriveControl } from './DogRig';
 import type { PortraitReaction } from './look';
 import type { WorldView } from './DogCanvas';
@@ -36,6 +36,9 @@ export default function DogPortrait({
   companions = [],
   youId = null,
   lookAt = { x: 0, z: 0 },
+  ball = null,
+  canThrow = false,
+  onThrow,
 }: {
   genome?: DogGenome | null;
   asleep: boolean;
@@ -60,6 +63,9 @@ export default function DogPortrait({
   companions?: DogCompanion[];
   youId?: string | null;
   lookAt?: { x: number; z: number };
+  ball?: DogBall | null;
+  canThrow?: boolean;
+  onThrow?: (x: number, z: number) => void;
 }) {
   if (compact) {
     return <DogStill genome={genome} stage={stage} reaction={reaction} asleep={asleep} night={night} sad={sad} />;
@@ -88,6 +94,9 @@ export default function DogPortrait({
       companions={companions}
       youId={youId}
       lookAt={lookAt}
+      ball={ball}
+      canThrow={canThrow}
+      onThrow={onThrow}
     />
   );
 }
