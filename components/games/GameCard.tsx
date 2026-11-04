@@ -301,6 +301,20 @@ function GamePreview({ tone, featured = false }: { tone: GameMeta['tone']; featu
           <span className="absolute bottom-5 left-1/2 h-2.5 w-20 -translate-x-1/2 rounded-sm bg-[#e8a87c]/45" />
         </>
       )}
+      {tone === 'triad' && (
+        <div className="absolute inset-0 flex items-end justify-center gap-2 px-6 pb-7">
+          <span className="grid h-[4.4rem] w-11 place-items-center rounded-md border border-[#e8a87c]/55 bg-[#e8a87c]/15">
+            <span className="h-0 w-0 border-x-[8px] border-b-[14px] border-x-transparent border-b-[#e8a87c]" />
+          </span>
+          <span className="grid h-[4.4rem] w-11 place-items-center rounded-md border border-[#f0d8c8]/45 bg-[#f0d8c8]/10">
+            <span className="h-7 w-5 rounded-full border-2 border-[#f0d8c8]/80" />
+          </span>
+          <span className="grid h-[4.4rem] w-11 place-items-center rounded-md border border-[#8fc4a8]/40 bg-[#8fc4a8]/10">
+            <span className="h-8 w-2 rounded-full bg-[#8fc4a8]/80" />
+            <span className="mt-1 h-2 w-4 rounded-full bg-[#8fc4a8]/55" />
+          </span>
+        </div>
+      )}
       {tone === 'tessera' && (
         <div className="absolute inset-0 grid grid-cols-6 gap-1 p-6">
           {['', '2', '4', '4', '2', '', '2', '', '', '', '', '2', '6', '', '#', '#', '', '6', '4', '', '#', '#', '', '4', '2', '', '', '', '', '2'].map(

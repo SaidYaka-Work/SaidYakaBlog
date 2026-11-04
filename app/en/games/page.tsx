@@ -5,7 +5,7 @@ import { englishUrl } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'Games',
-  description: 'A shelf of original browser games: daily puzzles in deduction, history, timelines, estimation, etymology, cryptograms, number sequences, balance-scale algebra, picture-logic nonograms, bridges, mechanical gear trains, great-circle geography, water-jug measuring, and ranked-choice voting, a FakeGPT party toy, plus skill, timing, words, logic, and herding.',
+  description: 'A shelf of original browser games: daily puzzles in deduction, history, timelines, estimation, etymology, cryptograms, number sequences, balance-scale algebra, picture-logic nonograms, bridges, mechanical gear trains, great-circle geography, water-jug measuring, ranked-choice voting, and attribute-logic triads, a FakeGPT party toy, plus skill, timing, words, logic, and herding.',
   alternates: {
     canonical: englishUrl('/games'),
     languages: {
