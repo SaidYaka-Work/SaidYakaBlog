@@ -1,0 +1,130 @@
+---
+slug: "ship-a-degraded-mode-with-every-llm-feature"
+title: "Ship a Degraded Mode With Every LLM Feature"
+date: 2026-11-04
+author: Said Yaka
+tags:
+  - Reliability
+  - LLMs
+  - AI Engineering
+  - Product Design
+  - Inference
+description: "Before an LLM feature goes live, decide what the product does when the model is slow, down, rate-limited, or wrong. Timeouts, failover, cache, templates, flags, and how you measure the fallback."
+canonical_url: "https://saidyaka.com/en/posts/ship-a-degraded-mode-with-every-llm-feature"
+keywords:
+  - LLM degraded mode
+  - LLM feature fallback
+  - AI product reliability
+  - LLM timeout failover
+  - model outage fallback
+og_title: "Ship a Degraded Mode With Every LLM Feature"
+og_description: "The happy path is not a ship checklist. Write the timeout, the failover, the cache, the template, and the flag before the model goes live."
+twitter_card: "summary_large_image"
+twitter_site: "@saidyaka"
+---
+
+The happy path is not a ship checklist.
+
+If you cannot say what the product does when the model is slow, down, rate-limited, or returning fluent garbage, you do not have a feature. You have a demo that needs the provider to have a good day.
+
+I write the degraded mode first. The model call is the optimistic path.
+
+## Decide the failure contract before you pick the model
+
+I do not start with a provider. I start with the failures the user will actually hit: the request never returns, it 429s or 5xxs, it comes back empty or invalid, it comes back valid and wrong, or someone turns the model off on purpose.
+
+Those are different products. A spinner that waits forever is not a fallback. A retry loop that burns the same failing alias is not a fallback. A blank composer when the flag is off is not a fallback.
+
+The contract is per feature, same as a [latency budget](/en/posts/latency-budgets-for-llm-features/): what the UI may show, what we serve instead, and what we will not pretend succeeded. A support draft that times out can offer a template or "write it yourself." A refund classifier should not invent `approve`. An autocomplete should vanish. Two features can share a model and still need different degraded modes. The fallback is product behavior.
+
+## Hard timeouts, and what the UI is allowed to show
+
+I put a hard timeout on the model call. Not a hope. A cut.
+
+The number lives next to the budget. If first useful paint has to happen by T, the model does not get T plus "a little more because this one looks important." When the clock fires, the request is done. I do not leave a zombie generation writing into a UI that already moved on.
+
+What the UI may show:
+
+- **progress that is honest** — "Draft unavailable. You can retry or write it." Not "thinking" after the call is dead
+- **a safe substitute** — last-known-good, a template, or a cheaper model result that already returned
+- **a human path** — queue, escalate, or hand the user the form
+- **nothing** — autocomplete, inline rewrite, anywhere a stale token would look like the product speaking
+
+I do not lie in the gap. A placeholder that looks finished and later rewrites is worse than a wait. Same rule as [streaming meaning instead of a frozen page](/en/posts/latency-budgets-for-llm-features/). If the output is not safe to show, show status.
+
+Retries belong next to the timeout. One retry on a transient 5xx can be fine if it still fits the budget. Three retries on a 429 is how you turn a rate limit into an outage.
+
+## Failover is a named path, not a retry loop
+
+When the primary model fails, I want a named second path. Not "try again and hope."
+
+Two useful second paths:
+
+- **a cheaper or pinned backup model** — same prompt pair, different pin. Classification, extraction, short transforms.
+- **a non-LLM path** — rules, templates, a form, the last saved object. Use this when a second model would be wrong the same way, or the write is too costly to trust a weaker snapshot.
+
+I do not fail a frontier alias over to `provider-model-latest`. The backup is a pin, same as [the prompt and model pair I ship](/en/posts/treat-prompts-like-code/). If I [route cheap, fast, and strong](/en/posts/how-i-think-about-model-routing/), degraded mode is a route with an owner, not an implicit retry.
+
+Escalation and failover are not the same move. Escalation is "this input is hard, spend more." Failover is "this dependency is sick, stop waiting." Escalating a timeout into a slower model is how you miss the budget twice. A backup model can draft. It should not approve a refund, change access, or assert a fact the ticket does not have. If the only safe action is "stop," stop.
+
+## Cache and last-known-good only where stale is still true
+
+A cache hit is a degraded mode you already paid for. It is also a way to ship a lie with a fast p50.
+
+I use last-known-good when the answer is still product-true if it is a little old: a workspace summary labeled as generated earlier, a classification of a ticket that has not changed, a draft the user already edited. I do not use it when the row would write money, access, or a fact that has to be true right now. A cached "approve" is a stale decision wearing a performance costume.
+
+The UI has to say what it served. "Showing the last draft from this morning" is a product. A silently recycled answer is how you [teach people the assistant is moody](/en/posts/shipping-fast-without-breaking-trust/). Prompt-prefix cache is different — [it keeps the second turn inside the budget](/en/posts/prompt-caching-is-a-product-feature/). Result cache is a product claim. If you cannot label it, do not serve it.
+
+## Rules and templates for the narrow work
+
+A lot of "LLM features" are a narrow transform wearing a chat box.
+
+If the task is closed — intent enum, order-id pattern, canned ack — I keep a rule or a template that can run with the model off. Regex plus a small table is not glamorous. It is a product that still files the ticket.
+
+Same instinct as [structured outputs](/en/posts/designing-llm-features-around-structured-outputs/): the next function needs an object. If the model cannot fill it, something else has to. Validate, repair once, then choose an explicit fallback: template the reply from fields you already have, default `should_escalate` to a value you can defend, ask the user, or queue a human.
+
+I do not loop a broken object until the model invents a legal one. The template is allowed to be worse than a good model day. It is not allowed to be fiction. Wide-open generation does not get a fake-smart template. It gets "unavailable" and a place to type.
+
+## A flag that turns the model off without blanking the page
+
+"Off" is a product state. I ship it before I need it.
+
+The flag does not delete the surface. It selects the degraded path: backup model, cache, template, or human. Same rule I use when a [prompt version is wrong](/en/posts/treat-prompts-like-code/): off serves the last good behavior, not an empty string.
+
+I write that in the pull request: who can flip it, what "off" serves, and what the UI copy says. If flipping the flag 404s the page, you do not have a kill switch. Partial off matters. One surface can run on templates while another still calls the model.
+
+The flag is also how you practice the fallback. If the degraded path only exists in a runbook, it will be wrong the first time you need it. I turn the model off in staging and click the feature. If the page blanks, the flag is not done.
+
+## Measure the fallback so it cannot become the product
+
+A degraded mode that nobody counts will become the silent default.
+
+I want the same dashboards I already want for [wait and for agent decisions](/en/posts/building-agent-observability/), pointed at the fallback: timeout rate and which clock fired, provider errors by class, failover rate by destination, flag-off share, accept / edit / abandon after a fallback serve, and whether the primary path is recovering.
+
+If most weekday traffic is cache and templates, you are running a rules engine that still pays for a model on the lucky requests. That can be the right product. It cannot be an accident.
+
+I alert on fallback share and fallback quality, not only on model latency. A model that is "up" but failing the schema will push you onto templates all morning. The trace should say which contract, timeout, pin, cache key, and flag ran — and what the user got instead.
+
+## A checklist I reuse
+
+Before an LLM feature goes live:
+
+- Failure cases are named: timeout, 429, 5xx, empty, invalid, wrong, flag-off
+- Hard timeout sits next to the latency budget
+- The UI has an honest state for each case, including "show nothing"
+- Backup pin and non-LLM path are named, with what they must not do
+- Last-known-good is labeled and only used where stale is still true
+- Narrow tasks have a template or rule that runs with the model off
+- The flag serves the degraded path, not a blank page
+- Logs show fallback share, destination, and whether users accept it
+- Someone other than the author can flip the flag
+
+If any of those are missing, I still have a demo. Demos do not belong on the user-facing path.
+
+## The fallback is the feature
+
+I want the model to be the optimistic path. Checked timeout. Named failover. Labeled cache. Boring templates. A flag that keeps the page up. A dashboard that notices when the fallback took over.
+
+If a coworker cannot say what the product does when the provider has a bad hour, you did not ship an LLM feature. You shipped a dependency.
+
+Degraded mode is not polish. It is the product on an ordinary weekday.
